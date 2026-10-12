@@ -1,0 +1,11 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Central Package Management: versions live here, projects reference packages without Version. -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+  </ItemGroup>
+
+</Project>
