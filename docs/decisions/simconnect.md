@@ -70,6 +70,7 @@ Teste do mantenedor (spike v1, 30 min): com o spike rodando, o MSFS foi fechado 
 1. Detectar conexão morta por mais de um sinal: mensagem `Quit` (via `RawMessageReceived`), `TestConnectionAsync` falhando duas vezes seguidas (sonda a cada ~3 s) e `ConnectionStatusChanged` para `false`. Ausência de dados **não** serve sozinha, porque no menu/carregamento (`Sim=0`) os dados também param.
 2. Ao detectar, descartar assinaturas e cliente (com limite de tempo, pois o `Dispose` pode travar), criar um **novo** `SimConnectClient`, reconectar com tentativas e backoff e assinar tudo de novo.
 3. Estado `Connecting` enquanto isso; os streams do adapter continuam abertos (ver tarefa 3).
+4. **Nunca desistir de conectar.** O MSFS pode levar vários minutos para abrir (o primeiro spike, com limite de 120 s, desistia antes de o jogo terminar de carregar). O adapter tenta de forma indefinida, com intervalo crescente e teto (por exemplo, 2 s até 10 s), até ser cancelado ou descartado.
 
 Detalhes extras que afetam o desenho:
 

@@ -1,9 +1,10 @@
 // SimConnect spike (M1, task 2). Throwaway: answers the open questions in docs/decisions/simconnect.md.
 //
-//   dotnet run --project spikes/SimConnectSpike -c Release -- [--seconds 30] [--wait-seconds 120]
+//   dotnet run --project spikes/SimConnectSpike -c Release -- [--seconds 30] [--wait-seconds 0]
 //
 // --seconds       total run time (0 = until Ctrl+C). Default 30. Use 0 to test reconnection.
-// --wait-seconds  how long to keep retrying to connect (also while MSFS is not up yet). Default 120.
+// --wait-seconds  give up connecting after this many seconds. Default 0 = never give up (retry
+//                 until Ctrl+C), which is what the real adapter will do: MSFS can take minutes to start.
 //
 // Reconnection experiment: SimConnect.NET 0.2.2 never noticed MSFS quitting (IsConnected stayed
 // true, no events, subscriptions silently stopped). This spike therefore detects a dead connection
@@ -19,7 +20,7 @@ using SimConnect.NET;
 using SimConnect.NET.SimVar;
 
 var seconds = ReadIntOption("--seconds", 30);
-var waitSeconds = ReadIntOption("--wait-seconds", 120);
+var waitSeconds = ReadIntOption("--wait-seconds", 0);
 
 var logPath = $"spike-{DateTime.Now:yyyyMMdd-HHmmss}.log";
 using var logFile = new StreamWriter(logPath, append: false) { AutoFlush = true };
@@ -95,7 +96,7 @@ bool TimeIsUp() => seconds != 0 && total.Elapsed.TotalSeconds >= seconds;
 
 async Task<bool> ConnectAsync()
 {
-    var deadline = DateTime.UtcNow.AddSeconds(waitSeconds);
+    var deadline = waitSeconds == 0 ? DateTime.MaxValue : DateTime.UtcNow.AddSeconds(waitSeconds);
     var attempt = 0;
 
     while (!cts.IsCancellationRequested)
@@ -108,7 +109,11 @@ async Task<bool> ConnectAsync()
             using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
             attemptCts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            Log($"[session {sessionNumber}] connect attempt {attempt}...");
+            if (attempt <= 3 || attempt % 10 == 0)
+            {
+                Log($"[session {sessionNumber}] connect attempt {attempt}...");
+            }
+
             await candidate.ConnectAsync(cancellationToken: attemptCts.Token);
 
             client = candidate;
@@ -121,12 +126,16 @@ async Task<bool> ConnectAsync()
             sessionEnding = false;
             dead = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            Log($"CONNECTED. IsConnected={candidate.IsConnected}  IsMSFS2024={candidate.IsMSFS2024}");
+            Log($"CONNECTED after {attempt} attempt(s). IsConnected={candidate.IsConnected}  IsMSFS2024={candidate.IsMSFS2024}");
             return true;
         }
         catch (Exception ex)
         {
-            Log($"  attempt {attempt} failed: {ex.GetType().Name}: {ex.Message}");
+            if (attempt <= 3 || attempt % 10 == 0)
+            {
+                Log($"  attempt {attempt} failed: {ex.GetType().Name}: {ex.Message}");
+            }
+
             await DisposeQuietlyAsync(candidate);
 
             if (DateTime.UtcNow >= deadline)
