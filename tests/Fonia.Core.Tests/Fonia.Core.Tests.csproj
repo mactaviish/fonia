@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Fonia.Core\Fonia.Core.csproj" />
+    <ProjectReference Include="..\..\src\Fonia.Sim.Mock\Fonia.Sim.Mock.csproj" />
   </ItemGroup>
 
   <ItemGroup>
