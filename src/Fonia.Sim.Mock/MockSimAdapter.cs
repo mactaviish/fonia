@@ -9,7 +9,10 @@ namespace Fonia.Sim.Mock;
 /// </summary>
 /// <remarks>
 /// <see cref="SetState"/> / <see cref="Update"/> play the role of the simulator producing a snapshot.
-/// A state programmed before <see cref="ConnectAsync"/> is delivered as the first snapshot on connect.
+/// A state programmed before <see cref="ConnectAsync"/> is delivered as the first snapshot on connect,
+/// and the latest programmed state is delivered again when a lost connection returns.
+/// <see cref="SimulateConnectionLoss"/> / <see cref="RestoreConnection"/> play the simulator going away
+/// and coming back, as a real adapter that reconnects on its own would see it.
 /// </remarks>
 public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 {
@@ -26,6 +29,8 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
     {
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
+
+    public event EventHandler<SimConnectionStateChangedEventArgs>? ConnectionStateChanged;
 
     public SimConnectionState ConnectionState
     {
@@ -53,23 +58,24 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
     {
         ct.ThrowIfCancellationRequested();
 
+        List<SimConnectionStateChangedEventArgs> changes = [];
+
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            if (_connectionState == SimConnectionState.Connected)
+            // Already connected, or already reconnecting after a loss: the adapter owns the connection.
+            if (_connectionState != SimConnectionState.Disconnected)
             {
                 return Task.CompletedTask;
             }
 
-            _connectionState = SimConnectionState.Connected;
-
-            if (_programmedState is not null)
-            {
-                Publish(_programmedState);
-            }
+            ChangeState(SimConnectionState.Connecting, changes);
+            ChangeState(SimConnectionState.Connected, changes);
+            DeliverProgrammedState();
         }
 
+        Raise(changes);
         return Task.CompletedTask;
     }
 
@@ -77,12 +83,64 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
     {
         ct.ThrowIfCancellationRequested();
 
+        List<SimConnectionStateChangedEventArgs> changes = [];
+
         lock (_gate)
         {
-            Disconnect();
+            Disconnect(changes);
         }
 
+        Raise(changes);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Plays the simulator going away: <c>Connected → Connecting</c>. Streams stay open and
+    /// <see cref="LatestState"/> is kept; states programmed meanwhile wait for <see cref="RestoreConnection"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Not connected.</exception>
+    public void SimulateConnectionLoss()
+    {
+        List<SimConnectionStateChangedEventArgs> changes = [];
+
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (_connectionState != SimConnectionState.Connected)
+            {
+                throw new InvalidOperationException("A connection loss can only be simulated while connected.");
+            }
+
+            ChangeState(SimConnectionState.Connecting, changes);
+        }
+
+        Raise(changes);
+    }
+
+    /// <summary>
+    /// Plays the simulator coming back: <c>Connecting → Connected</c>, delivering the latest programmed
+    /// state to every stream.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No connection loss in progress.</exception>
+    public void RestoreConnection()
+    {
+        List<SimConnectionStateChangedEventArgs> changes = [];
+
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (_connectionState != SimConnectionState.Connecting)
+            {
+                throw new InvalidOperationException("There is no connection loss to restore.");
+            }
+
+            ChangeState(SimConnectionState.Connected, changes);
+            DeliverProgrammedState();
+        }
+
+        Raise(changes);
     }
 
     public IAsyncEnumerable<AircraftState> StreamAsync(CancellationToken ct)
@@ -105,6 +163,8 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 
     public ValueTask DisposeAsync()
     {
+        List<SimConnectionStateChangedEventArgs> changes = [];
+
         lock (_gate)
         {
             if (_disposed)
@@ -113,15 +173,16 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
             }
 
             _disposed = true;
-            Disconnect();
+            Disconnect(changes);
         }
 
+        Raise(changes);
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
     /// Programs a new snapshot. While connected it becomes <see cref="LatestState"/> and is delivered
-    /// to every stream; while disconnected it is kept and delivered as the first snapshot on connect.
+    /// to every stream; while disconnected or reconnecting it is kept and delivered when the connection (re)appears.
     /// </summary>
     public void SetState(AircraftState state)
     {
@@ -141,8 +202,7 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
     }
 
     /// <summary>
-    /// Programs a new snapshot derived from the current one (<see cref="LatestState"/> while connected,
-    /// otherwise the last programmed state).
+    /// Programs a new snapshot derived from the most recently programmed one.
     /// </summary>
     /// <exception cref="InvalidOperationException">No state has been programmed yet.</exception>
     public void Update(Func<AircraftState, AircraftState> change)
@@ -151,7 +211,9 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 
         lock (_gate)
         {
-            var current = _latestState ?? _programmedState
+            // The programmed state is always the newest: it equals LatestState while connected and is
+            // ahead of it while disconnected or reconnecting.
+            var current = _programmedState
                 ?? throw new InvalidOperationException("No state to update: call SetState first.");
 
             SetState(change(current));
@@ -221,15 +283,31 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
         }
     }
 
-    // Must be called with _gate held. No-op while already disconnected.
-    private void Disconnect()
+    // Must be called with _gate held.
+    private void DeliverProgrammedState()
+    {
+        if (_programmedState is not null)
+        {
+            Publish(_programmedState);
+        }
+    }
+
+    // Must be called with _gate held.
+    private void ChangeState(SimConnectionState next, List<SimConnectionStateChangedEventArgs> changes)
+    {
+        changes.Add(new SimConnectionStateChangedEventArgs(_connectionState, next));
+        _connectionState = next;
+    }
+
+    // Must be called with _gate held. No-op while already disconnected; also ends a reconnection in progress.
+    private void Disconnect(List<SimConnectionStateChangedEventArgs> changes)
     {
         if (_connectionState == SimConnectionState.Disconnected)
         {
             return;
         }
 
-        _connectionState = SimConnectionState.Disconnected;
+        ChangeState(SimConnectionState.Disconnected, changes);
 
         foreach (var subscription in _subscriptions)
         {
@@ -237,6 +315,15 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
         }
 
         _subscriptions.Clear();
+    }
+
+    // Handlers run outside the lock so they can call back into the adapter from any thread.
+    private void Raise(List<SimConnectionStateChangedEventArgs> changes)
+    {
+        foreach (var change in changes)
+        {
+            ConnectionStateChanged?.Invoke(this, change);
+        }
     }
 
     private void Unsubscribe(Subscription subscription)

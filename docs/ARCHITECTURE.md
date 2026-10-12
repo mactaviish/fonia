@@ -37,7 +37,8 @@ Interface única entre o app e qualquer simulador.
 ```csharp
 public interface ISimAdapter : IAsyncDisposable
 {
-    SimConnectionState ConnectionState { get; }
+    event EventHandler<SimConnectionStateChangedEventArgs>? ConnectionStateChanged;
+    SimConnectionState ConnectionState { get; }     // Disconnected / Connecting / Connected
     AircraftState? LatestState { get; }             // null até o 1º snapshot após conectar
     Task ConnectAsync(CancellationToken ct);
     Task DisconnectAsync(CancellationToken ct);
@@ -53,9 +54,12 @@ public interface IComRadioControl
 
 Contrato (documentado no XML do código e verificado pelos testes do `MockSimAdapter`):
 
-- `ConnectAsync` e `DisconnectAsync` são idempotentes; `DisposeAsync` também, e implica desconectar.
-- Cada chamada a `StreamAsync` cria uma assinatura independente, então vários consumidores não tiram itens uns dos outros. Um consumidor lento pode perder snapshots intermediários (só o mais recente importa), mas nunca trava o adapter nem faz a memória crescer.
-- O stream termina sem exceção quando o token é cancelado ou o adapter desconecta. `LatestState` mantém o último snapshot após desconectar.
+- **Queda de conexão não é desconexão.** Depois de `ConnectAsync`, o adapter é dono da conexão: se o simulador fechar ou reiniciar, o estado vai de `Connected` para `Connecting`, o adapter tenta de novo **sem limite** (o MSFS pode levar minutos para abrir) e, quando o simulador volta, passa a `Connected`. Os streams **continuam abertos** o tempo todo; `LatestState` mantém o último snapshot. Só `DisconnectAsync`, `DisposeAsync` ou o cancelamento do próprio token do stream encerram os streams. O par de estados do evento diz o que houve: `Connected → Connecting` é queda; `Connected → Disconnected` é desconexão deliberada.
+- `ConnectAsync` completa quando a primeira conexão é estabelecida, tenta até conseguir e lança `OperationCanceledException` se o token for cancelado antes. É no-op se já está conectado ou reconectando.
+- `ConnectAsync`, `DisconnectAsync` e `DisposeAsync` são idempotentes; `DisposeAsync` implica desconectar, inclusive durante uma reconexão.
+- `ConnectionStateChanged` é disparado uma vez por mudança, em ordem, e **fora de qualquer lock interno** (o handler pode chamar o adapter de outra thread sem deadlock). Uma conexão nova passa por `Connecting` antes de `Connected`.
+- Cada chamada a `StreamAsync` cria uma assinatura independente, então vários consumidores não tiram itens uns dos outros. Um consumidor lento pode perder snapshots intermediários (só o mais recente importa), mas nunca trava o adapter nem faz a memória crescer. O stream termina sem exceção.
+- Adapters só publicam snapshots quando o simulador reporta dados válidos (ex.: voo carregado); quem consome nunca vê os valores provisórios que alguns simuladores informam durante o carregamento.
 - Escrever no simulador (ex.: sintonizar o COM) é uma capacidade separada (`IComRadioControl`), em vez de um método "opcional" na interface principal.
 
 `AircraftState` (`record`) contém: timestamp, latitude, longitude, altitude (MSL e AGL, em pés), velocidade no solo (nós), proa magnética, em solo (bool), COM1/COM2 (`RadioState`: ativo e standby), transponder, matrícula e tipo de aeronave. As unidades fazem parte dos nomes das propriedades. Frequências são `Frequency`, um `readonly record struct` em kHz inteiros (118,275 MHz = 118275), para evitar comparação de `double` e representar canais de 8,33 kHz.
@@ -64,7 +68,7 @@ Implementações:
 
 | Adapter | Status | Observações |
 |---|---|---|
-| `MockSimAdapter` | M0 | Estado programável (`SetState`/`Update`) e sequências em memória (`PlayAsync`, com `TimeProvider` injetável). Gravação em arquivo e replay chegam no M1. Base de todos os testes. |
+| `MockSimAdapter` | M0 | Estado programável (`SetState`/`Update`), sequências em memória (`PlayAsync`, com `TimeProvider` injetável) e simulação de queda e volta da conexão (`SimulateConnectionLoss`/`RestoreConnection`). Gravação em arquivo e replay chegam no M1. Base de todos os testes. |
 | `MsfsSimAdapter` | M1 | SimConnect. Mesmo adapter para MSFS 2020 e 2024, a validar. Só Windows. |
 | `XPlaneSimAdapter` | futuro | UDP/datarefs. |
 
