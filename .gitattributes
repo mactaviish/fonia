@@ -1,2 +1,19 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Source and config files always use LF, on every OS, so that
+# `dotnet format --verify-no-changes` gives the same result on Linux and Windows.
+*.cs        text eol=lf
+*.csproj    text eol=lf
+*.props     text eol=lf
+*.targets   text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.editorconfig text eol=lf
+.editorconfig  text eol=lf
+
+# Visual Studio solution files conventionally use CRLF.
+*.sln       text eol=crlf
+.gitattributes text eol=lf
