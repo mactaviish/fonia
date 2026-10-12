@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- net10.0, not -windows: only the native SimConnect.dll is Windows-specific at run time, so this
+       project builds and is tested everywhere. See docs/decisions/simconnect.md. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fonia.Core\Fonia.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fonia.Sim.Msfs.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -98,6 +98,20 @@ public class TelemetryFileTests
     }
 
     [Fact]
+    public async Task A_radio_that_reports_no_frequency_survives_a_round_trip_as_null()
+    {
+        var original = MockAircraft.Parked() with { Com2 = null };
+
+        using var stream = await WriteAsync(original);
+        var text = Text(stream);
+        var read = await ReadAllAsync(stream);
+
+        text.ShouldContain("\"com2\":null");
+        read.ShouldBe([original]);
+        read[0].Com2.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Non_ascii_text_survives_a_round_trip()
     {
         var original = MockAircraft.Parked() with { Registration = "PR-ÁÇÃ", AircraftType = "Citação" };

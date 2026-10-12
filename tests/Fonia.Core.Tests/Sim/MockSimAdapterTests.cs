@@ -245,9 +245,21 @@ public class MockSimAdapterTests
         await sim.SetComFrequencyAsync(ComRadio.Com1, Frequency.FromMhz(118.1), Ct);
 
         var next = await NextAsync(stream);
-        next.Com1.Active.ShouldBe(Frequency.FromMhz(118.1));
+        next.Com1.ShouldNotBeNull().Active.ShouldBe(Frequency.FromMhz(118.1));
         next.Com1.Standby.ShouldBe(Frequency.FromMhz(118.1));
         next.Com2.ShouldBe(Parked().Com2);
+    }
+
+    [Fact]
+    public async Task SetComFrequency_on_a_radio_without_frequency_creates_it()
+    {
+        await using var sim = new MockSimAdapter();
+        sim.SetState(Parked() with { Com2 = null });
+        await sim.ConnectAsync(Ct);
+
+        await sim.SetComFrequencyAsync(ComRadio.Com2, Frequency.FromMhz(124.85), Ct);
+
+        sim.LatestState!.Com2.ShouldBe(new RadioState(Frequency.FromMhz(124.85), Frequency.FromMhz(124.85)));
     }
 
     [Fact]
