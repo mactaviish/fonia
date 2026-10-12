@@ -11,7 +11,8 @@ namespace Fonia.Sim.Mock;
 /// <see cref="SetState"/> / <see cref="Update"/> play the role of the simulator producing a snapshot.
 /// A state programmed before <see cref="ConnectAsync"/> is delivered as the first snapshot on connect,
 /// and the latest programmed state is delivered again when a lost connection returns.
-/// <see cref="SimulateConnectionLoss"/> / <see cref="RestoreConnection"/> play the simulator going away
+/// <see cref="PlayAsync"/> and <see cref="ReplayAsync(IAsyncEnumerable{AircraftState}, double, CancellationToken)"/>
+/// play scripted or recorded sequences. <see cref="SimulateConnectionLoss"/> / <see cref="RestoreConnection"/> play the simulator going away
 /// and coming back, as a real adapter that reconnects on its own would see it.
 /// </remarks>
 public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
@@ -246,6 +247,53 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
         }
     }
 
+    /// <summary>
+    /// Replays a recording at its original pace: the first snapshot goes out immediately and each next one
+    /// after the gap between their <see cref="AircraftState.Timestamp"/> values divided by
+    /// <paramref name="speed"/> (1 = real time, 2 = twice as fast, <see cref="double.PositiveInfinity"/> = no waiting).
+    /// Equal or backwards timestamps are published without waiting. Completes after the last snapshot.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="speed"/> is not a positive number.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled; snapshots already published stay published.</exception>
+    public async Task ReplayAsync(IAsyncEnumerable<AircraftState> snapshots, double speed, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+
+        if (double.IsNaN(speed) || speed <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(speed), speed, "The replay speed must be a positive number.");
+        }
+
+        AircraftState? previous = null;
+
+        await foreach (var snapshot in snapshots.WithCancellation(ct))
+        {
+            if (previous is not null)
+            {
+                var wait = ScaledGap(snapshot.Timestamp - previous.Timestamp, speed);
+                if (wait > TimeSpan.Zero)
+                {
+                    await Task.Delay(wait, _timeProvider, ct);
+                }
+            }
+
+            SetState(snapshot);
+            previous = snapshot;
+        }
+    }
+
+    /// <summary>
+    /// Replays a telemetry file written by <see cref="Telemetry.TelemetryRecorder"/>; see
+    /// <see cref="ReplayAsync(IAsyncEnumerable{AircraftState}, double, CancellationToken)"/>. The stream is left open.
+    /// </summary>
+    /// <exception cref="Telemetry.TelemetryFormatException">The file is not valid; snapshots before the problem were already replayed.</exception>
+    public Task ReplayAsync(Stream recording, double speed, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(recording);
+
+        return ReplayAsync(Telemetry.TelemetryReader.ReadAsync(recording, ct), speed, ct);
+    }
+
     /// <summary>Sets the active frequency of the radio in the current state and publishes the result.</summary>
     /// <exception cref="InvalidOperationException">Not connected, or no state available yet.</exception>
     public Task SetComFrequencyAsync(ComRadio radio, Frequency frequency, CancellationToken ct)
@@ -270,6 +318,16 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
         }
 
         return Task.CompletedTask;
+    }
+
+    private static TimeSpan ScaledGap(TimeSpan gap, double speed)
+    {
+        if (gap <= TimeSpan.Zero || double.IsPositiveInfinity(speed))
+        {
+            return TimeSpan.Zero;
+        }
+
+        return TimeSpan.FromTicks((long)Math.Min(gap.Ticks / speed, TimeSpan.MaxValue.Ticks));
     }
 
     // Must be called with _gate held.
