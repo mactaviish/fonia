@@ -5,7 +5,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Label="Testing">
+    <!-- xunit.v3: Apache-2.0; Shouldly: BSD-3-Clause. xunit.v3 runs on Microsoft.Testing.Platform (see global.json). -->
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
   </ItemGroup>
 
 </Project>
