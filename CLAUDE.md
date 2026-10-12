@@ -38,7 +38,7 @@ Detalhes em `docs/ARCHITECTURE.md`.
 - Testes: **xUnit v3** (roda sobre Microsoft.Testing.Platform, ativado no `global.json`; exigido pelo SDK 10) e **Shouldly** (BSD-3) para asserções. Não usar FluentAssertions (licença comercial desde a v8)
 - Qualidade: analyzers do .NET + `dotnet format`
 - Infra: `Microsoft.Extensions.*` (DI, Configuration, Logging), `System.Text.Json`
-- Simulador (MSFS): SimConnect via SDK do MSFS (`Microsoft.FlightSimulator.SimConnect`) ou wrapper da comunidade (ex.: FsConnect); **avaliar no M1**
+- Simulador (MSFS): **SimConnect.NET** (MIT), atrás de uma interface interna para poder trocar; a escolha final é confirmada no spike do M1. Detalhes e riscos de licença da DLL em `docs/decisions/simconnect.md`
 - Áudio: NAudio (Windows)
 - STT / TTS locais: **avaliar no M3** (candidatos: Whisper.net e sherpa-onnx para STT; Piper via sherpa-onnx ou processo externo para TTS)
 
@@ -78,7 +78,7 @@ docs/
 - **Plano antes de código** em mudanças que tocam mais de um projeto: proponha o plano e aguarde aprovação.
 - **Testes primeiro** para o motor de ATC, NLU por regras e fraseologia (lógica pura).
 - **Não invente fraseologia.** Use as referências em `docs/` (DECEA/ICAO). Se não houver referência para um caso, marque com `// TODO(fraseologia)` e pergunte ao mantenedor.
-- **Código Windows-only** (`Fonia.Sim.Msfs`, `Fonia.Audio`) usa `net10.0-windows`. Defina `<EnableWindowsTargeting>true</EnableWindowsTargeting>` para a solução compilar também em Linux (ambiente do Claude Code e CI). Projetos de teste referenciam só Core e Mock.
+- **Código que usa API exclusiva do Windows** (`Fonia.Audio`) usa `net10.0-windows`. `Fonia.Sim.Msfs` e `Fonia.App` usam `net10.0`: só a DLL nativa do SimConnect é Windows em tempo de execução, então compilam e são testados também em Linux (ambiente do Claude Code e CI). Mantenha `<EnableWindowsTargeting>true</EnableWindowsTargeting>` para a solução compilar em Linux. Projetos de teste referenciam só Core e Mock; a exceção é `Fonia.Sim.Msfs.Tests`, que referencia `Fonia.Sim.Msfs` e usa apenas uma sessão SimConnect falsa.
 - **Código que depende do MSFS** só pode ser validado no Windows com o simulador aberto. Você não consegue rodá-lo. Escreva-o de forma defensiva (logs claros, exceções tratadas, reconexão) e peça ao mantenedor que teste e traga os logs.
 - **DLLs do SDK do MSFS** (SimConnect): verificar a licença antes de versionar no repositório. Se não puder, documentar o caminho de instalação do SDK e referenciá-las por variável de ambiente ou caminho configurável.
 - **Async de ponta a ponta** no pipeline (`Task`, `CancellationToken`, `Channel<T>`). Não bloquear com `.Result` ou `.Wait()`.

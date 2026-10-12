@@ -21,10 +21,10 @@ O app é um pipeline de voz com um núcleo determinístico de ATC. A telemetria 
 | `Fonia.Core` | Modelos, interfaces, NLU por regras, motor ATC, fraseologia. Sem dependência de SO ou simulador. | `net10.0` |
 | `Fonia.Data` | Aeroportos (OurAirports), METAR/TAF, cache. | `net10.0` |
 | `Fonia.Sim.Mock` | `MockSimAdapter`, gravação e replay de telemetria. | `net10.0` |
-| `Fonia.Sim.Msfs` | `MsfsSimAdapter` (SimConnect). | `net10.0-windows` |
+| `Fonia.Sim.Msfs` | `MsfsSimAdapter` (SimConnect). Compila em qualquer SO; só executa com o MSFS no Windows. | `net10.0` |
 | `Fonia.Audio` | Captura de microfone, push-to-talk, playback. | `net10.0-windows` |
 | `Fonia.Speech` | Implementações de STT e TTS. | a definir (M3) |
-| `Fonia.App` | Executável e composição de dependências (console primeiro, UI depois). | `net10.0-windows` |
+| `Fonia.App` | Executável e composição de dependências (console primeiro, UI depois). | `net10.0` (reavaliar quando houver UI) |
 
 Dependências sempre apontam para o Core. O Core não referencia nenhum outro projeto.
 
@@ -142,10 +142,10 @@ O pipeline é assíncrono. Telemetria, entrada de áudio e saída de áudio roda
 - **Isolamento do Core verificado por teste.** `SolutionLayoutTests` falha se o `Fonia.Core` referenciar outro projeto da solução ou uma biblioteca de simulador, ou se uma biblioteca de simulador aparecer fora de `Fonia.Sim.*`.
 - **CI (M0).** Linux em todo PR e push na `main` (build, test, `dotnet format --verify-no-changes`); Windows (build, test) só em push na `main` e manualmente, por causa do custo dos minutos em repositório privado.
 - **Licença do projeto: Apache-2.0 (2026-10-12).** Open-source, com patente explícita e compatível com dependências MIT/BSD/Apache. Consequência: dependências e modelos de voz/IA precisam ter licença permissiva e compatível (sem GPL/AGPL nem restrição de uso comercial); informar a licença ao propor uma dependência nova.
+- **SimConnect (M1, 2026-10-12):** SimConnect.NET (MIT) atrás de `ISimConnectSession`, a confirmar no spike; `Fonia.Sim.Msfs` e `Fonia.App` em `net10.0`. A redistribuição do `SimConnect.dll` é um risco aberto para o M4. Ver `docs/decisions/simconnect.md`.
 
 ## Decisões em aberto
 
-- Biblioteca/abordagem de SimConnect (SDK oficial vs. wrapper da comunidade) e licenciamento das DLLs.
 - Stack de STT e TTS locais em .NET (spike no M3).
 - Como representar o gráfico de táxi (OurAirports não tem taxiways). Opção inicial: instruções simplificadas ("táxi para o ponto de espera da pista X") sem rota detalhada.
 - Interface do usuário: começar por console; depois WPF, WinUI 3 ou Avalonia.
