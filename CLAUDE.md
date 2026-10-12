@@ -35,7 +35,7 @@ Detalhes em `docs/ARCHITECTURE.md`.
 ## Stack
 
 - **.NET 10 (LTS)**, C# com `Nullable` habilitado e warnings como erros nos projetos de produção
-- Testes: **xUnit**; asserções com `Shouldly` ou `FluentAssertions` (decidir no M0)
+- Testes: **xUnit v3** (roda sobre Microsoft.Testing.Platform, ativado no `global.json`; exigido pelo SDK 10) e **Shouldly** (BSD-3) para asserções. Não usar FluentAssertions (licença comercial desde a v8)
 - Qualidade: analyzers do .NET + `dotnet format`
 - Infra: `Microsoft.Extensions.*` (DI, Configuration, Logging), `System.Text.Json`
 - Simulador (MSFS): SimConnect via SDK do MSFS (`Microsoft.FlightSimulator.SimConnect`) ou wrapper da comunidade (ex.: FsConnect); **avaliar no M1**
@@ -82,6 +82,7 @@ docs/
 - **Código que depende do MSFS** só pode ser validado no Windows com o simulador aberto. Você não consegue rodá-lo. Escreva-o de forma defensiva (logs claros, exceções tratadas, reconexão) e peça ao mantenedor que teste e traga os logs.
 - **DLLs do SDK do MSFS** (SimConnect): verificar a licença antes de versionar no repositório. Se não puder, documentar o caminho de instalação do SDK e referenciá-las por variável de ambiente ou caminho configurável.
 - **Async de ponta a ponta** no pipeline (`Task`, `CancellationToken`, `Channel<T>`). Não bloquear com `.Result` ou `.Wait()`.
+- **Uma branch e um PR por tarefa.** O CI roda Linux (build, test, format) em todo PR e Windows (build, test) só em push na `main` ou manualmente, para economizar minutos; a partir do M1, ampliar o gatilho do Windows para PRs que tocam projetos Windows.
 - **Commits** pequenos, mensagens no imperativo, em português ou inglês (manter consistência dentro do histórico).
 - **Não adicione pacotes NuGet pesados** sem justificar (tamanho, licença, suporte a Windows).
 - **Idioma:** código, nomes e comentários técnicos em inglês; documentação e textos de fraseologia em português quando aplicável.
