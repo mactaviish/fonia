@@ -59,7 +59,8 @@ public interface ISimAdapter : IAsyncDisposable
     /// Streams snapshots as they arrive. Each call returns an independent subscription, so several
     /// consumers can read at the same time without taking items from each other. A slow consumer may
     /// miss intermediate snapshots (only the most recent matter) but never blocks the adapter.
-    /// The stream survives lost connections; it ends when <paramref name="ct"/> is cancelled, on
+    /// The subscription starts when this method is called, not at the first <c>MoveNext</c>, so nothing
+    /// published afterwards is missed. The stream survives lost connections; it ends when <paramref name="ct"/> is cancelled, on
     /// <see cref="DisconnectAsync"/> or on disposal.
     /// </summary>
     IAsyncEnumerable<AircraftState> StreamAsync(CancellationToken ct);
