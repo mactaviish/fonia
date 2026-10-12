@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Spikes are throwaway experiments: outside Fonia.sln and CI, and deliberately not
+       inheriting the repository build rules (warnings-as-errors, central package versions). -->
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
