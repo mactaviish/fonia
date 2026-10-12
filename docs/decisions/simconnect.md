@@ -85,7 +85,7 @@ Três armadilhas que o log mostrou (e que o adapter precisa evitar):
 2. Depois de conectar, **esperar a mensagem `Open`** e só então assinar os eventos de sistema (`Sim`, `Pause`) e os grupos de variáveis.
 3. Sonda a cada ~3 s: `E_FAIL` duas vezes seguidas = conexão morta. Timeout é ignorado.
 4. Conexão morta: encerrar assinaturas e cliente (com limite de 5 s, pois o `Dispose` pode travar), criar um **novo** `SimConnectClient` e voltar ao passo 1. `ConnectionState` volta a `Connecting`; os streams do adapter **continuam abertos** (ver tarefa 3).
-5. Publicar `AircraftState` só enquanto `Sim=1`; ao voltar a `Sim=0` (menu), manter o último estado em `LatestState` e parar de publicar até a próxima carga.
+5. Publicar `AircraftState` só enquanto `Sim=1`, com todos os grupos recebidos e a posição fora do valor provisório (|lat| e |lon| menores que 0,05°; o MSFS informa esse valor por ~10 s mesmo com `Sim=1`); ao voltar a `Sim=0` (menu), manter o último estado em `LatestState` e parar de publicar até a próxima carga. Implementado em `MsfsSnapshotAssembler`.
 6. Desligar o `AutoReconnectEnabled` da biblioteca, para não competir com o nosso.
 
 Detalhes extras que afetam o desenho:

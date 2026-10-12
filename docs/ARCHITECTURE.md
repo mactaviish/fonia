@@ -62,7 +62,7 @@ Contrato (documentado no XML do código e verificado pelos testes do `MockSimAda
 - Adapters só publicam snapshots quando o simulador reporta dados válidos (ex.: voo carregado); quem consome nunca vê os valores provisórios que alguns simuladores informam durante o carregamento.
 - Escrever no simulador (ex.: sintonizar o COM) é uma capacidade separada (`IComRadioControl`), em vez de um método "opcional" na interface principal.
 
-`AircraftState` (`record`) contém: timestamp, latitude, longitude, altitude (MSL e AGL, em pés), velocidade no solo (nós), proa magnética, em solo (bool), COM1/COM2 (`RadioState`: ativo e standby), transponder, matrícula e tipo de aeronave. As unidades fazem parte dos nomes das propriedades. Frequências são `Frequency`, um `readonly record struct` em kHz inteiros (118,275 MHz = 118275), para evitar comparação de `double` e representar canais de 8,33 kHz.
+`AircraftState` (`record`) contém: timestamp, latitude, longitude, altitude (MSL e AGL, em pés), velocidade no solo (nós), proa magnética, em solo (bool), COM1/COM2 (`RadioState?`: ativo e standby; `null` quando a aeronave não tem o rádio ou ele não informa uma frequência válida), transponder, matrícula e tipo de aeronave. As unidades fazem parte dos nomes das propriedades. Frequências são `Frequency`, um `readonly record struct` em kHz inteiros (118,275 MHz = 118275), para evitar comparação de `double` e representar canais de 8,33 kHz.
 
 Implementações:
 
@@ -71,6 +71,19 @@ Implementações:
 | `MockSimAdapter` | M0 | Estado programável (`SetState`/`Update`), sequências em memória (`PlayAsync`, com `TimeProvider` injetável), replay de gravações (`ReplayAsync`) e simulação de queda e volta da conexão (`SimulateConnectionLoss`/`RestoreConnection`). Gravação em arquivo (`TelemetryRecorder`) e replay (`ReplayAsync`) incluídos. Base de todos os testes. |
 | `MsfsSimAdapter` | M1 | SimConnect. Mesmo adapter para MSFS 2020 e 2024, a validar. Só Windows. |
 | `XPlaneSimAdapter` | futuro | UDP/datarefs. |
+
+#### Do SimConnect ao `AircraftState` (`Fonia.Sim.Msfs`)
+
+O adapter do MSFS lê cinco grupos de variáveis, cada um no seu ritmo (1 Hz), e o `MsfsSnapshotAssembler` junta tudo num `AircraftState`. As conversões ficam em `MsfsConversions`, todas com testes:
+
+| Dado | Conversão |
+|---|---|
+| COM | lido em **Hz** e convertido para kHz inteiro; frequência zero, negativa ou absurda vira `null` (sem standby válido, usa a ativa) |
+| Transponder | unidade `bco16`: `0x1234` é o squawk 1234; dígito acima de 7 ou valor fora de 4 dígitos vira 0 |
+| Tipo da aeronave | `ATC MODEL` (`C25C`), ou o trecho de uma chave de tradução (`ATCCOM.AC_MODEL_A320.0.text` vira `A320`), ou o título se o modelo vier vazio |
+| Timestamp | relógio injetado (`TimeProvider`), não o do simulador |
+
+**Quando publicar.** Um snapshot só sai se a simulação está rodando (evento de sistema `Sim`), todos os grupos chegaram desde a última mudança do `Sim`, e a posição não é o valor provisório que o MSFS informa enquanto o voo carrega (a menos de 0,05° de 0°, 0°; ele continua provisório por ~10 s depois de o `Sim` indicar que a simulação rodou). O movimento é o "batimento": todo movimento válido é publicado; a mudança de qualquer outro grupo (frequência, squawk, matrícula) é publicada na hora; repetições sem mudança não geram snapshot. Cada mudança do `Sim` (menu, recarga do voo) descarta os grupos recebidos, para nunca misturar valores de um voo com os de outro.
 
 #### Gravação de telemetria (`Fonia.Sim.Mock`)
 

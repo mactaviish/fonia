@@ -79,6 +79,32 @@ public class SolutionLayoutTests
         offenders.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Simulator_projects_do_not_reference_each_other()
+    {
+        // Each Fonia.Sim.* project depends on the core only, so a simulator can be added or removed alone.
+        var offenders = new List<string>();
+
+        foreach (var path in Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src"), "*.csproj", SearchOption.AllDirectories))
+        {
+            var projectName = Path.GetFileNameWithoutExtension(path);
+
+            if (!projectName.StartsWith("Fonia.Sim.", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var references = XDocument.Load(path)
+                .Descendants("ProjectReference")
+                .Select(e => Path.GetFileNameWithoutExtension(((string?)e.Attribute("Include") ?? string.Empty).Replace('\\', '/')))
+                .Where(name => name.StartsWith("Fonia.Sim.", StringComparison.Ordinal));
+
+            offenders.AddRange(references.Select(reference => $"{projectName} -> {reference}"));
+        }
+
+        offenders.ShouldBeEmpty();
+    }
+
     private static bool IsSimulatorLibrary(string name)
     {
         return SimulatorLibraryPatterns.Any(pattern => Regex.IsMatch(name, pattern, RegexOptions.IgnoreCase));
