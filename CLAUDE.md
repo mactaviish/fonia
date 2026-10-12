@@ -1,0 +1,95 @@
+# CLAUDE.md — Fonia
+
+Este arquivo orienta o Claude Code ao trabalhar neste repositório.
+
+## O que é o projeto
+
+Aplicativo de ATC (controle de tráfego aéreo) por voz, com IA, para simuladores de voo. O piloto fala naturalmente no rádio, o app entende a intenção e responde com voz de controlador, usando fraseologia correta. Inspirado no SayIntentions.AI, com foco inicial em **português do Brasil** (fraseologia DECEA/ICAO) e suporte posterior a inglês (FAA/ICAO).
+
+- **Nome do projeto:** Fonia (Fonia.IA). Namespace raiz: `Fonia`.
+- **Linguagem:** C# / .NET (decisão tomada; não propor trocar de linguagem).
+- **Licenciamento:** projeto fechado por enquanto (repositório privado, todos os direitos reservados). O modelo definitivo será decidido depois, então não adicione arquivo `LICENSE` nem cabeçalhos de licença sem o mantenedor pedir.
+- **MVP:** Microsoft Flight Simulator 2020 (SimConnect), Windows.
+- **Futuro:** MSFS 2024 e X-Plane 11/12.
+
+## Princípios inegociáveis
+
+1. **O LLM nunca decide a resposta de ATC.** Ele (ou regras/regex) apenas *interpreta* a fala do piloto e devolve uma intenção estruturada (JSON desserializado e validado em um `record` tipado). Quem decide a resposta é código determinístico (máquina de estados). A fala do controlador sai de *templates* de fraseologia.
+2. **O núcleo nunca fala direto com o simulador.** Tudo passa pela interface `ISimAdapter` (`Fonia.Core`). Nenhuma referência a SimConnect, socket do X-Plane etc. fora dos projetos `Fonia.Sim.*`.
+3. **Tudo precisa rodar sem simulador.** Existe o `MockSimAdapter` e replay de telemetria gravada. Todo teste automatizado usa o mock.
+4. **Funcionar offline** deve ser possível (STT e TTS locais). Serviços online (METAR, LLM em nuvem) são opcionais e com fallback.
+5. **Módulos pequenos, entradas e saídas explícitas** (`record`s imutáveis). Sem estado global escondido; dependências por injeção.
+6. **Licenças de dados:** usar apenas dados com licença aberta (ex.: OurAirports). Não incluir dados AIRAC/Navigraph ou outros proprietários no repositório.
+7. **Licenças de dependências:** como o modelo de licenciamento ainda não está definido, preferir pacotes e modelos com licenças permissivas (MIT, Apache-2.0, BSD). Evitar GPL/AGPL e licenças que restrinjam uso comercial sem avisar o mantenedor antes. Isso vale para bibliotecas, motores de voz e modelos de voz/IA. Ao propor uma dependência nova, informe a licença dela.
+
+## Pipeline
+
+```
+Áudio (PTT) → STT → NLU (fala → Intent) → Motor ATC (estado + regras) → Fraseologia (templates) → TTS → Áudio
+                                              ↑
+                                         ISimAdapter (telemetria)
+```
+
+Detalhes em `docs/ARCHITECTURE.md`.
+
+## Stack
+
+- **.NET 10 (LTS)**, C# com `Nullable` habilitado e warnings como erros nos projetos de produção
+- Testes: **xUnit**; asserções com `Shouldly` ou `FluentAssertions` (decidir no M0)
+- Qualidade: analyzers do .NET + `dotnet format`
+- Infra: `Microsoft.Extensions.*` (DI, Configuration, Logging), `System.Text.Json`
+- Simulador (MSFS): SimConnect via SDK do MSFS (`Microsoft.FlightSimulator.SimConnect`) ou wrapper da comunidade (ex.: FsConnect); **avaliar no M1**
+- Áudio: NAudio (Windows)
+- STT / TTS locais: **avaliar no M3** (candidatos: Whisper.net e sherpa-onnx para STT; Piper via sherpa-onnx ou processo externo para TTS)
+
+## Comandos
+
+```bash
+dotnet restore
+dotnet build
+dotnet test                       # roda todos os testes
+dotnet format                     # formata
+dotnet format --verify-no-changes # checa formatação (CI)
+```
+
+## Estrutura da solução
+
+```
+Fonia.sln
+src/
+  Fonia.Core/          # modelos, interfaces, NLU por regras, motor ATC, fraseologia (sem dependência de SO/simulador)
+  Fonia.Data/          # aeroportos (OurAirports), METAR
+  Fonia.Sim.Mock/      # MockSimAdapter, replay de telemetria
+  Fonia.Sim.Msfs/      # MsfsSimAdapter (SimConnect) — somente Windows
+  Fonia.Audio/         # captura, push-to-talk, playback — somente Windows
+  Fonia.Speech/        # implementações de STT e TTS
+  Fonia.App/           # executável (console primeiro, UI depois) e composição de dependências
+tests/
+  Fonia.Core.Tests/
+  ...
+docs/
+```
+
+**Regra de ouro dos projetos:** `Fonia.Core` não referencia nenhum outro projeto da solução. Os demais dependem do Core, nunca o contrário.
+
+## Como trabalhar neste repositório
+
+- **Uma tarefa pequena por vez.** Cada tarefa termina com build limpo, testes passando e um commit.
+- **Plano antes de código** em mudanças que tocam mais de um projeto: proponha o plano e aguarde aprovação.
+- **Testes primeiro** para o motor de ATC, NLU por regras e fraseologia (lógica pura).
+- **Não invente fraseologia.** Use as referências em `docs/` (DECEA/ICAO). Se não houver referência para um caso, marque com `// TODO(fraseologia)` e pergunte ao mantenedor.
+- **Código Windows-only** (`Fonia.Sim.Msfs`, `Fonia.Audio`) usa `net10.0-windows`. Defina `<EnableWindowsTargeting>true</EnableWindowsTargeting>` para a solução compilar também em Linux (ambiente do Claude Code e CI). Projetos de teste referenciam só Core e Mock.
+- **Código que depende do MSFS** só pode ser validado no Windows com o simulador aberto. Você não consegue rodá-lo. Escreva-o de forma defensiva (logs claros, exceções tratadas, reconexão) e peça ao mantenedor que teste e traga os logs.
+- **DLLs do SDK do MSFS** (SimConnect): verificar a licença antes de versionar no repositório. Se não puder, documentar o caminho de instalação do SDK e referenciá-las por variável de ambiente ou caminho configurável.
+- **Async de ponta a ponta** no pipeline (`Task`, `CancellationToken`, `Channel<T>`). Não bloquear com `.Result` ou `.Wait()`.
+- **Commits** pequenos, mensagens no imperativo, em português ou inglês (manter consistência dentro do histórico).
+- **Não adicione pacotes NuGet pesados** sem justificar (tamanho, licença, suporte a Windows).
+- **Idioma:** código, nomes e comentários técnicos em inglês; documentação e textos de fraseologia em português quando aplicável.
+
+## Definition of Done (para qualquer tarefa)
+
+- [ ] `dotnet build` sem warnings novos
+- [ ] Testes novos/atualizados e passando (`dotnet test`)
+- [ ] `dotnet format --verify-no-changes` limpo
+- [ ] Docs atualizadas se a arquitetura ou o comportamento mudou
+- [ ] Nenhum acoplamento novo ao simulador fora de `Fonia.Sim.*`
