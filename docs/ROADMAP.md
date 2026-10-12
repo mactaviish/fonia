@@ -4,12 +4,14 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 
 ## M0: Fundação
 
-- [ ] Repositório privado, `Fonia.sln`, `Directory.Build.props` (Nullable, analyzers, `EnableWindowsTargeting`)
-- [ ] Projetos iniciais: `Fonia.Core`, `Fonia.Sim.Mock`, `Fonia.Core.Tests`
-- [ ] `CLAUDE.md`, `docs/ARCHITECTURE.md`, este roadmap
-- [ ] Modelos (`record`): `AircraftState`, `Intent`, `AtcDecision`, `FlightContext`
-- [ ] Interface `ISimAdapter` + `MockSimAdapter` (estado programável)
-- [ ] CI (GitHub Actions): `dotnet build`, `dotnet test` e `dotnet format --verify-no-changes` em Linux e Windows
+- [x] Repositório privado, `Fonia.sln`, `Directory.Build.props` (Nullable, analyzers, `EnableWindowsTargeting`)
+- [x] Projetos iniciais: `Fonia.Core`, `Fonia.Sim.Mock`, `Fonia.Core.Tests`
+- [x] `CLAUDE.md`, `docs/ARCHITECTURE.md`, este roadmap
+- [x] Modelos (`record`): `AircraftState`, `Intent`, `AtcDecision`, `FlightContext`
+- [x] Interface `ISimAdapter` + `MockSimAdapter` (estado programável)
+- [x] CI (GitHub Actions): `dotnet build`, `dotnet test` e `dotnet format --verify-no-changes` em Linux e Windows
+
+**Concluído em 2026-10-12.** CI verde em Linux e Windows, mock com estados programáveis e sequências de teste.
 
 **Pronto quando:** `dotnet test` passa no CI nos dois sistemas e o mock produz estados de teste.
 

@@ -37,21 +37,34 @@ Interface única entre o app e qualquer simulador.
 ```csharp
 public interface ISimAdapter : IAsyncDisposable
 {
+    SimConnectionState ConnectionState { get; }
+    AircraftState? LatestState { get; }             // null até o 1º snapshot após conectar
     Task ConnectAsync(CancellationToken ct);
-    Task DisconnectAsync();
-    AircraftState GetState();                       // último snapshot conhecido
+    Task DisconnectAsync(CancellationToken ct);
     IAsyncEnumerable<AircraftState> StreamAsync(CancellationToken ct);
-    Task SetComFrequencyAsync(int radio, double mhz, CancellationToken ct); // opcional
+}
+
+// Capacidade opcional: o app testa `adapter is IComRadioControl`.
+public interface IComRadioControl
+{
+    Task SetComFrequencyAsync(ComRadio radio, Frequency frequency, CancellationToken ct);
 }
 ```
 
-`AircraftState` (`record`) contém, no mínimo: latitude, longitude, altitude (MSL e AGL), velocidade no solo, proa, em solo (bool), COM1/COM2 ativo e standby, transponder, indicativo/matrícula, tipo de aeronave.
+Contrato (documentado no XML do código e verificado pelos testes do `MockSimAdapter`):
+
+- `ConnectAsync` e `DisconnectAsync` são idempotentes; `DisposeAsync` também, e implica desconectar.
+- Cada chamada a `StreamAsync` cria uma assinatura independente, então vários consumidores não tiram itens uns dos outros. Um consumidor lento pode perder snapshots intermediários (só o mais recente importa), mas nunca trava o adapter nem faz a memória crescer.
+- O stream termina sem exceção quando o token é cancelado ou o adapter desconecta. `LatestState` mantém o último snapshot após desconectar.
+- Escrever no simulador (ex.: sintonizar o COM) é uma capacidade separada (`IComRadioControl`), em vez de um método "opcional" na interface principal.
+
+`AircraftState` (`record`) contém: timestamp, latitude, longitude, altitude (MSL e AGL, em pés), velocidade no solo (nós), proa magnética, em solo (bool), COM1/COM2 (`RadioState`: ativo e standby), transponder, matrícula e tipo de aeronave. As unidades fazem parte dos nomes das propriedades. Frequências são `Frequency`, um `readonly record struct` em kHz inteiros (118,275 MHz = 118275), para evitar comparação de `double` e representar canais de 8,33 kHz.
 
 Implementações:
 
 | Adapter | Status | Observações |
 |---|---|---|
-| `MockSimAdapter` | M0 | Estado programável e replay de telemetria gravada. Base de todos os testes. |
+| `MockSimAdapter` | M0 | Estado programável (`SetState`/`Update`) e sequências em memória (`PlayAsync`, com `TimeProvider` injetável). Gravação em arquivo e replay chegam no M1. Base de todos os testes. |
 | `MsfsSimAdapter` | M1 | SimConnect. Mesmo adapter para MSFS 2020 e 2024, a validar. Só Windows. |
 | `XPlaneSimAdapter` | futuro | UDP/datarefs. |
 
@@ -67,7 +80,9 @@ Interface `ITranscriber` (`TranscribeAsync(AudioClip) -> Transcript`). Implement
 
 Entrada: `Transcript` + `FlightContext`. Saída: `Intent` (`record`).
 
-Exemplos de intenções: `RequestStartup`, `RequestPushback`, `RequestTaxi`, `RequestTakeoff`, `Readback`, `ReportPosition`, `RequestLanding`, `SayAgain`, `Unknown`.
+`Intent` é um `record` abstrato com `Callsign` normalizado (ex.: "PRABC") e subtipos selados. No M0 existem `RequestTaxi`, `Readback`, `SayAgain` e `Unknown`; o conjunto cresce com os marcos (previstos: `RequestStartup`, `RequestPushback`, `RequestTakeoff`, `ReportPosition`, `RequestLanding`).
+
+`FlightContext` é o estado por voo: indicativo, `FlightPhase`, aeroporto atual (ICAO) e a instrução ainda pendente de readback. O contexto do aeroporto (`AirportContext`) só entra no M2, junto com os dados do OurAirports.
 
 Estratégia em camadas:
 1. **Regras/regex + normalização** (números, alfabeto fonético, "cinco zero" etc.). Rápido, offline, previsível. É o ponto de partida.
@@ -80,7 +95,7 @@ O NLU **não** decide o que o ATC responde.
 Núcleo determinístico. Máquina de estados por voo e por posição (Solo, Torre, Aproximação, Centro).
 
 - Entrada: `Intent` + `AircraftState` + `AirportContext` (pistas, pista em uso, METAR, tráfego).
-- Saída: `AtcDecision` (`record`): tipo de instrução, parâmetros (pista, rota de táxi, QNH, etc.) e o novo estado.
+- Saída: `AtcDecision` (`record`): uma `AtcInstruction` (dados, nunca texto; no M0: `TaxiClearance` e `RequestReadbackCorrection`) e o `FlightContext` resultante.
 - Verifica readback do piloto e pede correção quando necessário.
 - Deve ser 100% testável sem áudio e sem simulador.
 
@@ -123,6 +138,9 @@ O pipeline é assíncrono. Telemetria, entrada de áudio e saída de áudio roda
 ## Decisões tomadas
 
 - **Linguagem: C# / .NET (2026-10-12).** Motivos: SimConnect oficial e nativo do ecossistema MSFS, instalação simples para usuários finais, UI desktop melhor e um único runtime. Contrapartida aceita: o ecossistema de STT/TTS local é menos maduro que o de Python, então o M3 começa com um spike comparando opções. Plano B, se necessário: manter STT/TTS atrás de `ITranscriber`/`ISynthesizer` e, se preciso, rodá-los em um processo auxiliar.
+- **Testes e qualidade (M0, 2026-10-12).** xUnit v3 sobre Microsoft.Testing.Platform (exigido pelo `dotnet test` do SDK 10) com Shouldly (BSD-3); FluentAssertions foi descartado por ter licença comercial desde a v8. `TreatWarningsAsErrors` só em `src/`; testes mantêm os warnings visíveis. `AnalysisLevel=latest-recommended`, `EnforceCodeStyleInBuild` e SDK fixado em `global.json` (`rollForward: latestFeature`). Pacotes com versão central (`Directory.Packages.props`). Solução no formato `.sln` clássico.
+- **Isolamento do Core verificado por teste.** `SolutionLayoutTests` falha se o `Fonia.Core` referenciar outro projeto da solução ou uma biblioteca de simulador, ou se uma biblioteca de simulador aparecer fora de `Fonia.Sim.*`.
+- **CI (M0).** Linux em todo PR e push na `main` (build, test, `dotnet format --verify-no-changes`); Windows (build, test) só em push na `main` e manualmente, por causa do custo dos minutos em repositório privado.
 
 ## Decisões em aberto
 
@@ -130,5 +148,4 @@ O pipeline é assíncrono. Telemetria, entrada de áudio e saída de áudio roda
 - Stack de STT e TTS locais em .NET (spike no M3).
 - Como representar o gráfico de táxi (OurAirports não tem taxiways). Opção inicial: instruções simplificadas ("táxi para o ponto de espera da pista X") sem rota detalhada.
 - Interface do usuário: começar por console; depois WPF, WinUI 3 ou Avalonia.
-- Biblioteca de asserções nos testes (Shouldly vs. FluentAssertions) e política de warnings.
 - Modelo de licenciamento do projeto: fechado por enquanto; decidir depois entre manter proprietário ou abrir (MIT/Apache-2.0 vs. GPL). Até lá, preferir dependências com licenças permissivas para não limitar nenhuma das opções.
