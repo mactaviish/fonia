@@ -50,7 +50,7 @@ Ambiente: Windows 11, .NET 10.0.12, SimConnect.NET 0.2.2, **MSFS 2020** (`IsMSFS
 | Posição, altitude, velocidade, proa, em solo | Lidos com as unidades `degrees`, `feet`, `knots`, `degrees`, `bool`. Valores coerentes depois de carregar o voo; confirmado em movimento (até 324 kt). |
 | Matrícula | `ATC ID` devolve a matrícula (ex.: `PR-FRA`). Ela pode **mudar logo após o voo carregar** (apareceu antes um valor de livery); o adapter não deve guardá-la uma vez só. |
 | Tipo da aeronave | Aeronave padrão (CJ4): `ATC MODEL='C25C'`, `ATC TYPE='Cessna'`. Fenix A320 (terceiros): `ATC MODEL` devolveu uma **chave de tradução** (`ATCCOM.AC_MODEL_A320.0.text`), não `A320`. Plano: extrair o trecho após `AC_MODEL_` e, se não houver, usar o texto bruto. |
-| Frequências COM | **Usar a unidade `Hz`.** Em `Hz` os quatro valores batem exatamente com a leitura escalar (ex.: `122800000` Hz = 122,800 MHz = 122800 kHz), o que combina com `Frequency` em kHz inteiros. Em `MHz`, pelo caminho de struct da biblioteca, **COM1 veio errado** (122,000 em vez de 122,800; 124,000 em vez de 124,850) enquanto COM2 veio certo; a leitura escalar em `MHz` estava correta. Causa não investigada (suspeita: biblioteca/definição de struct); evitar `MHz` em struct. |
+| Frequências COM | **Usar a unidade `Hz`.** Em `Hz` os quatro valores batem exatamente com a leitura escalar (ex.: `122800000` Hz = 122,800 MHz = 122800 kHz), o que combina com `Frequency` em kHz inteiros. Em `MHz`, pelo caminho de struct da biblioteca, **COM1 veio errado** (122,000 em vez de 122,800; 124,000 em vez de 124,850) enquanto COM2 veio certo; a leitura escalar em `MHz` estava correta. **Causa encontrada na tarefa 7:** quando o tipo não é declarado, o SimConnect.NET o **infere pelo nome da variável**, e inferiu `Integer32` para os campos do COM1 (não para os do COM2). Um `double` em MHz lido como inteiro perde os decimais (122,8 vira 122); em Hz os valores são inteiros e sobreviveram por sorte. Por isso a sessão declara o tipo de **todos** os campos explicitamente. |
 | Transponder | `TRANSPONDER CODE:1` em `bco16` devolveu `8192` (`0x2000` = squawk 2000), em `number` devolveu `2000`. **Plano:** usar `bco16` (unidade documentada) e decodificar os dígitos em hexadecimal. **Confirmado** com squawk 1234 (`0x1234` = 4660) no Cessna CJ4, e 7000. O estado (`TRANSPONDER STATE:1`) variou (0 no Fenix parado, 4 no CJ4 em voo). |
 | Voo carregado ou não | Antes do voo carregar, os dados eram valores iniciais (lat ≈ 0,0004, lon ≈ 0,014, 9 ft). O evento de sistema `Sim` (dado 1 = simulação ativa) e `SIM DISABLED` indicam o estado. **O adapter não deve publicar snapshots até o voo estar ativo.** |
 | Eventos de sistema | `Sim`, `SimStart`, `SimStop`, `Pause` e `FlightLoaded` foram aceitos; `Sim` e `Pause` entregam o valor atual logo na assinatura. |
@@ -92,6 +92,12 @@ Detalhes extras que afetam o desenho:
 
 - Cada assinatura de struct recebe seus dados por callback em threads da própria biblioteca; o adapter precisa agregar os grupos num único `AircraftState` com `lock`.
 - O transponder do Fenix só respondeu depois do voo carregar. Com aeronave padrão (CJ4) tudo respondeu.
+
+## Detalhes da biblioteca que a sessão real revelou (tarefa 7)
+
+- **Os structs de leitura precisam ser `public`** (e os campos também). A biblioteca liga o tipo genérico da requisição com `dynamic`; com um struct `internal`, a primeira assinatura falha com `RuntimeBinderException: 'object' does not contain a definition for 'OffsetBytes'`. Só o `ToData()` é interno.
+- **Declare o `SimConnectDataType` de cada campo**, pelo motivo acima.
+- **`TestConnectionAsync` engole a exceção** e devolve só `false`; por isso a sessão faz a sonda com uma leitura simples e classifica a exceção (`E_FAIL` pelo `HResult` ou pelo texto `-2147467259`).
 
 ## Pendências
 

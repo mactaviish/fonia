@@ -5,6 +5,13 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
+  <ItemGroup Label="Runtime">
+    <!-- SimConnect.NET: MIT (beta; pinned on purpose, see docs/decisions/simconnect.md).
+         Logging.Abstractions: MIT, only the ILogger abstraction. -->
+    <PackageVersion Include="SimConnect.NET" Version="0.2.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <!-- xunit.v3: Apache-2.0; Shouldly: BSD-3-Clause; TimeProvider.Testing: MIT. xunit.v3 runs on Microsoft.Testing.Platform (see global.json). -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
