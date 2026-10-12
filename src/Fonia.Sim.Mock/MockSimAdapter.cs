@@ -311,13 +311,19 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 
             Update(state => radio switch
             {
-                ComRadio.Com1 => state with { Com1 = state.Com1 with { Active = frequency } },
-                ComRadio.Com2 => state with { Com2 = state.Com2 with { Active = frequency } },
+                ComRadio.Com1 => state with { Com1 = Tuned(state.Com1, frequency) },
+                ComRadio.Com2 => state with { Com2 = Tuned(state.Com2, frequency) },
                 _ => throw new ArgumentOutOfRangeException(nameof(radio), radio, null),
             });
         }
 
         return Task.CompletedTask;
+    }
+
+    // A radio the aircraft did not report starts with the same frequency in active and standby.
+    private static RadioState Tuned(RadioState? radio, Frequency frequency)
+    {
+        return radio is null ? new RadioState(frequency, frequency) : radio with { Active = frequency };
     }
 
     private static TimeSpan ScaledGap(TimeSpan gap, double speed)
