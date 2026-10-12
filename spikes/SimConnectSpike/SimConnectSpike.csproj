@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- The native SimConnect.dll shipped by SimConnect.NET is win-x64 only. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- MIT. Beta library: the version is pinned on purpose. -->
+    <PackageReference Include="SimConnect.NET" Version="0.2.2" />
+  </ItemGroup>
+
+</Project>
