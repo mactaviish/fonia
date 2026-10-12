@@ -102,4 +102,4 @@ O projeto é independente e não tem afiliação com a Microsoft, a Asobo Studio
 
 ## Licença
 
-Todos os direitos reservados. O código-fonte é privado por enquanto e o modelo de licenciamento será definido futuramente.
+Distribuído sob a [Licença Apache 2.0](LICENSE). Copyright 2026 Leonardo Yuri Dalla Corte Brancalione. Veja também o arquivo [NOTICE](NOTICE).

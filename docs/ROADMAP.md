@@ -4,7 +4,7 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 
 ## M0: Fundação
 
-- [x] Repositório privado, `Fonia.sln`, `Directory.Build.props` (Nullable, analyzers, `EnableWindowsTargeting`)
+- [x] Repositório (por enquanto privado; licença Apache-2.0), `Fonia.sln`, `Directory.Build.props` (Nullable, analyzers, `EnableWindowsTargeting`)
 - [x] Projetos iniciais: `Fonia.Core`, `Fonia.Sim.Mock`, `Fonia.Core.Tests`
 - [x] `CLAUDE.md`, `docs/ARCHITECTURE.md`, este roadmap
 - [x] Modelos (`record`): `AircraftState`, `Intent`, `AtcDecision`, `FlightContext`
