@@ -14,11 +14,18 @@ namespace Fonia.Sim.Mock;
 public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 {
     private readonly Lock _gate = new();
+    private readonly TimeProvider _timeProvider;
     private readonly List<Subscription> _subscriptions = [];
     private SimConnectionState _connectionState = SimConnectionState.Disconnected;
     private AircraftState? _latestState;
     private AircraftState? _programmedState;
     private bool _disposed;
+
+    /// <param name="timeProvider">Clock used for the delays of <see cref="PlayAsync"/>; defaults to the system clock.</param>
+    public MockSimAdapter(TimeProvider? timeProvider = null)
+    {
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
 
     public SimConnectionState ConnectionState
     {
@@ -148,6 +155,32 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
                 ?? throw new InvalidOperationException("No state to update: call SetState first.");
 
             SetState(change(current));
+        }
+    }
+
+    /// <summary>
+    /// Plays a scripted sequence of snapshots through <see cref="SetState"/>, waiting <paramref name="interval"/>
+    /// between consecutive ones (not after the last). Completes once the last snapshot has been published.
+    /// </summary>
+    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled; snapshots already published stay published.</exception>
+    public async Task PlayAsync(IEnumerable<AircraftState> states, TimeSpan interval, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(states);
+        ArgumentOutOfRangeException.ThrowIfLessThan(interval, TimeSpan.Zero);
+
+        var first = true;
+
+        foreach (var state in states)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!first && interval > TimeSpan.Zero)
+            {
+                await Task.Delay(interval, _timeProvider, ct).ConfigureAwait(false);
+            }
+
+            first = false;
+            SetState(state);
         }
     }
 
