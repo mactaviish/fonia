@@ -141,6 +141,7 @@ O pipeline é assíncrono. Telemetria, entrada de áudio e saída de áudio roda
 - **Testes e qualidade (M0, 2026-10-12).** xUnit v3 sobre Microsoft.Testing.Platform (exigido pelo `dotnet test` do SDK 10) com Shouldly (BSD-3); FluentAssertions foi descartado por ter licença comercial desde a v8. `TreatWarningsAsErrors` só em `src/`; testes mantêm os warnings visíveis. `AnalysisLevel=latest-recommended`, `EnforceCodeStyleInBuild` e SDK fixado em `global.json` (`rollForward: latestFeature`). Pacotes com versão central (`Directory.Packages.props`). Solução no formato `.sln` clássico.
 - **Isolamento do Core verificado por teste.** `SolutionLayoutTests` falha se o `Fonia.Core` referenciar outro projeto da solução ou uma biblioteca de simulador, ou se uma biblioteca de simulador aparecer fora de `Fonia.Sim.*`.
 - **CI (M0).** Linux em todo PR e push na `main` (build, test, `dotnet format --verify-no-changes`); Windows (build, test) só em push na `main` e manualmente, por causa do custo dos minutos em repositório privado.
+- **Licença do projeto: Apache-2.0 (2026-10-12).** Open-source, com patente explícita e compatível com dependências MIT/BSD/Apache. Consequência: dependências e modelos de voz/IA precisam ter licença permissiva e compatível (sem GPL/AGPL nem restrição de uso comercial); informar a licença ao propor uma dependência nova.
 
 ## Decisões em aberto
 
@@ -148,4 +149,3 @@ O pipeline é assíncrono. Telemetria, entrada de áudio e saída de áudio roda
 - Stack de STT e TTS locais em .NET (spike no M3).
 - Como representar o gráfico de táxi (OurAirports não tem taxiways). Opção inicial: instruções simplificadas ("táxi para o ponto de espera da pista X") sem rota detalhada.
 - Interface do usuário: começar por console; depois WPF, WinUI 3 ou Avalonia.
-- Modelo de licenciamento do projeto: fechado por enquanto; decidir depois entre manter proprietário ou abrir (MIT/Apache-2.0 vs. GPL). Até lá, preferir dependências com licenças permissivas para não limitar nenhuma das opções.

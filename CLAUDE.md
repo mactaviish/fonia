@@ -8,7 +8,7 @@ Aplicativo de ATC (controle de tráfego aéreo) por voz, com IA, para simuladore
 
 - **Nome do projeto:** Fonia (Fonia.IA). Namespace raiz: `Fonia`.
 - **Linguagem:** C# / .NET (decisão tomada; não propor trocar de linguagem).
-- **Licenciamento:** projeto fechado por enquanto (repositório privado, todos os direitos reservados). O modelo definitivo será decidido depois, então não adicione arquivo `LICENSE` nem cabeçalhos de licença sem o mantenedor pedir.
+- **Licenciamento:** open-source sob **Apache-2.0** (arquivos `LICENSE` e `NOTICE` na raiz; titular: Leonardo Yuri Dalla Corte Brancalione). Não é necessário cabeçalho de licença nos arquivos `.cs`. O repositório ainda é privado até o mantenedor decidir publicá-lo.
 - **MVP:** Microsoft Flight Simulator 2020 (SimConnect), Windows.
 - **Futuro:** MSFS 2024 e X-Plane 11/12.
 
@@ -20,7 +20,7 @@ Aplicativo de ATC (controle de tráfego aéreo) por voz, com IA, para simuladore
 4. **Funcionar offline** deve ser possível (STT e TTS locais). Serviços online (METAR, LLM em nuvem) são opcionais e com fallback.
 5. **Módulos pequenos, entradas e saídas explícitas** (`record`s imutáveis). Sem estado global escondido; dependências por injeção.
 6. **Licenças de dados:** usar apenas dados com licença aberta (ex.: OurAirports). Não incluir dados AIRAC/Navigraph ou outros proprietários no repositório.
-7. **Licenças de dependências:** como o modelo de licenciamento ainda não está definido, preferir pacotes e modelos com licenças permissivas (MIT, Apache-2.0, BSD). Evitar GPL/AGPL e licenças que restrinjam uso comercial sem avisar o mantenedor antes. Isso vale para bibliotecas, motores de voz e modelos de voz/IA. Ao propor uma dependência nova, informe a licença dela.
+7. **Licenças de dependências:** o projeto é Apache-2.0, então usar pacotes e modelos com licenças permissivas e compatíveis (MIT, Apache-2.0, BSD). Evitar GPL/AGPL, licenças "source-available" e as que restrinjam uso comercial (incluindo modelos de voz/IA "somente não comercial") sem avisar o mantenedor antes. Isso vale para bibliotecas, motores de voz e modelos de voz/IA. Ao propor uma dependência nova, informe a licença dela.
 
 ## Pipeline
 

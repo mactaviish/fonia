@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
+    <Copyright>Copyright 2026 Leonardo Yuri Dalla Corte Brancalione</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 
     <!-- Lets the whole solution build on Linux (CI) even with net10.0-windows projects. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
