@@ -1,6 +1,6 @@
 # Decisão: como falar com o SimConnect (M1)
 
-- **Status:** proposta aprovada em 2026-10-12; spike rodado em 2026-10-12 (resultados abaixo). **Falta** validar a reconexão com o MSFS fechando e abrindo.
+- **Status:** proposta aprovada em 2026-10-12; spike rodado em 2026-10-12 (resultados abaixo). A reconexão **não** é resolvida pela biblioteca; o spike v2 prototipa a detecção própria e precisa ser validado.
 - **Escopo:** MSFS 2020 no M1. MSFS 2024 é M5.
 
 ## Contexto
@@ -47,22 +47,36 @@ Ambiente: Windows 11, .NET 10.0.12, SimConnect.NET 0.2.2, **MSFS 2020** (`IsMSFS
 |---|---|
 | SimConnect.NET funciona em .NET 10? | **Sim.** Conectou na primeira tentativa, e o `SimConnect.dll` nativo foi copiado para a saída pelo pacote. |
 | Atualização e custo | 1 atualização por segundo por grupo (`SimConnectPeriod.Second`). CPU média do spike de ~1,8% de um núcleo (rodada de 30 s, com escrita no console) e ~45 MB de memória. A rodada curta de 9 s deu 5,7% por causa do JIT na partida. |
-| Posição, altitude, velocidade, proa, em solo | Lidos com as unidades `degrees`, `feet`, `knots`, `degrees`, `bool`. Valores coerentes depois de carregar o voo. |
+| Posição, altitude, velocidade, proa, em solo | Lidos com as unidades `degrees`, `feet`, `knots`, `degrees`, `bool`. Valores coerentes depois de carregar o voo; confirmado em movimento (até 324 kt). |
 | Matrícula | `ATC ID` devolve a matrícula (ex.: `PR-FRA`). Ela pode **mudar logo após o voo carregar** (apareceu antes um valor de livery); o adapter não deve guardá-la uma vez só. |
-| Tipo da aeronave | `ATC TYPE` devolve o fabricante (`Airbus`). `ATC MODEL` devolveu uma **chave de tradução** (`ATCCOM.AC_MODEL_A320.0.text`), não `A320`. Plano: extrair o trecho após `AC_MODEL_` e, se não houver, usar o texto bruto. |
+| Tipo da aeronave | Aeronave padrão (CJ4): `ATC MODEL='C25C'`, `ATC TYPE='Cessna'`. Fenix A320 (terceiros): `ATC MODEL` devolveu uma **chave de tradução** (`ATCCOM.AC_MODEL_A320.0.text`), não `A320`. Plano: extrair o trecho após `AC_MODEL_` e, se não houver, usar o texto bruto. |
 | Frequências COM | **Usar a unidade `Hz`.** Em `Hz` os quatro valores batem exatamente com a leitura escalar (ex.: `122800000` Hz = 122,800 MHz = 122800 kHz), o que combina com `Frequency` em kHz inteiros. Em `MHz`, pelo caminho de struct da biblioteca, **COM1 veio errado** (122,000 em vez de 122,800; 124,000 em vez de 124,850) enquanto COM2 veio certo; a leitura escalar em `MHz` estava correta. Causa não investigada (suspeita: biblioteca/definição de struct); evitar `MHz` em struct. |
-| Transponder | `TRANSPONDER CODE:1` em `bco16` devolveu `8192` (`0x2000` = squawk 2000), em `number` devolveu `2000`. **Plano:** usar `bco16` (unidade documentada) e decodificar os dígitos em hexadecimal. Confirmar com outro squawk (ex.: 1234) antes de fechar. O estado (`TRANSPONDER STATE:1`) veio 0. |
+| Transponder | `TRANSPONDER CODE:1` em `bco16` devolveu `8192` (`0x2000` = squawk 2000), em `number` devolveu `2000`. **Plano:** usar `bco16` (unidade documentada) e decodificar os dígitos em hexadecimal. **Confirmado** com squawk 1234 (`0x1234` = 4660) no Cessna CJ4, e 7000. O estado (`TRANSPONDER STATE:1`) variou (0 no Fenix parado, 4 no CJ4 em voo). |
 | Voo carregado ou não | Antes do voo carregar, os dados eram valores iniciais (lat ≈ 0,0004, lon ≈ 0,014, 9 ft). O evento de sistema `Sim` (dado 1 = simulação ativa) e `SIM DISABLED` indicam o estado. **O adapter não deve publicar snapshots até o voo estar ativo.** |
 | Eventos de sistema | `Sim`, `SimStart`, `SimStop`, `Pause` e `FlightLoaded` foram aceitos; `Sim` e `Pause` entregam o valor atual logo na assinatura. |
 | Elevação | Spike sem administrador conectou normalmente ao MSFS em execução. |
 
+### Reconexão: a biblioteca não percebe o MSFS fechar
+
+Teste do mantenedor (spike v1, 30 min): com o spike rodando, o MSFS foi fechado e aberto de novo, carregando outra aeronave (Cessna CJ4). Resultado:
+
+- `IsConnected` ficou **`True` o tempo todo**; nenhum `ConnectionStatusChanged` nem `ErrorOccurred` foi disparado, mesmo com `AutoReconnectEnabled=true` (3 tentativas, 2 s). O `AutoReconnect` da biblioteca **não é confiável** para esse caso.
+- As assinaturas simplesmente pararam de entregar dados. Pedidos novos passaram a falhar com `E_FAIL` (`-2147467259`), que é o sinal de conexão morta.
+- Recarregar o voo **dentro do mesmo MSFS** (voltar ao menu e iniciar outro voo) funciona sem reconectar: os eventos `SimStop`/`Sim=0` e `SimStart`/`Sim=1` aparecem, as atualizações param durante o menu/carregamento (`+0`) e voltam sozinhas.
+- Uma execução nova do spike, com o MSFS novo, conectou e leu normalmente (Cessna CJ4): `ATC MODEL='C25C'`, transponder `0x1234` = squawk 1234, COM1 130,850 MHz (`130850000` Hz), velocidade até 324 kt. Ou seja, um cliente **novo** conecta bem; o problema é só perceber que o antigo morreu.
+
+**Consequência para o `MsfsSimAdapter`:** a reconexão é responsabilidade nossa. Plano (a validar com o spike v2):
+
+1. Detectar conexão morta por mais de um sinal: mensagem `Quit` (via `RawMessageReceived`), `TestConnectionAsync` falhando duas vezes seguidas (sonda a cada ~3 s) e `ConnectionStatusChanged` para `false`. Ausência de dados **não** serve sozinha, porque no menu/carregamento (`Sim=0`) os dados também param.
+2. Ao detectar, descartar assinaturas e cliente (com limite de tempo, pois o `Dispose` pode travar), criar um **novo** `SimConnectClient`, reconectar com tentativas e backoff e assinar tudo de novo.
+3. Estado `Connecting` enquanto isso; os streams do adapter continuam abertos (ver tarefa 3).
+
 Detalhes extras que afetam o desenho:
 
 - Cada assinatura de struct recebe seus dados por callback em threads da própria biblioteca; o adapter precisa agregar os grupos num único `AircraftState` com `lock`.
-- O Fenix A320 pode não expor todas as variáveis padrão (o transponder só passou a responder depois do voo carregar). Vale validar também com uma aeronave padrão.
+- O transponder do Fenix só respondeu depois do voo carregar. Com aeronave padrão (CJ4) tudo respondeu.
 
 ## Pendências
 
-1. **Reconexão** (tarefa 8): como a biblioteca sinaliza o fechamento do MSFS e se as assinaturas sobrevivem quando ele reabre. A biblioteca tem `AutoReconnectEnabled` (padrão de 3 tentativas, `ReconnectDelay` configurável), ainda não testado: exige fechar e abrir o MSFS com o spike rodando.
-2. Confirmar a decodificação do transponder com outro squawk e o comportamento em movimento (taxi).
-3. Repetir a leitura com uma aeronave padrão do MSFS.
+1. **Reconexão** (tarefa 8): validar o spike v2 (detecção própria + novo cliente) fechando e abrindo o MSFS, e iniciando o spike **antes** do MSFS (para ver como o `ConnectAsync` falha enquanto o simulador não existe).
+2. Descobrir qual sinal de queda dispara primeiro (`Quit` bruto, sonda ou nenhum) e com que latência.

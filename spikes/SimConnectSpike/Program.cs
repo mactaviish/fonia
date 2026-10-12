@@ -2,8 +2,13 @@
 //
 //   dotnet run --project spikes/SimConnectSpike -c Release -- [--seconds 30] [--wait-seconds 120]
 //
-// --seconds       how long to read after connecting (0 = until Ctrl+C). Default 30.
-// --wait-seconds  how long to keep retrying while MSFS is not up yet. Default 120.
+// --seconds       total run time (0 = until Ctrl+C). Default 30. Use 0 to test reconnection.
+// --wait-seconds  how long to keep retrying to connect (also while MSFS is not up yet). Default 120.
+//
+// Reconnection experiment: SimConnect.NET 0.2.2 never noticed MSFS quitting (IsConnected stayed
+// true, no events, subscriptions silently stopped). This spike therefore detects a dead connection
+// itself, from several signals, logs which one fires first, then disposes the client, connects
+// again with a NEW client and re-subscribes. Close and reopen MSFS while it runs.
 //
 // Everything printed is also written to spike-<timestamp>.log in the current directory.
 
@@ -27,160 +32,421 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-Log($"Fonia SimConnect spike  |  log file: {Path.GetFullPath(logPath)}");
+Log($"Fonia SimConnect spike v2  |  log file: {Path.GetFullPath(logPath)}");
 Log($"OS: {Environment.OSVersion}  |  runtime: {Environment.Version}  |  64-bit process: {Environment.Is64BitProcess}");
 Log($"Spike process elevated (admin): {IsElevated()}");
 Log($"MSFS 2020 process running ('FlightSimulator'): {Process.GetProcessesByName("FlightSimulator").Length > 0}");
 Log($"MSFS 2024 process running ('FlightSimulator2024'): {Process.GetProcessesByName("FlightSimulator2024").Length > 0}");
 Log(string.Empty);
 
-var stats = new Stats();
+var total = Stopwatch.StartNew();
+var cpuStart = Process.GetCurrentProcess().TotalProcessorTime;
+var sessionNumber = 0;
+DateTime? deadSince = null;
+
+// Per-session state, replaced on every (re)connection.
+SimConnectClient? client = null;
+Stats stats = new();
+var subscriptions = new List<ISimVarSubscription>();
 RadiosHz? latestRadiosHz = null;
 RadiosMhz? latestRadiosMhz = null;
-var subscriptions = new List<ISimVarSubscription>();
-SimConnectClient? client = null;
+var lastMotionUtc = DateTime.UtcNow;
+var simRunning = false;
+var sessionEnding = false;
+TaskCompletionSource<string> dead = new();
 
-// ---- 1. Connect (retrying, to also test "app started before the simulator") ----
-var connectDeadline = DateTime.UtcNow.AddSeconds(waitSeconds);
-var attempt = 0;
-
-while (client is null && !cts.IsCancellationRequested)
+while (!cts.IsCancellationRequested && !TimeIsUp())
 {
-    attempt++;
-    var candidate = new SimConnectClient("Fonia Spike");
-    try
+    sessionNumber++;
+    var connected = await ConnectAsync();
+    if (!connected)
     {
-        using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
-        attemptCts.CancelAfter(TimeSpan.FromSeconds(10));
-
-        Log($"Connect attempt {attempt}...");
-        await candidate.ConnectAsync(cancellationToken: attemptCts.Token);
-
-        client = candidate;
-        Log($"CONNECTED. IsConnected={candidate.IsConnected}  IsMSFS2024={candidate.IsMSFS2024}");
+        break;
     }
-    catch (Exception ex)
-    {
-        Log($"  attempt {attempt} failed: {ex.GetType().Name}: {ex.Message}");
-        await candidate.DisposeAsync();
 
-        if (DateTime.UtcNow >= connectDeadline)
-        {
-            Log("Gave up waiting for the simulator.");
-            return 1;
-        }
+    if (deadSince is { } since)
+    {
+        Log($"RECOVERED after {(DateTime.UtcNow - since).TotalSeconds:F1} s (session {sessionNumber}).");
+        deadSince = null;
+    }
+
+    await RunSessionAsync();
+
+    var reason = dead.Task.IsCompleted ? dead.Task.Result : null;
+    await EndSessionAsync(clean: reason is null);
+
+    if (reason is not null)
+    {
+        deadSince = DateTime.UtcNow;
+        Log($"SESSION {sessionNumber} DEAD ({reason}). Connecting again with a new client...");
+        Log(string.Empty);
+    }
+}
+
+var cpuUsed = Process.GetCurrentProcess().TotalProcessorTime - cpuStart;
+Log(string.Empty);
+Log($"Spike CPU over the whole run: {cpuUsed.TotalSeconds / total.Elapsed.TotalSeconds * 100:F2}% of one core ({Environment.ProcessorCount} logical cores); working set {Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024} MB");
+Log($"Sessions: {sessionNumber}. Done. Send me the file: {Path.GetFullPath(logPath)}");
+return 0;
+
+// ---------------------------------------------------------------------------
+
+bool TimeIsUp() => seconds != 0 && total.Elapsed.TotalSeconds >= seconds;
+
+async Task<bool> ConnectAsync()
+{
+    var deadline = DateTime.UtcNow.AddSeconds(waitSeconds);
+    var attempt = 0;
+
+    while (!cts.IsCancellationRequested)
+    {
+        attempt++;
+        var candidate = new SimConnectClient("Fonia Spike");
 
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+            using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+            attemptCts.CancelAfter(TimeSpan.FromSeconds(10));
+
+            Log($"[session {sessionNumber}] connect attempt {attempt}...");
+            await candidate.ConnectAsync(cancellationToken: attemptCts.Token);
+
+            client = candidate;
+            stats = new Stats();
+            subscriptions = [];
+            latestRadiosHz = null;
+            latestRadiosMhz = null;
+            lastMotionUtc = DateTime.UtcNow;
+            simRunning = false;
+            sessionEnding = false;
+            dead = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Log($"CONNECTED. IsConnected={candidate.IsConnected}  IsMSFS2024={candidate.IsMSFS2024}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log($"  attempt {attempt} failed: {ex.GetType().Name}: {ex.Message}");
+            await DisposeQuietlyAsync(candidate);
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                Log("Gave up waiting for the simulator.");
+                return false;
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+    }
+
+    return false;
+}
+
+async Task RunSessionAsync()
+{
+    var c = client!;
+    var seen = new HashSet<SimConnectRecvId>();
+
+    c.AutoReconnectEnabled = false; // we own reconnection in this experiment
+    c.ConnectionStatusChanged += (_, e) =>
+    {
+        Log($"EVENT connection changed: {e.PreviousStatus} -> {e.CurrentStatus}");
+        if (!e.CurrentStatus)
+        {
+            MarkDead("ConnectionStatusChanged -> disconnected");
+        }
+    };
+    c.ErrorOccurred += (_, e) => Log($"EVENT error: {e.Error} | context: {e.Context} | recoverable: {e.IsRecoverable} | {e.Exception?.Message}");
+    c.RawMessageReceived += (_, e) =>
+    {
+        bool first;
+        lock (seen)
+        {
+            first = seen.Add(e.MessageId);
+        }
+
+        if (first)
+        {
+            Log($"RAW message type seen for the first time: {e.MessageId}");
+        }
+
+        if (e.MessageId == SimConnectRecvId.Quit)
+        {
+            MarkDead("raw SIMCONNECT_RECV_QUIT message");
+        }
+    };
+    c.SystemEventReceived += (_, e) =>
+    {
+        Log($"EVENT system id={e.EventId} data={e.Data}");
+        if (e.EventId == 1)
+        {
+            simRunning = e.Data == 1;
+        }
+    };
+    c.FilenameEventReceived += (_, e) => Log($"EVENT filename '{e.FileName}' flags={e.Flags}");
+
+    foreach (var (eventName, eventId) in new (string, uint)[] { ("Sim", 1), ("SimStart", 2), ("SimStop", 3), ("Pause", 4), ("FlightLoaded", 5) })
+    {
+        try
+        {
+            await c.SubscribeToEventAsync(eventName, eventId, cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Log($"system event '{eventName}' FAILED: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    Start<Motion>("Motion", m =>
+    {
+        lastMotionUtc = DateTime.UtcNow;
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"lat={m.Latitude:F5} lon={m.Longitude:F5} msl={m.AltitudeMsl:F0}ft agl={m.AltitudeAgl:F0}ft gs={m.GroundSpeed:F1}kt hdgM={m.HeadingMagnetic:F0} onGround={m.OnGround}");
+    });
+    Start<Identity>("Identity", i => $"ATC ID='{i.AtcId}' ATC TYPE='{i.AtcType}' ATC MODEL='{i.AtcModel}' TITLE='{i.Title}'");
+    Start<RadiosMhz>("RadiosMhz", r =>
+    {
+        latestRadiosMhz = r;
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"COM1 {r.Com1Active:F3}/{r.Com1Standby:F3}  COM2 {r.Com2Active:F3}/{r.Com2Standby:F3} (MHz; active/standby)");
+    });
+    Start<RadiosHz>("RadiosHz", r =>
+    {
+        latestRadiosHz = r;
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"COM1 {r.Com1Active:F0}/{r.Com1Standby:F0}  COM2 {r.Com2Active:F0}/{r.Com2Standby:F0} (Hz; active/standby)");
+    });
+    Start<SimState>("SimState", x => string.Create(CultureInfo.InvariantCulture, $"simDisabled={x.SimDisabled} simulationRate={x.SimulationRate:F2}"));
+    Start<TransponderNumber>("TransponderNumber", t => $"unit 'number' -> code={t.Code} state={t.State}");
+    Start<TransponderBcd>("TransponderBcd", t => $"unit 'bco16' -> {t.Code} (0x{t.Code:X4})");
+
+    using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+    var watchers = new[]
+    {
+        WatchProbeAsync(c, sessionCts.Token),
+        WatchProcessAsync(sessionCts.Token),
+        WatchStaleDataAsync(sessionCts.Token),
+    };
+
+    Log(seconds == 0
+        ? "Reading until Ctrl+C. Close and reopen MSFS (and load a flight) to test recovery."
+        : $"Reading until {seconds} s of total run time (Ctrl+C stops earlier).");
+    Log(string.Empty);
+
+    var sessionClock = Stopwatch.StartNew();
+    var lastReport = TimeSpan.Zero;
+
+    while (!cts.IsCancellationRequested && !TimeIsUp() && !dead.Task.IsCompleted)
+    {
+        try
+        {
+            await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(1), cts.Token), dead.Task);
         }
         catch (OperationCanceledException)
         {
             break;
         }
+
+        // Every 2 s during the first 10 s of a session, then every 10 s: keeps the log readable.
+        var interval = sessionClock.Elapsed < TimeSpan.FromSeconds(10) ? TimeSpan.FromSeconds(2) : TimeSpan.FromSeconds(10);
+        if (sessionClock.Elapsed - lastReport >= interval)
+        {
+            lastReport = sessionClock.Elapsed;
+            Log($"--- session {sessionNumber} t={sessionClock.Elapsed.TotalSeconds:F0}s  IsConnected={c.IsConnected}");
+            stats.Report(Log);
+        }
+    }
+
+    await sessionCts.CancelAsync();
+    await Task.WhenAll(watchers.Select(w => w.ContinueWith(_ => { }, TaskScheduler.Default)));
+}
+
+async Task EndSessionAsync(bool clean)
+{
+    sessionEnding = true; // disposing raises a disconnect event; that is not a failure
+    Log(string.Empty);
+    Log($"=== SESSION {sessionNumber} SUMMARY ({(clean ? "clean end" : "connection died")}) ===");
+    stats.Summary(Log, Math.Max(1, total.Elapsed.TotalSeconds));
+
+    if (clean && client is not null)
+    {
+        await Crosscheck("end");
+        await CompareRadios();
+    }
+
+    foreach (var subscription in subscriptions)
+    {
+        try
+        {
+            subscription.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log($"  (dispose subscription failed: {ex.GetType().Name}: {ex.Message})");
+        }
+    }
+
+    if (client is not null)
+    {
+        await DisposeQuietlyAsync(client);
+        client = null;
     }
 }
 
-if (client is null)
+// Dispose can hang or throw on a dead connection: never let it block recovery.
+async Task DisposeQuietlyAsync(SimConnectClient target)
 {
-    Log("Cancelled before connecting.");
-    return 1;
-}
-
-client.ConnectionStatusChanged += (_, e) => Log($"EVENT connection changed: {e.PreviousStatus} -> {e.CurrentStatus}");
-client.ErrorOccurred += (_, e) => Log($"EVENT error: {e.Error} | context: {e.Context} | recoverable: {e.IsRecoverable} | {e.Exception?.Message}");
-
-// Does the library bring the connection back by itself if MSFS is closed and reopened?
-client.SystemEventReceived += (_, e) => Log($"EVENT system id={e.EventId} data={e.Data}");
-client.FilenameEventReceived += (_, e) => Log($"EVENT filename '{e.FileName}' flags={e.Flags}");
-foreach (var (eventName, eventId) in new (string, uint)[] { ("Sim", 1), ("SimStart", 2), ("SimStop", 3), ("Pause", 4), ("FlightLoaded", 5) })
-{
+    var sw = Stopwatch.StartNew();
     try
     {
-        await client.SubscribeToEventAsync(eventName, eventId, cts.Token);
-        Log($"subscribed to system event '{eventName}' as id {eventId}");
+        var dispose = target.DisposeAsync().AsTask();
+        var finished = await Task.WhenAny(dispose, Task.Delay(TimeSpan.FromSeconds(5)));
+        Log(finished == dispose
+            ? $"  client disposed in {sw.ElapsedMilliseconds} ms"
+            : "  client dispose did NOT finish within 5 s (abandoned)");
     }
     catch (Exception ex)
     {
-        Log($"system event '{eventName}' FAILED: {ex.GetType().Name}: {ex.Message}");
+        Log($"  client dispose threw: {ex.GetType().Name}: {ex.Message}");
     }
 }
 
-client.AutoReconnectEnabled = true;
-client.ReconnectDelay = TimeSpan.FromSeconds(2);
-Log($"AutoReconnectEnabled={client.AutoReconnectEnabled} ReconnectDelay={client.ReconnectDelay} MaxReconnectAttempts={client.MaxReconnectAttempts}");
-Log(string.Empty);
-
-// ---- 2. Subscribe, one group at a time so a bad unit only breaks its own group ----
-Start<Motion>("Motion", m => string.Create(
-    CultureInfo.InvariantCulture,
-    $"lat={m.Latitude:F5} lon={m.Longitude:F5} msl={m.AltitudeMsl:F0}ft agl={m.AltitudeAgl:F0}ft gs={m.GroundSpeed:F1}kt hdgM={m.HeadingMagnetic:F0} onGround={m.OnGround}"));
-Start<Identity>("Identity", i => $"ATC ID='{i.AtcId}' ATC TYPE='{i.AtcType}' ATC MODEL='{i.AtcModel}' TITLE='{i.Title}'");
-Start<RadiosMhz>("RadiosMhz", r =>
+void MarkDead(string reason)
 {
-    latestRadiosMhz = r;
-    return string.Create(
-        CultureInfo.InvariantCulture,
-        $"COM1 {r.Com1Active:F3}/{r.Com1Standby:F3}  COM2 {r.Com2Active:F3}/{r.Com2Standby:F3} (MHz; active/standby)");
-});
-Start<RadiosHz>("RadiosHz", r =>
-{
-    latestRadiosHz = r;
-    return string.Create(
-        CultureInfo.InvariantCulture,
-        $"COM1 {r.Com1Active:F0}/{r.Com1Standby:F0}  COM2 {r.Com2Active:F0}/{r.Com2Standby:F0} (Hz; active/standby)");
-});
-Start<SimState>("SimState", x => string.Create(CultureInfo.InvariantCulture, $"simDisabled={x.SimDisabled} simulationRate={x.SimulationRate:F2}"));
-Start<TransponderNumber>("TransponderNumber", t => $"unit 'number' -> code={t.Code} state={t.State}");
-Start<TransponderBcd>("TransponderBcd", t => $"unit 'bco16' -> {t.Code} (0x{t.Code:X4})");
-
-// ---- 3. Read, report every 2 s ----
-await Crosscheck("start");
-
-var cpuStart = Process.GetCurrentProcess().TotalProcessorTime;
-var wallStart = Stopwatch.StartNew();
-Log(seconds == 0
-    ? "Reading until Ctrl+C. Change COM frequencies / squawk in the cockpit; close and reopen MSFS to test reconnection."
-    : $"Reading for {seconds} s (Ctrl+C stops earlier). Change COM frequencies / squawk in the cockpit now.");
-Log(string.Empty);
-
-while (!cts.IsCancellationRequested && (seconds == 0 || wallStart.Elapsed.TotalSeconds < seconds))
-{
-    try
+    if (!sessionEnding && dead.TrySetResult(reason))
     {
-        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+        Log($"!!! CONNECTION CONSIDERED DEAD: {reason}");
     }
-    catch (OperationCanceledException)
-    {
-        break;
-    }
-
-    Log($"--- t={wallStart.Elapsed.TotalSeconds:F0}s  connected={client.IsConnected}");
-    stats.Report(Log);
 }
 
-// ---- 4. Summary ----
-await Crosscheck("end");
-await CompareRadios();
-
-var cpuUsed = Process.GetCurrentProcess().TotalProcessorTime - cpuStart;
-var cpuPercentOfOneCore = cpuUsed.TotalSeconds / wallStart.Elapsed.TotalSeconds * 100;
-Log(string.Empty);
-Log("=== SUMMARY ===");
-stats.Summary(Log, wallStart.Elapsed.TotalSeconds);
-Log($"Spike CPU: {cpuPercentOfOneCore:F2}% of one core on average ({Environment.ProcessorCount} logical cores); working set {Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024} MB");
-Log($"Still connected at the end: {client.IsConnected}");
-
-foreach (var subscription in subscriptions)
+// Signal 1: ask the library whether the connection still works, every 3 s.
+async Task WatchProbeAsync(SimConnectClient c, CancellationToken token)
 {
-    subscription.Dispose();
+    var failures = 0;
+    while (!token.IsCancellationRequested)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3), token);
+            using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            probeCts.CancelAfter(TimeSpan.FromSeconds(3));
+            var sw = Stopwatch.StartNew();
+
+            bool ok;
+            try
+            {
+                ok = await c.TestConnectionAsync(probeCts.Token);
+            }
+            catch (OperationCanceledException) when (!token.IsCancellationRequested)
+            {
+                Log($"PROBE timed out after {sw.ElapsedMilliseconds} ms");
+                ok = false;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Log($"PROBE threw {ex.GetType().Name}: {ex.Message}");
+                ok = false;
+            }
+
+            if (ok)
+            {
+                failures = 0;
+                continue;
+            }
+
+            failures++;
+            Log($"PROBE failed ({failures} in a row)");
+            if (failures >= 2)
+            {
+                MarkDead("TestConnectionAsync failed twice in a row");
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+    }
 }
 
-await client.DisposeAsync();
-Log($"Done. Send me the file: {Path.GetFullPath(logPath)}");
-return 0;
+// Signal 2 (information only): is the MSFS process still there? Tells us the detection latency.
+async Task WatchProcessAsync(CancellationToken token)
+{
+    int? lastPid = CurrentMsfsPid();
+    DateTime? goneAt = null;
 
-// ---------------------------------------------------------------------------
+    while (!token.IsCancellationRequested)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1), token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        var pid = CurrentMsfsPid();
+        if (pid != lastPid)
+        {
+            Log(pid is null ? "PROCESS: MSFS process disappeared" : $"PROCESS: MSFS process now pid {pid} (was {lastPid?.ToString() ?? "none"})");
+            goneAt = pid is null ? DateTime.UtcNow : null;
+            lastPid = pid;
+        }
+
+        if (goneAt is { } gone && dead.Task.IsCompleted)
+        {
+            Log($"PROCESS: detection latency = {(DateTime.UtcNow - gone).TotalSeconds:F1} s after the process disappeared");
+            goneAt = null;
+        }
+    }
+}
+
+// Signal 3 (information only): flight running (Sim=1) but no position data for a while.
+async Task WatchStaleDataAsync(CancellationToken token)
+{
+    var warned = false;
+    while (!token.IsCancellationRequested)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1), token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        var age = (DateTime.UtcNow - lastMotionUtc).TotalSeconds;
+        if (simRunning && age > 6)
+        {
+            if (!warned)
+            {
+                Log($"STALE: Sim=1 but no Motion data for {age:F0} s");
+                warned = true;
+            }
+        }
+        else
+        {
+            warned = false;
+        }
+    }
+}
+
+static int? CurrentMsfsPid()
+{
+    var processes = Process.GetProcessesByName("FlightSimulator");
+    return processes.Length > 0 ? processes[0].Id : null;
+}
 
 void Start<T>(string name, Func<T, string> format)
     where T : struct
@@ -201,8 +467,6 @@ void Start<T>(string name, Func<T, string> format)
                 }
             },
             TaskScheduler.Default);
-
-        Log($"[{name}] subscribed");
     }
     catch (Exception ex)
     {
@@ -212,19 +476,16 @@ void Start<T>(string name, Func<T, string> format)
     }
 }
 
-// Reads the same variables one by one through the library's scalar path, to tell a library or
+// Reads variables one by one through the library's scalar path, to tell a library or
 // struct-layout problem apart from what the simulator/aircraft really reports.
 async Task Crosscheck(string label)
 {
     (string Name, string Unit)[] variables =
     [
-        ("COM ACTIVE FREQUENCY:1", "MHz"),
-        ("COM STANDBY FREQUENCY:1", "MHz"),
-        ("COM ACTIVE FREQUENCY:2", "MHz"),
-        ("COM STANDBY FREQUENCY:2", "MHz"),
         ("COM ACTIVE FREQUENCY:1", "Hz"),
+        ("COM STANDBY FREQUENCY:1", "Hz"),
         ("COM ACTIVE FREQUENCY:2", "Hz"),
-        ("TRANSPONDER CODE:1", "number"),
+        ("COM STANDBY FREQUENCY:2", "Hz"),
         ("TRANSPONDER CODE:1", "bco16"),
         ("TRANSPONDER STATE:1", "number"),
     ];
@@ -248,7 +509,6 @@ async Task Crosscheck(string label)
 }
 
 // The structs hold the latest value of each subscription; compare them with a fresh scalar read.
-// Radios not changed during the run should MATCH. Values can legitimately differ by up to ~1 s of age.
 async Task CompareRadios()
 {
     Log("COMPARE struct (latest subscription value) vs scalar (fresh read)");
@@ -260,9 +520,7 @@ async Task CompareRadios()
         ("COM ACTIVE FREQUENCY:2", "Hz", latestRadiosHz?.Com2Active),
         ("COM STANDBY FREQUENCY:2", "Hz", latestRadiosHz?.Com2Standby),
         ("COM ACTIVE FREQUENCY:1", "MHz", latestRadiosMhz?.Com1Active),
-        ("COM STANDBY FREQUENCY:1", "MHz", latestRadiosMhz?.Com1Standby),
         ("COM ACTIVE FREQUENCY:2", "MHz", latestRadiosMhz?.Com2Active),
-        ("COM STANDBY FREQUENCY:2", "MHz", latestRadiosMhz?.Com2Standby),
     ];
 
     foreach (var (name, unit, structValue) in checks)
