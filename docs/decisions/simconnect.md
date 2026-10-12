@@ -1,6 +1,6 @@
 # Decisão: como falar com o SimConnect (M1)
 
-- **Status:** proposta aprovada em 2026-10-12; spike rodado em 2026-10-12 (resultados abaixo). A reconexão **não** é resolvida pela biblioteca; o spike v2 prototipa a detecção própria e precisa ser validado.
+- **Status:** proposta aprovada em 2026-10-12; spike concluído em 2026-10-12 (resultados abaixo). A reconexão **não** é resolvida pela biblioteca; o algoritmo próprio foi prototipado e validado nos dois cenários (MSFS fecha/reabre; app abre antes do MSFS). Falta só validar o adapter real (tarefa 10).
 - **Escopo:** MSFS 2020 no M1. MSFS 2024 é M5.
 
 ## Contexto
@@ -65,12 +65,28 @@ Teste do mantenedor (spike v1, 30 min): com o spike rodando, o MSFS foi fechado 
 - Recarregar o voo **dentro do mesmo MSFS** (voltar ao menu e iniciar outro voo) funciona sem reconectar: os eventos `SimStop`/`Sim=0` e `SimStart`/`Sim=1` aparecem, as atualizações param durante o menu/carregamento (`+0`) e voltam sozinhas.
 - Uma execução nova do spike, com o MSFS novo, conectou e leu normalmente (Cessna CJ4): `ATC MODEL='C25C'`, transponder `0x1234` = squawk 1234, COM1 130,850 MHz (`130850000` Hz), velocidade até 324 kt. Ou seja, um cliente **novo** conecta bem; o problema é só perceber que o antigo morreu.
 
-**Consequência para o `MsfsSimAdapter`:** a reconexão é responsabilidade nossa. Plano (a validar com o spike v2):
+### Reconexão: o que o spike v2 mostrou (2 rodadas com o mantenedor)
 
-1. Detectar conexão morta por mais de um sinal: mensagem `Quit` (via `RawMessageReceived`), `TestConnectionAsync` falhando duas vezes seguidas (sonda a cada ~3 s) e `ConnectionStatusChanged` para `false`. Ausência de dados **não** serve sozinha, porque no menu/carregamento (`Sim=0`) os dados também param.
-2. Ao detectar, descartar assinaturas e cliente (com limite de tempo, pois o `Dispose` pode travar), criar um **novo** `SimConnectClient`, reconectar com tentativas e backoff e assinar tudo de novo.
-3. Estado `Connecting` enquanto isso; os streams do adapter continuam abertos (ver tarefa 3).
-4. **Nunca desistir de conectar.** O MSFS pode levar vários minutos para abrir (o primeiro spike, com limite de 120 s, desistia antes de o jogo terminar de carregar). O adapter tenta de forma indefinida, com intervalo crescente e teto (por exemplo, 2 s até 10 s), até ser cancelado ou descartado.
+| Cenário | Resultado |
+|---|---|
+| **A.** MSFS fecha e reabre com o app rodando | A queda foi detectada em ~4 s pela sonda (`TestConnectionAsync`) falhando com `E_FAIL`. O app tentou reconectar a cada 2 s (50 tentativas) e **recuperou sozinho** depois que o MSFS voltou e carregou o voo (98 s até a primeira conexão; dados reais ao carregar o voo). |
+| **B.** App abre antes do MSFS | `ConnectAsync` falha **na hora** (`E_FAIL`, poucos ms), então tentar a cada 2 s é barato. Conectou na 62ª tentativa (~2 min), antes do MSFS terminar de carregar, e recebeu dados quando o voo carregou, sem nenhuma ação do usuário. |
+| Sinais de queda | A mensagem `Quit` **nunca chegou** (nem pelo `RawMessageReceived`), e a biblioteca não disparou nenhum evento de queda. **O único sinal confiável foi a sonda falhando com `E_FAIL`.** |
+
+Três armadilhas que o log mostrou (e que o adapter precisa evitar):
+
+1. **A sonda dá falso positivo por timeout.** Com o MSFS vivo mas no menu ou carregando (`Sim=0`), `TestConnectionAsync` expira (`A task was canceled`) porque não há aeronave do usuário para responder. O spike tratava isso como queda e recriava o cliente a cada ~12 s (sessões 4 a 13 do log A). **Regra:** só `E_FAIL` conta como conexão morta; timeout significa "simulador não está respondendo agora" e não derruba a sessão.
+2. **O `ConnectAsync` tem sucesso antes de o MSFS estar pronto.** A mensagem `Open` (servidor pronto) chega segundos ou minutos depois (11 s na sessão 14; ~83 s no cenário B). Assinaturas criadas antes disso às vezes funcionam (sessão 14), mas outras vezes o servidor as rejeita com `UnrecognizedId` e elas nunca entregam dados (sessão 10). **Regra:** criar as assinaturas só **depois** de receber `Open`; se chegar `UnrecognizedId` mesmo assim, refazer a sessão.
+3. **Durante o carregamento do voo os dados são valores iniciais** (lat ≈ 0, lon ≈ 0): publicar snapshots só com `Sim=1` e voo carregado.
+
+**Algoritmo do `MsfsSimAdapter` (decidido):**
+
+1. Tentar conectar **indefinidamente**: intervalo de 2 s, crescendo até ~10 s, sem desistir (o MSFS pode levar vários minutos para abrir). Estado `Connecting`.
+2. Depois de conectar, **esperar a mensagem `Open`** e só então assinar os eventos de sistema (`Sim`, `Pause`) e os grupos de variáveis.
+3. Sonda a cada ~3 s: `E_FAIL` duas vezes seguidas = conexão morta. Timeout é ignorado.
+4. Conexão morta: encerrar assinaturas e cliente (com limite de 5 s, pois o `Dispose` pode travar), criar um **novo** `SimConnectClient` e voltar ao passo 1. `ConnectionState` volta a `Connecting`; os streams do adapter **continuam abertos** (ver tarefa 3).
+5. Publicar `AircraftState` só enquanto `Sim=1`; ao voltar a `Sim=0` (menu), manter o último estado em `LatestState` e parar de publicar até a próxima carga.
+6. Desligar o `AutoReconnectEnabled` da biblioteca, para não competir com o nosso.
 
 Detalhes extras que afetam o desenho:
 
@@ -79,5 +95,6 @@ Detalhes extras que afetam o desenho:
 
 ## Pendências
 
-1. **Reconexão** (tarefa 8): validar o spike v2 (detecção própria + novo cliente) fechando e abrindo o MSFS, e iniciando o spike **antes** do MSFS (para ver como o `ConnectAsync` falha enquanto o simulador não existe).
-2. Descobrir qual sinal de queda dispara primeiro (`Quit` bruto, sonda ou nenhum) e com que latência.
+1. Validar o adapter real no Windows com o MSFS (tarefa 10 do M1): mesmo roteiro dos cenários A e B, mais um voo completo.
+2. Investigar a causa do `UnrecognizedId` em assinaturas criadas antes do `Open` (a regra de esperar o `Open` evita o problema, mas a causa não foi isolada).
+3. Medir o tempo entre o `Open` e o primeiro snapshot válido com o voo carregando, para ajustar a sonda e a espera.
