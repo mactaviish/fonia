@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using Fonia.Core.Sim;
 
 namespace Fonia.Sim.Mock;
@@ -19,9 +18,8 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 {
     private readonly Lock _gate = new();
     private readonly TimeProvider _timeProvider;
-    private readonly List<Subscription> _subscriptions = [];
+    private readonly AircraftStateBroadcaster _broadcaster = new();
     private SimConnectionState _connectionState = SimConnectionState.Disconnected;
-    private AircraftState? _latestState;
     private AircraftState? _programmedState;
     private bool _disposed;
 
@@ -50,7 +48,7 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
         {
             lock (_gate)
             {
-                return _latestState;
+                return _broadcaster.Latest;
             }
         }
     }
@@ -146,20 +144,13 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 
     public IAsyncEnumerable<AircraftState> StreamAsync(CancellationToken ct)
     {
-        Subscription subscription;
-
-        // Subscribe eagerly (not on first MoveNext) so that no snapshot published after this call is missed.
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            subscription = new Subscription();
-            _subscriptions.Add(subscription);
+            // The subscription starts at this call, so no snapshot published afterwards is missed.
+            return _broadcaster.Subscribe(ct);
         }
-
-        subscription.CancellationRegistration = ct.Register(() => Unsubscribe(subscription));
-
-        return Read(subscription);
     }
 
     public ValueTask DisposeAsync()
@@ -339,12 +330,7 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
     // Must be called with _gate held.
     private void Publish(AircraftState state)
     {
-        _latestState = state;
-
-        foreach (var subscription in _subscriptions)
-        {
-            subscription.Channel.Writer.TryWrite(state);
-        }
+        _broadcaster.Publish(state);
     }
 
     // Must be called with _gate held.
@@ -373,12 +359,7 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
 
         ChangeState(SimConnectionState.Disconnected, changes);
 
-        foreach (var subscription in _subscriptions)
-        {
-            subscription.Channel.Writer.TryComplete();
-        }
-
-        _subscriptions.Clear();
+        _broadcaster.CompleteSubscriptions();
     }
 
     // Handlers run outside the lock so they can call back into the adapter from any thread.
@@ -388,48 +369,5 @@ public sealed class MockSimAdapter : ISimAdapter, IComRadioControl
         {
             ConnectionStateChanged?.Invoke(this, change);
         }
-    }
-
-    private void Unsubscribe(Subscription subscription)
-    {
-        lock (_gate)
-        {
-            _subscriptions.Remove(subscription);
-        }
-
-        subscription.Channel.Writer.TryComplete();
-    }
-
-    private async IAsyncEnumerable<AircraftState> Read(Subscription subscription)
-    {
-        try
-        {
-            // The channel is completed on cancellation / disconnect / dispose, so the stream ends
-            // quietly instead of throwing; buffered snapshots are still delivered first.
-            await foreach (var state in subscription.Channel.Reader.ReadAllAsync(CancellationToken.None))
-            {
-                yield return state;
-            }
-        }
-        finally
-        {
-            await subscription.CancellationRegistration.DisposeAsync();
-            Unsubscribe(subscription);
-        }
-    }
-
-    private sealed class Subscription
-    {
-        // Capacity 1 + DropOldest: a slow consumer only ever sees the most recent snapshot and
-        // never blocks the adapter or grows memory.
-        public Channel<AircraftState> Channel { get; } = System.Threading.Channels.Channel.CreateBounded<AircraftState>(
-            new BoundedChannelOptions(1)
-            {
-                FullMode = BoundedChannelFullMode.DropOldest,
-                SingleReader = true,
-                SingleWriter = false,
-            });
-
-        public CancellationTokenRegistration CancellationRegistration { get; set; }
     }
 }
