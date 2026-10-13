@@ -218,6 +218,87 @@ public class AtcEngineTests
         _engine.Handle(new SayAgain(Own), Parked, Solo).Instruction.ShouldBe(new SayAgainRequest());
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void A_request_without_the_aircrafts_callsign_is_not_answered_and_the_callsign_is_asked(int which)
+    {
+        Intent request = which switch
+        {
+            0 => new RequestStartup(null, "box 3"),
+            1 => new RequestPushback(null, true, null),
+            _ => new RequestTaxi(null, null),
+        };
+
+        var decision = _engine.Handle(request, Parked, Solo);
+
+        decision.Instruction.ShouldBe(new RequestCallsign());
+        decision.NextContext.Phase.ShouldBe(FlightPhase.Parked);
+        decision.NextContext.PendingReadback.ShouldBeNull();
+        decision.NextContext.AwaitingCallsign.ShouldBe(request);
+    }
+
+    [Fact]
+    public void The_callsign_is_asked_again_until_it_is_right_and_then_the_held_request_goes_ahead()
+    {
+        var asked = _engine.Handle(new RequestStartup(null, null), Parked, Solo).NextContext;
+        var askedAgain = _engine.Handle(new RequestStartup(null, null), asked, Solo);
+
+        askedAgain.Instruction.ShouldBe(new RequestCallsign());
+
+        var decision = _engine.Handle(new CallsignOnly(Own), askedAgain.NextContext, Solo);
+
+        decision.Instruction.ShouldBe(new StartupApproved());
+        decision.NextContext.Phase.ShouldBe(FlightPhase.StartupApproved);
+        decision.NextContext.AwaitingCallsign.ShouldBeNull();
+    }
+
+    [Fact]
+    public void A_new_request_with_the_right_callsign_replaces_the_held_one()
+    {
+        var asked = _engine.Handle(new RequestStartup(null, null), Parked, Solo).NextContext;
+
+        var decision = _engine.Handle(new RequestTaxi(Own, null), asked, Solo);
+
+        decision.Instruction.ShouldBeOfType<TaxiClearance>();
+        decision.NextContext.AwaitingCallsign.ShouldBeNull();
+    }
+
+    [Fact]
+    public void A_request_held_for_the_callsign_is_not_forgotten_by_a_misunderstood_phrase()
+    {
+        var asked = _engine.Handle(new RequestTaxi(null, null), Parked, Solo).NextContext;
+
+        var unknown = _engine.Handle(new Unknown("blá"), asked, Solo);
+
+        unknown.Instruction.ShouldBe(new SayAgainRequest());
+        _engine.Handle(new CallsignOnly(Own), unknown.NextContext, Solo).Instruction.ShouldBeOfType<TaxiClearance>();
+    }
+
+    [Fact]
+    public void Calling_the_controller_with_nothing_held_invites_the_pilot_to_go_ahead()
+    {
+        _engine.Handle(new CallsignOnly(Own), Parked, Solo).Instruction.ShouldBe(new GoAhead());
+    }
+
+    [Fact]
+    public void A_readback_is_accepted_without_the_callsign()
+    {
+        var approved = _engine.Handle(new RequestStartup(Own, null), Parked, Solo).NextContext;
+
+        _engine.Handle(new Readback(null, "acionamento aprovado"), approved, Solo).Instruction.ShouldBe(new NoResponse());
+    }
+
+    [Fact]
+    public void A_held_request_at_an_airport_without_service_is_answered_when_the_callsign_comes()
+    {
+        var afis = WithUnit(AirportFrequencyType.Afis);
+        var asked = _engine.Handle(new RequestStartup(null, null), Parked, afis).NextContext;
+
+        _engine.Handle(new CallsignOnly(Own), asked, afis).Instruction.ShouldBe(new NoControlService(ServiceUnit.Afis));
+    }
+
     [Fact]
     public void A_full_flow_from_the_gate_to_the_taxi_readback()
     {
@@ -231,6 +312,8 @@ public class AtcEngineTests
             return decision;
         }
 
+        Say("Solo, box 3, solicita pushback e acionamento").Instruction.ShouldBe(new RequestCallsign());
+        Say("PRABC").Instruction.ShouldBe(new PushbackApproved(true));
         Say("Solo, PRABC, box 3, solicita pushback e acionamento").Instruction.ShouldBe(new PushbackApproved(true));
         Say("Autorizado pushback e acionamento, PRABC").Instruction.ShouldBe(new NoResponse());
         Say("Solo, PRABC, pronto para o táxi").Instruction.ShouldBe(new TaxiClearance("11"));

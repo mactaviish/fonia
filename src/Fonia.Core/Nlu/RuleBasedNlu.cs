@@ -57,6 +57,12 @@ public sealed class RuleBasedNlu : INlu
 
         if (!pushback && !startup && !taxi)
         {
+            // Only the callsign and who is being called, with no numbers or readback words: not an answer.
+            if (mentioned && !repeating && !asking && !rest.Contains("pista") && SpokenCode.Decode(string.Join(' ', rest)).Length == 0)
+            {
+                return new CallsignOnly(callsign);
+            }
+
             // Said something, but no request: with an instruction waiting, it is the pilot answering it.
             return flight.PendingReadback is not null && rest.Count > 0
                 ? new Readback(callsign, string.Join(' ', rest))

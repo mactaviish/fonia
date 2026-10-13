@@ -24,6 +24,14 @@ public sealed record NoControlService(ServiceUnit Unit) : AtcInstruction;
 /// <summary>The airport data has no usable runway, so there is none to taxi to.</summary>
 public sealed record NoRunwayAvailable : AtcInstruction;
 
+/// <summary>The request came without the aircraft's callsign, or with another one: the controller asks for it again.</summary>
+// TODO(fraseologia): the manual has no phrase for asking the callsign again; the template is pending.
+public sealed record RequestCallsign : AtcInstruction;
+
+/// <summary>The pilot called the controller and nothing more: the controller invites them to go ahead.</summary>
+// TODO(fraseologia): the phrase is pending (the manual does not give one for the Solo).
+public sealed record GoAhead : AtcInstruction;
+
 /// <summary>The controller did not understand: "REPITA".</summary>
 public sealed record SayAgainRequest : AtcInstruction;
 

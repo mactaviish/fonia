@@ -21,14 +21,32 @@ public sealed class AtcEngine : IAtcEngine
         return intent switch
         {
             Unknown => Say(new SayAgainRequest(), flight),
+            CallsignOnly called => Called(called, flight, airport),
             SayAgain => Repeat(flight),
             Readback readback => CheckReadback(readback, flight),
-            _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight),
-            RequestStartup => Issue(new StartupApproved(), flight, FlightPhase.StartupApproved),
-            RequestPushback pushback => Issue(new PushbackApproved(pushback.WithStartup), flight, pushback.WithStartup ? FlightPhase.StartupApproved : FlightPhase.PushbackApproved),
-            RequestTaxi => Taxi(flight, airport),
+            _ when intent.Callsign is null => new AtcDecision(new RequestCallsign(), flight with { AwaitingCallsign = intent }),
+            _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight with { AwaitingCallsign = null }),
+            RequestStartup => Issue(new StartupApproved(), Released(flight), FlightPhase.StartupApproved),
+            RequestPushback pushback => Issue(new PushbackApproved(pushback.WithStartup), Released(flight), pushback.WithStartup ? FlightPhase.StartupApproved : FlightPhase.PushbackApproved),
+            RequestTaxi => Taxi(Released(flight), airport),
             _ => Say(new SayAgainRequest(), flight),
         };
+    }
+
+    // A request with the right callsign is what the pilot says now; one held for the callsign is dropped.
+    private static FlightContext Released(FlightContext flight) => flight with { AwaitingCallsign = null };
+
+    // The pilot said only the callsign. If a request was held for the callsign, now it goes ahead.
+    private AtcDecision Called(CallsignOnly called, FlightContext flight, AirportContext airport)
+    {
+        if (called.Callsign is null)
+        {
+            return new AtcDecision(new RequestCallsign(), flight);
+        }
+
+        return flight.AwaitingCallsign is { } held
+            ? Handle(held with { Callsign = flight.Callsign }, flight with { AwaitingCallsign = null }, airport)
+            : Say(new GoAhead(), flight);
     }
 
     private static AtcDecision Taxi(FlightContext flight, AirportContext airport)

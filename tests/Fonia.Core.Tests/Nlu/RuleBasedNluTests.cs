@@ -144,11 +144,33 @@ public class RuleBasedNluTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("blá blá blá")]
-    [InlineData("Solo Curitiba, PRABC")]
     [InlineData("qual é o tempo hoje")]
     public void What_cannot_be_understood_is_unknown_and_keeps_the_text(string said)
     {
         _nlu.Interpret(said, Parked).ShouldBe(new Unknown(said));
+    }
+
+    [Theory]
+    [InlineData("Solo Curitiba, PRABC")]
+    [InlineData("PRABC")]
+    [InlineData("alfa bravo charlie, Solo")]
+    public void Only_calling_the_controller_with_the_callsign_is_understood(string said)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new CallsignOnly(Own));
+    }
+
+    [Fact]
+    public void The_callsign_with_numbers_while_an_instruction_waits_is_still_a_readback()
+    {
+        _nlu.Interpret("pista um cinco, PRABC", AwaitingReadback).ShouldBeOfType<Readback>();
+    }
+
+    [Fact]
+    public void The_callsign_alone_after_being_asked_for_it_is_not_a_readback_even_with_an_instruction_waiting()
+    {
+        var asked = AwaitingReadback with { AwaitingCallsign = new RequestTaxi(null, null) };
+
+        _nlu.Interpret("PRABC", asked).ShouldBe(new CallsignOnly(Own));
     }
 
     [Fact]

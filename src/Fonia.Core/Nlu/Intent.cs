@@ -22,5 +22,8 @@ public sealed record Readback(string? Callsign, string Text) : Intent(Callsign);
 
 public sealed record SayAgain(string? Callsign) : Intent(Callsign);
 
+/// <summary>The pilot only called the controller and said their callsign ("Solo Curitiba, PRABC"), without a request.</summary>
+public sealed record CallsignOnly(string? Callsign) : Intent(Callsign);
+
 /// <summary>Speech that could not be interpreted.</summary>
 public sealed record Unknown(string RawText) : Intent((string?)null);
