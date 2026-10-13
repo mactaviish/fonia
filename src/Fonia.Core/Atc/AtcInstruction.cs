@@ -25,7 +25,7 @@ public sealed record NoControlService(ServiceUnit Unit) : AtcInstruction;
 public sealed record NoRunwayAvailable : AtcInstruction;
 
 /// <summary>The request came without the aircraft's callsign, or with another one: the controller asks for it again.</summary>
-// TODO(fraseologia): the manual has no phrase for asking the callsign again; the template is pending.
+// TODO(fraseologia): the manual has no phrase for asking the callsign again; the template has a proposal to confirm.
 public sealed record RequestCallsign : AtcInstruction;
 
 /// <summary>The pilot called the controller and nothing more: the controller invites them to go ahead.</summary>
