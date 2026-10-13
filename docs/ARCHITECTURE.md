@@ -142,7 +142,7 @@ Entrada: `Transcript` + `FlightContext`. Saída: `Intent` (`record`).
 
 `Intent` é um `record` abstrato com `Callsign` normalizado (ex.: "PRABC") e subtipos selados. No M0 existem `RequestTaxi`, `Readback`, `SayAgain` e `Unknown`; o conjunto cresce com os marcos (previstos: `RequestStartup`, `RequestPushback`, `RequestTakeoff`, `ReportPosition`, `RequestLanding`).
 
-`FlightContext` é o estado por voo: indicativo, `FlightPhase`, aeroporto atual (ICAO) e a instrução ainda pendente de readback. O contexto do aeroporto (`AirportContext`) só entra no M2, junto com os dados do OurAirports.
+`FlightContext` é o estado por voo: indicativo, `FlightPhase`, aeroporto atual (ICAO) e a instrução ainda pendente de readback. `LastInstruction` guarda a última instrução dada, para quando o piloto pede "repita". O aeroporto é o `AirportContext` (veja o motor, abaixo).
 
 Estratégia em camadas:
 1. **Regras/regex + normalização** (números, alfabeto fonético, "cinco zero" etc.). Rápido, offline, previsível. É o ponto de partida: `RuleBasedNlu` (`INlu.Interpret(texto, FlightContext)`) procura o indicativo (completo, soletrado ou pelas 3 últimas letras), as palavras de pedido (acionar/partida, pushback/empurrar, táxi), a pista e a posição no pátio onde estiverem na frase, e usa `PendingReadback` para distinguir o piloto que pede do que repete a instrução. Pedido combinado vira `RequestPushback(WithStartup: true)`.
@@ -159,6 +159,8 @@ Núcleo determinístico. Máquina de estados por voo e por posição (Solo, Torr
 - Entrada: `Intent` + `AircraftState` + `AirportContext` (pistas, pista em uso, METAR, tráfego).
 - Saída: `AtcDecision` (`record`): uma `AtcInstruction` (dados, nunca texto; no M0: `TaxiClearance` e `RequestReadbackCorrection`) e o `FlightContext` resultante.
 - Verifica readback do piloto e pede correção quando necessário.
+
+**No M2 (Solo):** `AtcEngine.Handle(Intent, FlightContext, AirportContext) -> AtcDecision`, sem estado próprio. O `AirportContext` (aeroporto, `ServiceUnit`, pista em uso) é fixo na sessão e define quem responde como no aeroporto real: tem Solo, responde o Solo; senão a Torre faz o mesmo papel; senão o AFIS só informa; senão não há serviço (`NoControlService`). A pista em uso é a pedida (`--runway`) ou, por padrão, a mais longa na cabeceira de menor número (sem vento nem METAR para escolher a outra); pistas fechadas ficam de fora. O controlador sempre aprova (sem atrasos nem sequenciamento) e o pedido de táxi recebe a pista em uso, qualquer que seja a pedida. Só o táxi exige readback, como o Art. 12 lista; readback certo não tem resposta (`NoResponse`), errado ou incompleto recebe "negativo" e a versão correta (`RequestReadbackCorrection`). `Unknown` vira `SayAgainRequest` ("REPITA") e o pedido do piloto para repetir devolve a `LastInstruction`. O indicativo não é conferido: o usuário é o único piloto da sessão. Fases: `Parked`, `PushbackApproved`, `StartupApproved`, `Taxiing`; um pedido nunca faz a fase voltar.
 - Deve ser 100% testável sem áudio e sem simulador.
 
 ### 6. Fraseologia (`Fonia.Core`)

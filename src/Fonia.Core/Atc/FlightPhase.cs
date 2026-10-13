@@ -4,5 +4,7 @@ namespace Fonia.Core.Atc;
 public enum FlightPhase
 {
     Parked = 0,
+    PushbackApproved,
+    StartupApproved,
     Taxiing,
 }
