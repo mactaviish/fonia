@@ -150,6 +150,8 @@ Estratégia em camadas:
 
 O NLU **não** decide o que o ATC responde.
 
+**O NLU entende o piloto, não o manual.** A fraseologia padronizada descreve o que o *controlador* diz; o piloto fala como quiser: com "bom dia", "ok", fora de ordem, com palavras a mais, abreviando o indicativo ou dizendo "solicito táxi" em vez de "solicita instruções de táxi". Por isso o NLU não compara frases inteiras: ele procura a intenção e preenche os dados (indicativo, pista, posição, destino) mesmo que a frase fuja do padrão, e só devolve `Unknown` quando de fato não consegue, caso em que o controlador responde "REPITA". As frases do manual e da prática (VATSIM-BR) entram como casos de teste, nunca como a única forma aceita.
+
 ### 5. Motor de ATC (`Fonia.Core`)
 
 Núcleo determinístico. Máquina de estados por voo e por posição (Solo, Torre, Aproximação, Centro).
@@ -161,7 +163,7 @@ Núcleo determinístico. Máquina de estados por voo e por posição (Solo, Torr
 
 ### 6. Fraseologia (`Fonia.Core`)
 
-Templates por idioma e por tipo de instrução: `AtcDecision` + idioma → texto. Números, frequências e indicativos são formatados pela camada de fraseologia (ex.: "um dois sete decimal oito" vs. "cento e vinte e sete oito"). Referências oficiais ficam em `docs/phraseology/`.
+Templates por idioma e por tipo de instrução: `AtcDecision` + idioma → texto. Números, frequências e indicativos são formatados pela camada de fraseologia como o MCA 100-16 manda: dígito a dígito, "UNO", "MEIA", "DECIMAL" (118,1 é "UNO UNO OITO DECIMAL UNO"), e o alfabeto fonético com "Romeo". O controlador segue o **MCA 100-16, edição 2025** (Portaria DECEA/DNOR1 nº 1.716/2025); as fontes, o catálogo de frases com o artigo de cada uma e as variantes da prática estão em [`docs/phraseology/`](phraseology/README.md). O nome falado de cada aeroporto ("Solo Galeão", "Torre Guarulhos") vem de [`data/atc-names.csv`](../data/atc-names.csv).
 
 ### 7. TTS (`Fonia.Speech`)
 
@@ -175,12 +177,14 @@ Interface `ISynthesizer` (`SynthesizeAsync(string text, Voice voice) -> AudioCli
 
 ## Fluxo de uma interação (exemplo)
 
-1. Piloto aperta PTT e diz: "Torre de Curitiba, PR-ABC, solicito táxi para a pista 15".
+1. Piloto aperta PTT e diz: "Solo Curitiba, PR-ABC, pátio 1, posição 3, solicita instruções de táxi".
 2. STT gera o texto.
-3. NLU extrai `RequestTaxi(Runway: "15", Callsign: "PRABC")`.
-4. Motor ATC consulta o estado (aeronave em solo, no pátio, pista 15 em uso?) e decide `TaxiClearance(Route: ..., HoldingPoint: ...)`.
-5. Fraseologia monta: "PR-ABC, Curitiba Solo, táxi autorizado para o ponto de espera da pista 15 via táxi Alfa. QNH 1017."
-6. TTS fala; o motor aguarda o readback.
+3. NLU extrai `RequestTaxi(Callsign: "PRABC")` (e a posição, se houver).
+4. Motor ATC consulta o estado (aeronave em solo, no pátio, pista 15 em uso?) e decide `TaxiClearance(Runway: "15")`. Sem dados de taxiway, a instrução é a forma curta do manual, sem rota.
+5. Fraseologia monta: "PR-ABC, autorizado táxi para o ponto de espera da pista 15." (falado: "PAPA ROMEO ALFA BRAVO CHARLIE, autorizado táxi para o ponto de espera da pista UNO CINCO").
+6. TTS fala; o motor aguarda o cotejamento (readback): instruções de táxi devem ser repetidas (MCA 100-16, Art. 12), e se vierem erradas o controle diz "negativo" seguido da versão correta.
+
+Quem responde depende do aeroporto, como na vida real: Solo se houver frequência de Solo; senão a Torre dá o acionamento e o táxi; em aeródromo só com AFIS ("Rádio") não há autorização, apenas informação; sem nenhum dos três, não há serviço.
 
 ## Execução e concorrência
 
@@ -203,6 +207,9 @@ O pipeline é assíncrono. Telemetria, entrada de áudio e saída de áudio roda
 - **CI.** Linux em todo PR e push na `main` (build, test, `dotnet format --verify-no-changes`), em `ci.yml`. O Windows (build, test) tem workflow próprio, `ci-windows.yml`, porque o GitHub filtra por caminho só no nível do workflow: roda em PRs que mexem em `src/`, `tests/` ou nas configurações de build, em todo push na `main` (exceto documentação) e manualmente. Windows custa o dobro dos minutos em repositório privado, e um teste de temporização que só falhou no runner mais lento do Windows mostrou que esperar o merge para vê-lo era caro.
 - **Licença do projeto: Apache-2.0 (2026-10-12).** Open-source, com patente explícita e compatível com dependências MIT/BSD/Apache. Consequência: dependências e modelos de voz/IA precisam ter licença permissiva e compatível (sem GPL/AGPL nem restrição de uso comercial); informar a licença ao propor uma dependência nova.
 - **SimConnect (M1, 2026-10-12):** SimConnect.NET (MIT) atrás de `ISimConnectSession`, a confirmar no spike; `Fonia.Sim.Msfs` e `Fonia.App` em `net10.0`. A redistribuição do `SimConnect.dll` é um risco aberto para o M4. Ver `docs/decisions/simconnect.md`.
+
+- **Fraseologia (M2, 2026-10-13).** O controlador segue o MCA 100-16 em vigor; a prática da VATSIM Brasil é referência secundária (cobre o que o piloto de fato diz) e o NLU entende as duas. A primeira pesquisa usou as edições de 2016 por engano e concluiu, errado, que o manual não tinha `pushback`: a edição vigente (2025, Art. 123) tem. A página oficial avisa que o manual será alterado em 26/11/2026; ver `docs/phraseology/README.md`.
+- **Nomes de órgãos** vêm de `data/atc-names.csv` (mantido à mão e revisado aos poucos), porque o município dos dados erra justamente nos aeroportos mais usados (SBGR "São Paulo", SBKP "Campinas", SBCF "Belo Horizonte").
 
 ## Decisões em aberto
 

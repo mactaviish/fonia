@@ -29,10 +29,12 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 
 ## M2: ATC por texto (Solo)
 
-- [ ] Carregar um aeroporto (OurAirports): pistas e frequências
-- [ ] NLU por regras para: `RequestStartup`, `RequestPushback`, `RequestTaxi`, `Readback`, `SayAgain`
+- [ ] Notas de fraseologia (MCA 100-16, edição 2025) em `docs/phraseology/` e exemplos dos docs corrigidos
+- [ ] Carregar um aeroporto (OurAirports): pistas e frequências, e `data/atc-names.csv` com o nome falado dos aeroportos controlados
+- [ ] Quem responde, como no aeroporto real: Solo, senão Torre, senão AFIS (só informação), senão nenhum serviço
+- [ ] NLU por regras, tolerante a frases fora do padrão, para: `RequestStartup`, `RequestPushback`, `RequestTaxi`, `Readback`, `SayAgain`
 - [ ] Máquina de estados do Solo
-- [ ] Templates de fraseologia pt-BR para essas instruções
+- [ ] Templates de fraseologia pt-BR para essas instruções (números, letras e indicativos como o manual manda)
 - [ ] Console: você digita a fala do piloto, o app responde em texto, usando o estado real (ou mockado) do simulador
 
 **Pronto quando:** no terminal, você faz o ciclo partida → pushback → táxi com readbacks, e os testes cobrem os caminhos felizes e erros comuns (readback errado, pista inexistente).

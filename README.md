@@ -22,10 +22,10 @@ Voz (PTT) → Reconhecimento de fala → Interpretação (intenção) → Motor 
                                                          Telemetria do simulador
 ```
 
-1. Você aperta o push-to-talk e fala: *"Torre de Curitiba, PR-ABC, solicito táxi para a pista 15"*.
-2. O app transcreve a fala e extrai a intenção (solicitação de táxi, pista 15, matrícula PR-ABC).
+1. Você aperta o push-to-talk e fala: *"Solo Curitiba, PR-ABC, pátio 1, posição 3, solicita instruções de táxi"*. Não precisa decorar o manual: "pronto para o táxi" ou "solicito táxi" também funcionam.
+2. O app transcreve a fala e extrai a intenção (solicitação de táxi, matrícula PR-ABC, posição 3).
 3. O motor de ATC consulta o estado da aeronave e do aeroporto e decide a instrução.
-4. A fraseologia monta a resposta e a voz do controlador fala de volta.
+4. A fraseologia monta a resposta, no padrão do MCA 100-16 do DECEA, e a voz do controlador fala de volta: *"PR-ABC, autorizado táxi para o ponto de espera da pista 15"*.
 
 Mais detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
