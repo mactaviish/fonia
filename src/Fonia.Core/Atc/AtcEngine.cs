@@ -40,7 +40,7 @@ public sealed class AtcEngine : IAtcEngine
 
         var clearance = new TaxiClearance(airport.RunwayInUse);
 
-        // The taxi clearance is what the manual requires to be read back (Art. 12).
+        // The taxi clearance is what the manual requires to be read back (Art. 12); startup and pushback are read back too, as in practice.
         return new AtcDecision(clearance, flight with { Phase = FlightPhase.Taxiing, PendingReadback = clearance, LastInstruction = clearance });
     }
 
@@ -53,21 +53,30 @@ public sealed class AtcEngine : IAtcEngine
 
     private static AtcDecision CheckReadback(Readback readback, FlightContext flight)
     {
-        if (flight.PendingReadback is not TaxiClearance expected)
+        if (flight.PendingReadback is not { } expected)
         {
             return new AtcDecision(new NoResponse(), flight);
         }
 
-        var heard = RuleBasedNlu.FindRunway(SpokenTokens.Tokenize(readback.Text));
+        var heard = SpokenTokens.Tokenize(readback.Text);
 
-        if (heard is not null && RunwayDesignator.AreSame(heard, expected.Runway))
+        if (IsCorrect(expected, heard))
         {
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }
 
-        // Wrong or incomplete: "negativo" and the right version; the clearance is still waiting for its readback.
+        // Wrong or incomplete: "negativo" and the right version; the instruction is still waiting for its readback.
         return Say(new RequestReadbackCorrection(expected), flight);
     }
+
+    // The taxi readback must have the runway; the startup and pushback ones must say what was approved.
+    private static bool IsCorrect(AtcInstruction expected, IReadOnlyList<string> heard) => expected switch
+    {
+        TaxiClearance taxi => RuleBasedNlu.FindRunway(heard) is { } runway && RunwayDesignator.AreSame(runway, taxi.Runway),
+        StartupApproved => RuleBasedNlu.MentionsStartup(heard),
+        PushbackApproved pushback => RuleBasedNlu.MentionsPushback(heard) && (!pushback.WithStartup || RuleBasedNlu.MentionsStartup(heard)),
+        _ => true,
+    };
 
     // Answers without moving the flight on. A "REPITA" is not remembered: if the pilot asks to say it again, what is
     // repeated is the last instruction.
@@ -75,5 +84,5 @@ public sealed class AtcEngine : IAtcEngine
         new(instruction, instruction is SayAgainRequest ? flight : flight with { LastInstruction = instruction });
 
     private static AtcDecision Issue(AtcInstruction instruction, FlightContext flight, FlightPhase phase) =>
-        new(instruction, flight with { Phase = phase > flight.Phase ? phase : flight.Phase, LastInstruction = instruction });
+        new(instruction, flight with { Phase = phase > flight.Phase ? phase : flight.Phase, PendingReadback = instruction, LastInstruction = instruction });
 }

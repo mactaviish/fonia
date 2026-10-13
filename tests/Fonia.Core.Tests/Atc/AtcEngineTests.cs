@@ -25,7 +25,7 @@ public class AtcEngineTests
 
         decision.Instruction.ShouldBe(new StartupApproved());
         decision.NextContext.Phase.ShouldBe(FlightPhase.StartupApproved);
-        decision.NextContext.PendingReadback.ShouldBeNull();
+        decision.NextContext.PendingReadback.ShouldBe(new StartupApproved());
     }
 
     [Theory]
@@ -136,6 +136,55 @@ public class AtcEngineTests
 
         decision.Instruction.ShouldBe(new RequestReadbackCorrection(new TaxiClearance("11")));
         decision.NextContext.PendingReadback.ShouldBe(new TaxiClearance("11"));
+    }
+
+    [Theory]
+    [InlineData("acionamento aprovado, chamo pronto para o taxi")]
+    [InlineData("aprovado acionar")]
+    public void The_startup_readback_must_say_what_was_approved(string said)
+    {
+        var approved = _engine.Handle(new RequestStartup(Own, null), Parked, Solo).NextContext;
+
+        var decision = _engine.Handle(new Readback(Own, said), approved, Solo);
+
+        decision.Instruction.ShouldBe(new NoResponse());
+        decision.NextContext.PendingReadback.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("ciente")]
+    [InlineData("pushback aprovado")]
+    public void A_startup_readback_that_does_not_say_it_is_corrected(string said)
+    {
+        var approved = _engine.Handle(new RequestStartup(Own, null), Parked, Solo).NextContext;
+
+        var decision = _engine.Handle(new Readback(Own, said), approved, Solo);
+
+        decision.Instruction.ShouldBe(new RequestReadbackCorrection(new StartupApproved()));
+        decision.NextContext.PendingReadback.ShouldBe(new StartupApproved());
+    }
+
+    [Theory]
+    [InlineData("pushback e acionamento autorizados", false)]
+    [InlineData("autorizado pushback", true)]
+    [InlineData("autorizado acionamento", true)]
+    [InlineData("ciente", true)]
+    public void A_pushback_with_startup_must_be_read_back_with_both(string said, bool corrected)
+    {
+        var approved = _engine.Handle(new RequestPushback(Own, true, null), Parked, Solo).NextContext;
+
+        var decision = _engine.Handle(new Readback(Own, said), approved, Solo);
+
+        (decision.Instruction is RequestReadbackCorrection).ShouldBe(corrected);
+    }
+
+    [Fact]
+    public void A_pushback_alone_is_read_back_with_pushback()
+    {
+        var approved = _engine.Handle(new RequestPushback(Own, false, null), Parked, Solo).NextContext;
+
+        approved.PendingReadback.ShouldBe(new PushbackApproved(false));
+        _engine.Handle(new Readback(Own, "pushback aprovado"), approved, Solo).Instruction.ShouldBe(new NoResponse());
     }
 
     [Fact]

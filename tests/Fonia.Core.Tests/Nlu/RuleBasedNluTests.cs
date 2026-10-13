@@ -113,6 +113,22 @@ public class RuleBasedNluTests
         _nlu.Interpret("PRABC, solicito táxi", AwaitingReadback).ShouldBe(new RequestTaxi(Own, null));
     }
 
+    [Fact]
+    public void Naming_something_else_than_the_pending_instruction_is_a_request_not_a_readback()
+    {
+        var startupWaiting = Parked with { PendingReadback = new StartupApproved() };
+
+        _nlu.Interpret("Solo, PRABC, taxi", startupWaiting).ShouldBe(new RequestTaxi(Own, null));
+    }
+
+    [Fact]
+    public void Naming_the_pending_instruction_without_a_request_word_is_a_readback()
+    {
+        var startupWaiting = Parked with { PendingReadback = new StartupApproved() };
+
+        _nlu.Interpret("acionamento aprovado, PRABC", startupWaiting).ShouldBeOfType<Readback>();
+    }
+
     [Theory]
     [InlineData("Repita, PRABC")]
     [InlineData("PRABC, pode repetir?")]

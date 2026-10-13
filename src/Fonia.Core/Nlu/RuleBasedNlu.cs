@@ -63,7 +63,7 @@ public sealed class RuleBasedNlu : INlu
                 : new Unknown(text ?? string.Empty);
         }
 
-        if (repeating && !asking || (flight.PendingReadback is not null && !asking))
+        if (repeating && !asking || (!asking && Answers(flight.PendingReadback, pushback, startup, taxi)))
         {
             return new Readback(callsign, string.Join(' ', rest));
         }
@@ -80,6 +80,22 @@ public sealed class RuleBasedNlu : INlu
 
         return new RequestTaxi(callsign, FindRunway(rest));
     }
+
+    // Without a request word, a pilot who names what the controller just instructed is answering it; one who names
+    // something else ("taxi" while the startup waits) is asking for it.
+    private static bool Answers(AtcInstruction? pending, bool pushback, bool startup, bool taxi) => pending switch
+    {
+        TaxiClearance => taxi,
+        StartupApproved => startup,
+        PushbackApproved => pushback || startup,
+        _ => false,
+    };
+
+    /// <summary>True when the words mention starting the engines ("acionamento", "partida").</summary>
+    internal static bool MentionsStartup(IReadOnlyList<string> tokens) => HasAny(tokens, StartupStems);
+
+    /// <summary>True when the words mention pushback.</summary>
+    internal static bool MentionsPushback(IReadOnlyList<string> tokens) => HasAny(tokens, PushbackStems);
 
     /// <summary>The runway the pilot named ("pista dois três esquerda" is "23L"), or null.</summary>
     internal static string? FindRunway(IReadOnlyList<string> tokens)
