@@ -17,11 +17,13 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 
 ## M1: Ler o MSFS 2020
 
-- [ ] Avaliar e escolher a abordagem de SimConnect (SDK oficial ou wrapper), e resolver o licenciamento das DLLs
-- [ ] `MsfsSimAdapter`: posição, altitudes, velocidade, em solo, COM1/COM2, transponder, matrícula
-- [ ] Aplicativo de console que imprime o estado em tempo real
-- [ ] Gravador de telemetria (salva sessão em arquivo) e replay via `MockSimAdapter`
-- [ ] Reconexão automática se o simulador for aberto depois do app
+- [x] Avaliar e escolher a abordagem de SimConnect (SDK oficial ou wrapper): SimConnect.NET, registrado em `docs/decisions/simconnect.md`. A redistribuição da DLL nativa fica como risco aberto para o M4 (instalador)
+- [x] `MsfsSimAdapter`: posição, altitudes, velocidade, proa, em solo, COM1/COM2, transponder, matrícula e tipo da aeronave
+- [x] Aplicativo de console que imprime o estado em tempo real (`fonia`)
+- [x] Gravador de telemetria (salva sessão em arquivo) e replay via `MockSimAdapter`
+- [x] Reconexão automática se o simulador for aberto depois do app (e se for fechado e reaberto)
+
+**Concluído em 2026-10-12**, validado pelo mantenedor com o MSFS 2020: o app aberto antes e depois do simulador, o MSFS fechado e reaberto com o app rodando, recarga de voo pelos menus, mudanças de rádio e squawk e encerramento com Ctrl+C.
 
 **Pronto quando:** você abre o MSFS 2020, roda o app e vê os dados corretos mudando; uma sessão gravada pode ser reproduzida sem o simulador.
 

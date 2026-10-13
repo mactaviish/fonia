@@ -83,7 +83,7 @@ docs/
 - **Testes ao vivo do MSFS** (`LiveMsfsSessionTests`, categoria `Live`) rodam a sessão SimConnect real contra um MSFS 2020 aberto com um voo carregado, só lendo dados. Ficam ignorados por padrão (CI incluso); para rodá-los: `$env:FONIA_LIVE_MSFS = "1"; dotnet test --filter-class "*LiveMsfsSessionTests"`.
 - **DLLs do SDK do MSFS** (SimConnect): verificar a licença antes de versionar no repositório. Se não puder, documentar o caminho de instalação do SDK e referenciá-las por variável de ambiente ou caminho configurável.
 - **Async de ponta a ponta** no pipeline (`Task`, `CancellationToken`, `Channel<T>`). Não bloquear com `.Result` ou `.Wait()`.
-- **Uma branch e um PR por tarefa.** O CI roda Linux (build, test, format) em todo PR e Windows (build, test) só em push na `main` ou manualmente, para economizar minutos; a partir do M1, ampliar o gatilho do Windows para PRs que tocam projetos Windows.
+- **Uma branch e um PR por tarefa.** O CI roda Linux (build, test, format) em todo PR (`ci.yml`) e Windows (build, test) em `ci-windows.yml`: em PRs que mexem em `src/`, `tests/` ou nas configurações de build, em todo push na `main` e manualmente (Actions, Run workflow) para testar uma branch antes do PR. Documentação e spikes não gastam minutos de Windows.
 - **Commits** pequenos, mensagens no imperativo, em português ou inglês (manter consistência dentro do histórico).
 - **Não adicione pacotes NuGet pesados** sem justificar (tamanho, licença, suporte a Windows).
 - **Idioma:** código, nomes e comentários técnicos em inglês; documentação e textos de fraseologia em português quando aplicável.
