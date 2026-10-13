@@ -145,7 +145,7 @@ Entrada: `Transcript` + `FlightContext`. Saída: `Intent` (`record`).
 `FlightContext` é o estado por voo: indicativo, `FlightPhase`, aeroporto atual (ICAO) e a instrução ainda pendente de readback. O contexto do aeroporto (`AirportContext`) só entra no M2, junto com os dados do OurAirports.
 
 Estratégia em camadas:
-1. **Regras/regex + normalização** (números, alfabeto fonético, "cinco zero" etc.). Rápido, offline, previsível. É o ponto de partida.
+1. **Regras/regex + normalização** (números, alfabeto fonético, "cinco zero" etc.). Rápido, offline, previsível. É o ponto de partida: `RuleBasedNlu` (`INlu.Interpret(texto, FlightContext)`) procura o indicativo (completo, soletrado ou pelas 3 últimas letras), as palavras de pedido (acionar/partida, pushback/empurrar, táxi), a pista e a posição no pátio onde estiverem na frase, e usa `PendingReadback` para distinguir o piloto que pede do que repete a instrução. Pedido combinado vira `RequestPushback(WithStartup: true)`.
 2. **LLM opcional** (local ou API) só para interpretar fala fora do padrão. Sempre devolve JSON desserializado com `System.Text.Json` e validado; se inválido, cai em `Unknown`.
 
 O NLU **não** decide o que o ATC responde.
