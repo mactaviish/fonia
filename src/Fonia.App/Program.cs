@@ -42,19 +42,6 @@ var runner = new AppRunner(
     Console.Out,
     Console.Error,
     interactive,
-    lineWidth: interactive ? TerminalLineWidth : null);
+    interactive ? new ConsoleTerminal() : null);
 
 return await runner.RunAsync(options, cancellation.Token);
-
-// One column less than the window: writing in the last column makes some terminals wrap to the next line.
-static int TerminalLineWidth()
-{
-    try
-    {
-        return Math.Max(0, Console.WindowWidth - 1);
-    }
-    catch (IOException)
-    {
-        return 0; // no console to measure: do not limit the line
-    }
-}

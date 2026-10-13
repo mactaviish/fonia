@@ -10,22 +10,23 @@ namespace Fonia.App;
 /// console or a simulator.
 /// </summary>
 /// <param name="interactive">True on a terminal: the state is one line rewritten in place. Otherwise (output redirected to a file) every snapshot is its own line.</param>
-/// <param name="lineWidth">
-/// How many characters the terminal line can hold right now, asked again on every update so resizing the window works.
-/// The state line is shortened to fit, so it never wraps and stays a single line. Zero or <see langword="null"/> means unknown: no limit.
+/// <param name="terminal">
+/// Asked on every update how wide the terminal is, so the state line is fitted to it and never wraps, and used to
+/// clean up when a shrinking window has already made the terminal wrap the previous line onto several rows.
+/// <see langword="null"/> (or unknown values) means no limit and no clean-up.
 /// </param>
 internal sealed class AppRunner(
     ISimSourceFactory sourceFactory,
     TextWriter output,
     TextWriter error,
     bool interactive,
-    Func<int>? lineWidth = null,
+    ITerminal? terminal = null,
     TimeProvider? timeProvider = null)
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
     private readonly Lock _writeLock = new();
     private bool _lineOpen;
-    private int _lineWidth;
+    private int _writtenLength; // characters of the state line on screen, padding included
     private bool _everConnected;
 
     /// <summary>Returns the exit code: 0 normal, 1 failure while running, 2 wrong usage.</summary>
@@ -204,17 +205,47 @@ internal sealed class AppRunner(
                 return;
             }
 
-            // Overwrite the previous state line. It is fitted to the window as it is right now, so it can never
-            // wrap; padding erases what a longer previous line left behind, but never goes past the window.
-            var width = lineWidth?.Invoke() ?? 0;
-            var line = StateFormatter.Format(state, width);
-            var padTo = width > 0 ? Math.Min(_lineWidth, width) : _lineWidth;
+            var columns = terminal?.Columns ?? 0;
+            var line = StateFormatter.Format(state, columns);
 
-            output.Write('\r');
-            output.Write(line.PadRight(padTo));
-            _lineWidth = line.Length;
+            if (!EraseWrappedLine())
+            {
+                output.Write('\r');
+            }
+
+            // Padding erases what a longer previous line left behind, but never goes past the window.
+            var padTo = columns > 0 ? Math.Min(_writtenLength, columns) : _writtenLength;
+            var text = line.PadRight(padTo);
+
+            output.Write(text);
+            _writtenLength = text.Length;
             _lineOpen = true;
         }
+    }
+
+    // When the window has been made narrower than the line already on screen, the terminal re-wraps that line onto
+    // several rows and leaves the cursor at the end of the last one. A carriage return would only go back to the start
+    // of that last row, so the update would be drawn below the rest, as if it were a new line. Instead, go up to the
+    // first row, blank every row the old line covers, and let the caller draw from there. Returns false when there was
+    // nothing wrapped (the usual case), so the caller does a plain carriage return.
+    // Must be called with _writeLock held.
+    private bool EraseWrappedLine()
+    {
+        var wrap = terminal?.WrapColumns ?? 0;
+
+        if (terminal is null || !_lineOpen || wrap <= 0 || _writtenLength <= wrap)
+        {
+            return false;
+        }
+
+        var rows = (_writtenLength + wrap - 1) / wrap;
+        var top = Math.Max(0, terminal.CursorTop - (rows - 1));
+
+        terminal.SetCursor(0, top);
+        output.Write(new string(' ', _writtenLength));
+        terminal.SetCursor(0, top);
+        _writtenLength = 0;
+        return true;
     }
 
     private void EndLine()
@@ -232,7 +263,7 @@ internal sealed class AppRunner(
         {
             output.WriteLine();
             _lineOpen = false;
-            _lineWidth = 0;
+            _writtenLength = 0;
         }
     }
 }
