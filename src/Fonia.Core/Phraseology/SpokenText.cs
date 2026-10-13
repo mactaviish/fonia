@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.Text;
+using Fonia.Core.Airports;
+using Fonia.Core.Sim;
 
 namespace Fonia.Core.Phraseology;
 
@@ -61,6 +64,42 @@ public static class SpokenText
         }
 
         return string.Join(' ', words);
+    }
+
+    /// <summary>
+    /// A runway as the manual says it (Art. 29): "09" is "PISTA ZERO NOVE", "23L" is "PISTA DOIS TRÊS ESQUERDA";
+    /// a side is ESQUERDA, DIREITA or CENTRO.
+    /// </summary>
+    public static string Runway(string designator)
+    {
+        if (!RunwayDesignator.TryParse(designator, out var number, out var side))
+        {
+            throw new ArgumentException($"'{designator}' is not a runway designator.", nameof(designator));
+        }
+
+        var sideName = side switch { 'L' => " ESQUERDA", 'R' => " DIREITA", 'C' => " CENTRO", _ => string.Empty };
+
+        return $"PISTA {Digits(number.ToString("00", CultureInfo.InvariantCulture))}{sideName}";
+    }
+
+    /// <summary>
+    /// A frequency in MHz, digit by digit, without the trailing zeros: 118.100 is "UNO UNO OITO DECIMAL UNO" and
+    /// 121.500 is "UNO DOIS UNO DECIMAL CINCO".
+    /// </summary>
+    public static string Frequency(Frequency frequency)
+    {
+        var text = frequency.ToString().TrimEnd('0');
+
+        return Digits(text.EndsWith('.') ? text + "0" : text);
+    }
+
+    /// <summary>The altimeter setting in hPa, digit by digit: 1017 is "UNO ZERO UNO SETE" and 1000 is "UNO MIL".</summary>
+    public static string Qnh(int hectopascals)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(hectopascals, 900);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(hectopascals, 1099);
+
+        return hectopascals == 1000 ? "UNO MIL" : Digits(hectopascals.ToString(CultureInfo.InvariantCulture));
     }
 
     /// <summary>Letters with the phonetic alphabet and digits as digits: "PRABC" is "PAPA ROMEO ALFA BRAVO CHARLIE".</summary>
