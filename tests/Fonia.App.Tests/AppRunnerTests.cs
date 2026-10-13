@@ -114,12 +114,6 @@ public class AppRunnerTests : IDisposable
         return new AppRunner(factory, screen, new SyncWriter(), interactive: true, terminal: screen);
     }
 
-    /// <summary>The lines the display wrote in place: what follows each carriage return, up to its line feed.</summary>
-    private static List<string> RewrittenLines(string text)
-    {
-        return [.. text.Split('\r').Skip(1).Select(segment => segment.Split('\n')[0])];
-    }
-
     // ---- replay ----
 
     [Fact]
@@ -360,7 +354,7 @@ public class AppRunnerTests : IDisposable
         output.Text.ShouldContain(StateFormatter.Format(Parked()));
     }
 
-    // ---- one line, whatever the window does ----
+    // ---- the state is a block of rows that is rewritten in place, whatever the window does ----
 
     private static async Task WaitForRowAsync(FakeScreen screen, string text, CancellationToken ct)
     {
@@ -373,7 +367,39 @@ public class AppRunnerTests : IDisposable
         }
     }
 
-    /// <summary>Plays states into the display, waiting for each to be drawn; <paramref name="between"/> runs after each one (resize the window, for instance).</summary>
+    // The rows of the screen on one line, for failure messages.
+    private static string Describe(FakeScreen screen) => string.Join(" | ", screen.Rows);
+
+    private static readonly string[] StateTokens = ["HDG", "XPDR", "COM1", "COM2", " GS ", "AGL", "PR-"];
+
+    /// <summary>
+    /// The screen shows the latest state laid out for <paramref name="columns"/> (as consecutive rows) and nothing of
+    /// any earlier state is left anywhere, neither a whole row nor a wrapped piece of one.
+    /// </summary>
+    private static void AssertShowsOnly(FakeScreen screen, string registration, int columns)
+    {
+        var rows = screen.Rows;
+        var expected = StateFormatter.FormatRows(Parked(registration), columns);
+        var shown = Describe(screen);
+
+        var start = -1;
+        for (var i = 0; i + expected.Count <= rows.Count && start < 0; i++)
+        {
+            if (expected.Select((row, k) => rows[i + k] == row).All(equal => equal))
+            {
+                start = i;
+            }
+        }
+
+        start.ShouldBeGreaterThanOrEqualTo(0, $"the latest state ({string.Join(" | ", expected)}) is not on the screen as consecutive rows. The screen was: {shown}");
+
+        var others = rows.Where((_, index) => index < start || index >= start + expected.Count).ToList();
+        others.ShouldNotContain(
+            row => StateTokens.Any(token => row.Contains(token, StringComparison.Ordinal)),
+            $"a piece of an old state is left on the screen. The screen was: {shown}");
+    }
+
+    /// <summary>Plays states into the display, waiting for each one to be drawn; the action runs after each (resize the window, for instance).</summary>
     private static DelegateFactory Playing(MockSimAdapter sim, FakeScreen screen, params (string Registration, Action? Then)[] steps)
     {
         return new DelegateFactory((_, _) => ScriptedSource(sim, async (s, ct) =>
@@ -382,55 +408,69 @@ public class AppRunnerTests : IDisposable
             {
                 s.SetState(Parked(registration));
                 await WaitForRowAsync(screen, registration, ct);
+                await Task.Delay(30, ct); // the whole block is written under one lock; give it a moment
                 then?.Invoke();
             }
         }));
     }
 
-    // The rows of the screen on one line, for failure messages.
-    private static string Describe(FakeScreen screen) => string.Join(" | ", screen.Rows);
-
-    // A state line starts with the time of the snapshot; a status message starts with "[time]" and a banner with "Fonia".
-    private static readonly System.Text.RegularExpressions.Regex StateRowStart = new(@"^\d{2}:\d{2}:\d{2}  ", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-
-    /// <summary>
-    /// The screen shows exactly one state line, it is the latest one, it is not wider than the window, and nothing
-    /// of any earlier state line is left anywhere (neither the first nor a wrapped continuation of it).
-    /// </summary>
-    private static void AssertSingleStateRow(FakeScreen screen, string registration, int maxLength)
+    [Theory]
+    [InlineData(200)] // one row
+    [InlineData(80)]  // a few rows
+    [InlineData(40)]
+    public async Task A_new_snapshot_never_adds_a_line_to_the_screen(int width)
     {
-        var rows = screen.Rows;
-        var shown = Describe(screen);
-        var stateRows = rows.Where(row => StateRowStart.IsMatch(row)).ToList();
+        var screen = new FakeScreen(width);
+        var sim = new MockSimAdapter();
+        var heights = new List<int>();
+        var runner = ScreenRunner(
+            Playing(
+                sim,
+                screen,
+                ("PR-AAA", () => heights.Add(screen.Rows.Count)),
+                ("PR-BBB", () => heights.Add(screen.Rows.Count)),
+                ("PR-CCC", () => heights.Add(screen.Rows.Count)),
+                ("PR-DDD", () => heights.Add(screen.Rows.Count)),
+                ("PR-EEE", () => heights.Add(screen.Rows.Count))),
+            screen);
 
-        stateRows.Count.ShouldBe(1, $"expected one state row. The screen was: {shown}");
-        stateRows[0].ShouldContain(registration, customMessage: $"the state row is not the latest. The screen was: {shown}");
-        stateRows[0].Length.ShouldBeLessThanOrEqualTo(maxLength, $"the state row is wider than the window. The screen was: {shown}");
+        await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
 
-        var others = rows.Where(row => !ReferenceEquals(row, stateRows[0])).ToList();
-        others.ShouldNotContain(
-            row => row.Contains("HDG", StringComparison.Ordinal) || row.Contains("XPDR", StringComparison.Ordinal)
-                || row.Contains("COM1", StringComparison.Ordinal) || row.Contains("AGL", StringComparison.Ordinal)
-                || row.Contains(" GS ", StringComparison.Ordinal) || row.Contains("PR-AAA", StringComparison.Ordinal),
-            $"a piece of an old state line is left on the screen. The screen was: {shown}");
+        heights.Distinct().Count().ShouldBe(1, $"the screen grew with the updates: {string.Join(", ", heights)}. Final screen: {Describe(screen)}");
+        AssertShowsOnly(screen, "PR-EEE", columns: width - 1);
     }
 
     [Fact]
-    public async Task Shrinking_the_window_while_running_keeps_the_state_on_one_screen_row()
+    public async Task In_a_narrow_window_everything_is_still_shown_over_a_few_rows()
     {
-        // The reported bug: the line was drawn in a wide window; shrinking it made the terminal wrap that line onto
-        // two rows, and the next update was drawn on the second one, leaving the first behind as a new line.
+        var screen = new FakeScreen(60);
+        var sim = new MockSimAdapter();
+        var runner = ScreenRunner(Playing(sim, screen, ("PR-AAA", null)), screen);
+
+        await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
+
+        var block = StateFormatter.FormatRows(Parked("PR-AAA"), 59);
+        block.Count.ShouldBeGreaterThan(1);
+        string.Join("  ", block).ShouldBe(StateFormatter.Format(Parked("PR-AAA"))); // nothing was dropped
+        AssertShowsOnly(screen, "PR-AAA", columns: 59);
+    }
+
+    [Fact]
+    public async Task Shrinking_the_window_while_running_keeps_one_block_in_the_same_place()
+    {
+        // The reported bug: a line drawn in a wide window was wrapped by the terminal when the window shrank, and the
+        // next update appeared below it, as a new line, leaving the old one behind.
         var screen = new FakeScreen(200);
         var sim = new MockSimAdapter();
         var runner = ScreenRunner(Playing(sim, screen, ("PR-AAA", () => screen.Resize(70)), ("PR-BBB", null)), screen);
 
         await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
 
-        AssertSingleStateRow(screen, "PR-BBB", maxLength: 69);
+        AssertShowsOnly(screen, "PR-BBB", columns: 69);
     }
 
     [Fact]
-    public async Task Shrinking_the_window_several_times_never_leaves_old_lines_behind()
+    public async Task Shrinking_the_window_several_times_never_leaves_old_text_behind()
     {
         var screen = new FakeScreen(200);
         var sim = new MockSimAdapter();
@@ -440,31 +480,31 @@ public class AppRunnerTests : IDisposable
                 screen,
                 ("PR-AAA", () => screen.Resize(120)),
                 ("PR-BBB", () => screen.Resize(60)),
-                ("PR-CCC", () => screen.Resize(25)),
+                ("PR-CCC", () => screen.Resize(30)),
                 ("PR-DDD", null)),
             screen);
 
         await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
 
-        AssertSingleStateRow(screen, "PR-DDD", maxLength: 24);
+        AssertShowsOnly(screen, "PR-DDD", columns: 29);
     }
 
     [Fact]
-    public async Task Growing_the_window_again_still_keeps_one_row()
+    public async Task Growing_and_shrinking_the_window_again_still_leaves_one_block()
     {
         var screen = new FakeScreen(60);
         var sim = new MockSimAdapter();
         var runner = ScreenRunner(
-            Playing(sim, screen, ("PR-AAA", () => screen.Resize(200)), ("PR-BBB", () => screen.Resize(60)), ("PR-CCC", null)),
+            Playing(sim, screen, ("PR-AAA", () => screen.Resize(200)), ("PR-BBB", () => screen.Resize(60)), ("PR-CCC", () => screen.Resize(90)), ("PR-DDD", null)),
             screen);
 
         await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
 
-        AssertSingleStateRow(screen, "PR-CCC", maxLength: 59);
+        AssertShowsOnly(screen, "PR-DDD", columns: 89);
     }
 
     [Fact]
-    public async Task A_window_that_still_fits_the_line_after_a_resize_changes_nothing_on_screen()
+    public async Task A_resize_that_still_fits_the_state_changes_nothing_on_screen()
     {
         var screen = new FakeScreen(200);
         var sim = new MockSimAdapter();
@@ -472,12 +512,12 @@ public class AppRunnerTests : IDisposable
 
         await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
 
-        AssertSingleStateRow(screen, "PR-BBB", maxLength: 149);
-        screen.Rows.ShouldContain(row => row.Contains("COM1 121.900/118.100", StringComparison.Ordinal)); // the full layout still fits
+        AssertShowsOnly(screen, "PR-BBB", columns: 149);
+        StateFormatter.FormatRows(Parked("PR-BBB"), 149).Count.ShouldBe(1); // still a single row
     }
 
     [Fact]
-    public async Task The_state_never_scrolls_above_the_banner_and_messages_that_were_already_on_screen()
+    public async Task Redrawing_the_block_never_touches_what_was_printed_above_it()
     {
         var screen = new FakeScreen(200);
         var sim = new MockSimAdapter();
@@ -485,9 +525,11 @@ public class AppRunnerTests : IDisposable
 
         await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
 
-        // Moving the cursor up to erase the wrapped rows must not eat what is above the state line.
-        screen.Rows[0].ShouldStartWith("Fonia -");
-        screen.Rows.Count(row => row.StartsWith('[')).ShouldBeGreaterThanOrEqualTo(2); // Conectando, Conectado
+        // Moving the cursor up to erase the old rows must not eat the banner and the messages above the state.
+        var text = string.Concat(screen.Rows).Replace(" ", string.Empty, StringComparison.Ordinal);
+        text.ShouldStartWith("Fonia-teste.Ctrl+Cparasair.");
+        text.ShouldContain("Conectandoaosimulador...");
+        text.ShouldContain("Conectado.");
     }
 
     [Fact]

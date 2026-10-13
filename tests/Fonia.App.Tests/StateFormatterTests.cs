@@ -85,124 +85,98 @@ public class StateFormatterTests
         line.ShouldContain("  ?  ");
     }
 
-    // ---- fitting a narrow terminal: one line, never wider than the window ----
+    // ---- a narrow terminal: the same information, spread over as many rows as the window needs ----
 
     [Fact]
-    public void When_the_window_is_wide_enough_the_full_line_is_used()
+    public void In_a_wide_window_the_state_is_a_single_row_identical_to_the_full_line()
     {
-        StateFormatter.Format(Flying(), 400).ShouldBe(StateFormatter.Format(Flying()));
-        StateFormatter.Format(Flying(), StateFormatter.Format(Flying()).Length).ShouldBe(StateFormatter.Format(Flying()));
+        var rows = StateFormatter.FormatRows(Flying(), 400);
+
+        rows.ShouldBe([StateFormatter.Format(Flying())]);
+        StateFormatter.FormatRows(Flying(), StateFormatter.Format(Flying()).Length).ShouldBe([StateFormatter.Format(Flying())]);
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-5)]
-    public void An_unknown_width_means_no_limit(int width)
+    public void An_unknown_width_means_a_single_row(int columns)
     {
-        StateFormatter.Format(Flying(), width).ShouldBe(StateFormatter.Format(Flying()));
+        StateFormatter.FormatRows(Flying(), columns).ShouldBe([StateFormatter.Format(Flying())]);
     }
 
     [Fact]
-    public void A_narrower_window_drops_the_least_essential_information_first()
+    public void A_narrower_window_needs_more_rows_but_shows_exactly_the_same_information()
     {
         var full = StateFormatter.Format(Flying());
 
-        // One column short: the standby frequencies go, everything else stays.
-        var noStandby = StateFormatter.Format(Flying(), full.Length - 1);
-        noStandby.ShouldNotContain("/");
-        noStandby.ShouldContain("COM1 130.850");
-        noStandby.ShouldContain("COM2 121.500");
-        noStandby.ShouldContain("AGL");
-        noStandby.ShouldContain("XPDR 1200");
+        var rows = StateFormatter.FormatRows(Flying(), 60);
 
-        // Then the height above ground, keeping both radios.
-        var noAgl = StateFormatter.Format(Flying(), noStandby.Length - 1);
-        noAgl.ShouldNotContain("AGL");
-        noAgl.ShouldContain("COM1 130.850");
-        noAgl.ShouldContain("COM2 121.500");
-        noAgl.ShouldContain("XPDR 1200");
-
-        // Then COM2.
-        var core = StateFormatter.Format(Flying(), noAgl.Length - 1);
-        core.ShouldNotContain("COM2");
-        core.ShouldContain("COM1 130.850");
-        core.ShouldContain("XPDR 1200");
-
-        // Then the radios, keeping where the aircraft is and how it moves.
-        var minimal = StateFormatter.Format(Flying(), core.Length - 1);
-        minimal.ShouldNotContain("COM");
-        minimal.ShouldContain("PR-FRA");
-        minimal.ShouldContain("27.13246°S 52.66867°W");
-        minimal.ShouldContain("5675 ft");
-        minimal.ShouldContain("GS 79 kt");
-        minimal.ShouldContain("HDG 021°");
-        minimal.ShouldContain("XPDR 1200");
+        rows.Count.ShouldBeGreaterThan(1);
+        rows.ShouldAllBe(row => row.Length <= 60);
+        string.Join("  ", rows).ShouldBe(full); // nothing dropped, nothing reordered, no field split
     }
 
     [Fact]
-    public void Below_the_smallest_layout_the_line_is_cut_with_an_ellipsis_to_exactly_the_width()
+    public void A_field_is_never_split_across_two_rows()
     {
-        var width = StateFormatter.Format(Flying()).Length;
-        var minimal = StateFormatter.Format(Flying(), width);
+        var fields = new[] { "PR-FRA C25C", "27.13246°S 52.66867°W", "5675 ft (3637 AGL)", "GS 79 kt", "HDG 021°", "AR", "COM1 130.850/124.850", "COM2 121.500/123.450", "XPDR 1200" };
 
-        // Shrink one column at a time until the layouts run out: the last one that is not an ellipsis cut.
-        while (width > 1)
+        for (var columns = 21; columns <= 140; columns++)
         {
-            var next = StateFormatter.Format(Flying(), width - 1);
-            if (next.EndsWith('…'))
+            var rows = StateFormatter.FormatRows(Flying(), columns);
+
+            foreach (var field in fields)
             {
-                break;
+                rows.ShouldContain(row => row.Contains(field, StringComparison.Ordinal), $"the field '{field}' was split at {columns} columns: {string.Join(" | ", rows)}");
             }
-
-            minimal = next;
-            width--;
         }
-
-        var cut = StateFormatter.Format(Flying(), minimal.Length - 1);
-
-        cut.Length.ShouldBe(minimal.Length - 1);
-        cut.ShouldEndWith("…");
-        minimal.ShouldStartWith(cut[..^1]); // the same line, just shortened at the end
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(5)]
-    public void A_tiny_window_still_gets_a_line_of_exactly_that_width(int width)
-    {
-        var line = StateFormatter.Format(Flying(), width);
-        var timeOfDay = Flying().Timestamp.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
-
-        line.Length.ShouldBe(width);
-        line.ShouldEndWith("…");
-        line[..^1].ShouldBe(timeOfDay[..(width - 1)]);
     }
 
     [Fact]
-    public void For_every_window_width_the_line_never_wraps_and_never_grows_when_the_window_shrinks()
+    public void For_every_width_no_row_is_wider_than_the_window_and_no_row_is_empty()
     {
-        var previous = int.MaxValue;
-
-        for (var width = 220; width >= 1; width--)
+        for (var columns = 200; columns >= 1; columns--)
         {
-            var line = StateFormatter.Format(Flying(), width);
+            var rows = StateFormatter.FormatRows(Flying(), columns);
 
-            line.Length.ShouldBeLessThanOrEqualTo(width, $"width {width}");
-            line.ShouldNotBeEmpty();
-            line.ShouldNotContain("\n");
-            line.Length.ShouldBeLessThanOrEqualTo(previous, $"the line grew while the window shrank at width {width}");
-            previous = line.Length;
+            rows.ShouldNotBeEmpty();
+            rows.ShouldAllBe(row => row.Length > 0 && row.Length <= columns, $"at {columns} columns: {string.Join(" | ", rows)}");
         }
     }
 
     [Fact]
-    public void A_radio_the_aircraft_does_not_have_stays_marked_in_the_compact_layouts()
+    public void A_narrower_window_never_needs_fewer_rows()
     {
-        var line = StateFormatter.Format(Flying() with { Com2 = null }, StateFormatter.Format(Flying() with { Com2 = null }).Length - 1);
+        var previous = 0;
 
-        line.ShouldContain("COM1");
-        line.ShouldContain("COM2 --");
+        for (var columns = 200; columns >= 21; columns--)
+        {
+            var count = StateFormatter.FormatRows(Flying(), columns).Count;
+
+            count.ShouldBeGreaterThanOrEqualTo(previous, $"at {columns} columns");
+            previous = count;
+        }
+    }
+
+    [Fact]
+    public void A_window_narrower_than_a_field_still_loses_no_characters()
+    {
+        var withoutSpaces = StateFormatter.Format(Flying()).Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        for (var columns = 1; columns <= 20; columns++)
+        {
+            var rows = StateFormatter.FormatRows(Flying(), columns);
+
+            string.Concat(rows).Replace(" ", string.Empty, StringComparison.Ordinal).ShouldBe(withoutSpaces, $"at {columns} columns");
+        }
+    }
+
+    [Fact]
+    public void A_radio_the_aircraft_does_not_have_stays_marked_in_every_layout()
+    {
+        var rows = StateFormatter.FormatRows(Flying() with { Com2 = null }, 50);
+
+        rows.ShouldContain(row => row.Contains("COM2 --", StringComparison.Ordinal));
     }
 
     [Fact]

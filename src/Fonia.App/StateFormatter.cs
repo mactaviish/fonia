@@ -1,113 +1,94 @@
 using System.Globalization;
+using System.Text;
 using Fonia.Core.Sim;
 
 namespace Fonia.App;
 
 /// <summary>
-/// Turns an <see cref="AircraftState"/> into the single line the console shows. Always culture-invariant.
+/// Turns an <see cref="AircraftState"/> into the text the console shows. Always culture-invariant.
 /// </summary>
 /// <remarks>
-/// On a terminal the line is rewritten in place, so it must never be wider than the window (it would wrap and
-/// stop being one line). <see cref="Format(AircraftState, int)"/> therefore picks the richest layout that fits and,
-/// as the window narrows, drops the least essential information first: the standby frequencies, then the height above
-/// ground, then COM2, then the radios. Position, altitude, speed, heading, ground/air and the squawk are kept as long
-/// as possible; below that the line is cut with an ellipsis.
+/// The state is a list of fields (time, aircraft, position, altitude, speed, heading, ground/air, COM1, COM2, squawk).
+/// <see cref="Format(AircraftState)"/> joins them in one line; <see cref="FormatRows"/> lays the very same fields out
+/// over as many rows as a window of a given width needs, never splitting a field between two rows. Nothing is ever
+/// dropped: a narrow window just gets more rows.
 /// </remarks>
 internal static class StateFormatter
 {
-    private const string Ellipsis = "…";
+    private const string Separator = "  ";
 
-    // From the richest to the most compact. Each one is strictly shorter than the one before it.
-    private static readonly Layout[] Layouts =
-    [
-        new(ShowAgl: true, Radios: RadioDetail.ActiveAndStandby),
-        new(ShowAgl: true, Radios: RadioDetail.ActiveOnly),
-        new(ShowAgl: false, Radios: RadioDetail.ActiveOnly),
-        new(ShowAgl: false, Radios: RadioDetail.Com1ActiveOnly),
-        new(ShowAgl: false, Radios: RadioDetail.None),
-    ];
-
-    private enum RadioDetail
-    {
-        ActiveAndStandby,
-        ActiveOnly,
-        Com1ActiveOnly,
-        None,
-    }
-
-    /// <summary>The full line, with no limit on its width.</summary>
+    /// <summary>The whole state as a single line, whatever its width.</summary>
     public static string Format(AircraftState state)
     {
-        ArgumentNullException.ThrowIfNull(state);
-
-        return Build(state, Layouts[0]);
+        return string.Join(Separator, Fields(state));
     }
 
     /// <summary>
-    /// The richest line that is at most <paramref name="maxWidth"/> characters wide. A width of zero or less means
-    /// "unknown": no limit.
+    /// The whole state over as many rows as needed so that no row is wider than <paramref name="columns"/>; fields are
+    /// kept whole and in order. A width of zero or less means "unknown": a single row.
     /// </summary>
-    public static string Format(AircraftState state, int maxWidth)
+    public static IReadOnlyList<string> FormatRows(AircraftState state, int columns)
     {
-        ArgumentNullException.ThrowIfNull(state);
+        var fields = Fields(state);
 
-        if (maxWidth <= 0)
+        if (columns <= 0)
         {
-            return Format(state);
+            return [string.Join(Separator, fields)];
         }
 
-        foreach (var layout in Layouts)
-        {
-            var line = Build(state, layout);
+        var rows = new List<string>();
+        var row = new StringBuilder();
 
-            if (line.Length <= maxWidth)
+        foreach (var piece in fields.SelectMany(field => Pieces(field, columns)))
+        {
+            if (row.Length == 0)
             {
-                return line;
+                row.Append(piece);
+            }
+            else if (row.Length + Separator.Length + piece.Length <= columns)
+            {
+                row.Append(Separator).Append(piece);
+            }
+            else
+            {
+                rows.Add(row.ToString());
+                row.Clear().Append(piece);
             }
         }
 
-        var smallest = Build(state, Layouts[^1]);
-        return maxWidth == 1 ? Ellipsis : string.Concat(smallest.AsSpan(0, maxWidth - 1), Ellipsis);
+        rows.Add(row.ToString());
+        return rows;
     }
 
-    private static string Build(AircraftState state, Layout layout)
+    private static List<string> Fields(AircraftState state)
     {
+        ArgumentNullException.ThrowIfNull(state);
+
         var time = state.Timestamp.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture);
         var aircraft = string.Join(' ', new[] { state.Registration, state.AircraftType }.Select(x => x.Trim()).Where(x => x.Length > 0));
 
-        var parts = new List<string>
-        {
+        return
+        [
             time,
             aircraft.Length > 0 ? aircraft : "?",
             string.Create(CultureInfo.InvariantCulture, $"{Coordinate(state.LatitudeDegrees, "N", "S")} {Coordinate(state.LongitudeDegrees, "E", "W")}"),
-            layout.ShowAgl
-                ? string.Create(CultureInfo.InvariantCulture, $"{state.AltitudeMslFeet:F0} ft ({state.AltitudeAglFeet:F0} AGL)")
-                : string.Create(CultureInfo.InvariantCulture, $"{state.AltitudeMslFeet:F0} ft"),
+            string.Create(CultureInfo.InvariantCulture, $"{state.AltitudeMslFeet:F0} ft ({state.AltitudeAglFeet:F0} AGL)"),
             string.Create(CultureInfo.InvariantCulture, $"GS {state.GroundSpeedKnots:F0} kt"),
             string.Create(CultureInfo.InvariantCulture, $"HDG {Heading(state.HeadingMagneticDegrees):000}°"),
             state.OnGround ? "SOLO" : "AR",
-        };
+            $"COM1 {Radio(state.Com1)}",
+            $"COM2 {Radio(state.Com2)}",
+            string.Create(CultureInfo.InvariantCulture, $"XPDR {state.TransponderCode:0000}"),
+        ];
+    }
 
-        switch (layout.Radios)
+    // A field wider than the window (only in an absurdly narrow one) has to be cut, or no row could ever fit it.
+    private static IEnumerable<string> Pieces(string field, int columns)
+    {
+        for (var start = 0; start < field.Length; start += columns)
         {
-            case RadioDetail.ActiveAndStandby:
-                parts.Add($"COM1 {Radio(state.Com1, withStandby: true)}");
-                parts.Add($"COM2 {Radio(state.Com2, withStandby: true)}");
-                break;
-            case RadioDetail.ActiveOnly:
-                parts.Add($"COM1 {Radio(state.Com1, withStandby: false)}");
-                parts.Add($"COM2 {Radio(state.Com2, withStandby: false)}");
-                break;
-            case RadioDetail.Com1ActiveOnly:
-                parts.Add($"COM1 {Radio(state.Com1, withStandby: false)}");
-                break;
-            case RadioDetail.None:
-                break;
+            yield return field.Substring(start, Math.Min(columns, field.Length - start));
         }
-
-        parts.Add(string.Create(CultureInfo.InvariantCulture, $"XPDR {state.TransponderCode:0000}"));
-
-        return string.Join("  ", parts);
     }
 
     private static string Coordinate(double degrees, string positive, string negative)
@@ -122,15 +103,8 @@ internal static class StateFormatter
         return rounded % 360;
     }
 
-    private static string Radio(RadioState? radio, bool withStandby)
+    private static string Radio(RadioState? radio)
     {
-        if (radio is null)
-        {
-            return "--";
-        }
-
-        return withStandby ? $"{radio.Active}/{radio.Standby}" : radio.Active.ToString();
+        return radio is null ? "--" : $"{radio.Active}/{radio.Standby}";
     }
-
-    private readonly record struct Layout(bool ShowAgl, RadioDetail Radios);
 }

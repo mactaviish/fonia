@@ -127,9 +127,25 @@ internal sealed class FakeScreen : TextWriter, ITerminal
                     _offset = _offset / _width * _width; // back to the start of the current screen row
                     break;
                 case '\n':
-                    _lines.Insert(_line + 1, new StringBuilder());
-                    _line++;
-                    _offset = 0;
+                    // Down one screen row, to its first column: the next row of this text if it has one (it was
+                    // wrapped), else the next line of text, else a new one. Whatever is already there stays.
+                    var row = _offset / _width;
+
+                    if (row + 1 < RowCount(_line))
+                    {
+                        _offset = (row + 1) * _width;
+                    }
+                    else
+                    {
+                        if (_line + 1 >= _lines.Count)
+                        {
+                            _lines.Add(new StringBuilder());
+                        }
+
+                        _line++;
+                        _offset = 0;
+                    }
+
                     break;
                 default:
                     var text = _lines[_line];

@@ -11,9 +11,9 @@ namespace Fonia.App;
 /// </summary>
 /// <param name="interactive">True on a terminal: the state is one line rewritten in place. Otherwise (output redirected to a file) every snapshot is its own line.</param>
 /// <param name="terminal">
-/// Asked on every update how wide the terminal is, so the state line is fitted to it and never wraps, and used to
-/// clean up when a shrinking window has already made the terminal wrap the previous line onto several rows.
-/// <see langword="null"/> (or unknown values) means no limit and no clean-up.
+/// Asked on every update how wide the terminal is, so the state is laid out over as many rows as that width needs, and
+/// used to rewrite those rows in place, erasing the old ones even when a resize has made the terminal wrap them again.
+/// <see langword="null"/> (or unknown values) means one row and no cursor control.
 /// </param>
 internal sealed class AppRunner(
     ISimSourceFactory sourceFactory,
@@ -25,8 +25,8 @@ internal sealed class AppRunner(
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
     private readonly Lock _writeLock = new();
-    private bool _lineOpen;
-    private int _writtenLength; // characters of the state line on screen, padding included
+    private List<string> _block = [];  // the rows of the state as written to the screen (padding included); empty when none is on screen
+    private int _blockWrap;                // the width at which the terminal wrapped the block when it was written
     private bool _everConnected;
 
     /// <summary>Returns the exit code: 0 normal, 1 failure while running, 2 wrong usage.</summary>
@@ -205,47 +205,86 @@ internal sealed class AppRunner(
                 return;
             }
 
-            var columns = terminal?.Columns ?? 0;
-            var line = StateFormatter.Format(state, columns);
-
-            if (!EraseWrappedLine())
-            {
-                output.Write('\r');
-            }
-
-            // Padding erases what a longer previous line left behind, but never goes past the window.
-            var padTo = columns > 0 ? Math.Min(_writtenLength, columns) : _writtenLength;
-            var text = line.PadRight(padTo);
-
-            output.Write(text);
-            _writtenLength = text.Length;
-            _lineOpen = true;
+            List<string> rows = terminal is null ? [StateFormatter.Format(state)] : [.. StateFormatter.FormatRows(state, terminal.Columns)];
+            Rewrite(rows);
         }
     }
 
-    // When the window has been made narrower than the line already on screen, the terminal re-wraps that line onto
-    // several rows and leaves the cursor at the end of the last one. A carriage return would only go back to the start
-    // of that last row, so the update would be drawn below the rest, as if it were a new line. Instead, go up to the
-    // first row, blank every row the old line covers, and let the caller draw from there. Returns false when there was
-    // nothing wrapped (the usual case), so the caller does a plain carriage return.
-    // Must be called with _writeLock held.
-    private bool EraseWrappedLine()
+    // Draws the state at the place where the previous one was, so it never adds lines: the block is one row in a wide
+    // window and a few in a narrow one, and the same rows are redrawn on every update. The cursor always rests at the
+    // end of the block, which is how its place is found again. Must be called with _writeLock held.
+    private void Rewrite(List<string> rows)
     {
         var wrap = terminal?.WrapColumns ?? 0;
 
-        if (terminal is null || !_lineOpen || wrap <= 0 || _writtenLength <= wrap)
+        if (_block.Count == 0)
         {
-            return false;
+            Draw(rows, wrap);
+            return;
         }
 
-        var rows = (_writtenLength + wrap - 1) / wrap;
-        var top = Math.Max(0, terminal.CursorTop - (rows - 1));
+        if (terminal is null)
+        {
+            // No cursor control: a single row, rewritten from the start of its line.
+            output.Write('\r');
+            Draw([rows[0].PadRight(_block[0].Length)], wrap);
+            return;
+        }
+
+        // How many screen rows the old block covers now: a window that shrank since it was written has made the
+        // terminal wrap its rows again, and the cursor sits at the end of the last of them.
+        var covered = ScreenRows(_block, wrap);
+        var top = Math.Max(0, terminal.CursorTop - (covered - 1));
+
+        if (wrap == _blockWrap && rows.Count == _block.Count && covered == _block.Count)
+        {
+            // The usual case: the same rows as before. Overwrite them, padded so shorter text leaves nothing behind.
+            var padded = rows.Select((row, i) => row.PadRight(_block[i].Length)).ToList();
+
+            for (var i = 0; i < padded.Count; i++)
+            {
+                terminal.SetCursor(0, top + i);
+                output.Write(padded[i]);
+            }
+
+            _block = padded;
+            return;
+        }
+
+        // The layout changed (the window was resized): blank every screen row the old block covers and draw the new
+        // block from the first of them, so no piece of the old one is left behind.
+        var blank = new string(' ', wrap > 0 ? wrap : _block.Max(row => row.Length));
+
+        for (var i = 0; i < covered; i++)
+        {
+            terminal.SetCursor(0, top + i);
+            output.Write(blank);
+        }
 
         terminal.SetCursor(0, top);
-        output.Write(new string(' ', _writtenLength));
-        terminal.SetCursor(0, top);
-        _writtenLength = 0;
-        return true;
+        Draw(rows, wrap);
+    }
+
+    private void Draw(List<string> rows, int wrap)
+    {
+        for (var i = 0; i < rows.Count; i++)
+        {
+            output.Write(rows[i]);
+
+            if (i < rows.Count - 1)
+            {
+                output.WriteLine();
+            }
+        }
+
+        _block = rows;
+        _blockWrap = wrap;
+    }
+
+    // Screen rows taken by rows of text when the terminal wraps at wrap columns (one per row when it does not say).
+    private static int ScreenRows(List<string> rows, int wrap)
+    {
+        return wrap <= 0 ? rows.Count : rows.Sum(row => Math.Max(1, (row.Length + wrap - 1) / wrap));
     }
 
     private void EndLine()
@@ -259,11 +298,10 @@ internal sealed class AppRunner(
     // Must be called with _writeLock held.
     private void EndLineLocked()
     {
-        if (_lineOpen)
+        if (_block.Count > 0)
         {
             output.WriteLine();
-            _lineOpen = false;
-            _writtenLength = 0;
+            _block = [];
         }
     }
 }
