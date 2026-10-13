@@ -32,7 +32,7 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 - [x] Notas de fraseologia (MCA 100-16, edição 2025) em `docs/phraseology/` e exemplos dos docs corrigidos
 - [x] Carregar um aeroporto (OurAirports): pistas e frequências, e `data/atc-names.csv` com o nome falado dos aeroportos controlados (`Fonia.Data`)
 - [ ] Quem responde, como no aeroporto real: Solo, senão Torre, senão AFIS (só informação), senão nenhum serviço
-- [ ] NLU por regras, tolerante a frases fora do padrão, para: `RequestStartup`, `RequestPushback`, `RequestTaxi`, `Readback`, `SayAgain`
+- [x] NLU por regras, tolerante a frases fora do padrão, para: `RequestStartup`, `RequestPushback`, `RequestTaxi`, `Readback`, `SayAgain`
 - [ ] Máquina de estados do Solo
 - [ ] Templates de fraseologia pt-BR para essas instruções (números, letras e indicativos como o manual manda)
 - [ ] Console: você digita a fala do piloto, o app responde em texto, usando o estado real (ou mockado) do simulador
