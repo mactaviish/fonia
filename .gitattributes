@@ -17,3 +17,4 @@
 # Visual Studio solution files conventionally use CRLF.
 *.sln       text eol=crlf
 .gitattributes text eol=lf
+*.csv text eol=lf
