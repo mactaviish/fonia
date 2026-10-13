@@ -78,7 +78,8 @@ public sealed class AtcEngine : IAtcEngine
 
         var heard = SpokenTokens.Tokenize(readback.Text);
 
-        if (IsCorrect(expected, heard))
+        // The callsign is part of the readback (Art. 12 lists the registration; the practice ends the readback with it).
+        if (readback.Callsign is not null && IsCorrect(expected, heard))
         {
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }
@@ -90,7 +91,7 @@ public sealed class AtcEngine : IAtcEngine
     // The taxi readback must have the runway; the startup and pushback ones must say what was approved.
     private static bool IsCorrect(AtcInstruction expected, IReadOnlyList<string> heard) => expected switch
     {
-        TaxiClearance taxi => RuleBasedNlu.FindRunway(heard) is { } runway && RunwayDesignator.AreSame(runway, taxi.Runway),
+        TaxiClearance taxi => RuleBasedNlu.FindRunwayInReadback(heard) is { } runway && RunwayDesignator.AreSame(runway, taxi.Runway),
         StartupApproved => RuleBasedNlu.MentionsStartup(heard),
         PushbackApproved pushback => RuleBasedNlu.MentionsPushback(heard) && (!pushback.WithStartup || RuleBasedNlu.MentionsStartup(heard)),
         _ => true,

@@ -17,17 +17,20 @@ public sealed class RuleBasedNlu : INlu
     private static readonly string[] SayAgainWords =
         ["repita", "repete", "repetir", "repeti", "novamente", "denovo", "copiei", "entendi", "confirme", "como"];
 
-    // The pilot is asking for something.
+    // The pilot is asking for something ("pronto" alone is a request too, unless the pilot is repeating "chame pronto").
     private static readonly string[] RequestStems =
-        ["solicit", "pedi", "pedido", "gostaria", "gostariamos", "preciso", "posso", "quero", "instruco", "instrucao", "pronto", "prontos"];
+        ["solicit", "pedi", "pedido", "gostaria", "gostariamos", "preciso", "posso", "quero", "instruco", "instrucao"];
 
     // The pilot is repeating what the controller said, or acknowledging it.
     private static readonly string[] ReadbackStems =
-        ["autorizad", "aprovad", "ciente", "copiad", "coteja", "chamo", "chamarei", "chamara", "reporto", "reportarei", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
+        ["autorizad", "aprovad", "ciente", "copiad", "coteja", "chame", "chamo", "chamar", "report", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
 
-    private static readonly string[] PushbackStems = ["pushback", "push", "empurr"];
-    private static readonly string[] StartupStems = ["acion", "partida", "start"];
+    private static readonly string[] PushbackStems = ["pushback", "push", "empurr", "recu"];
+    private static readonly string[] StartupStems = ["acion", "partida", "start", "ligar", "ligand", "motor"];
     private static readonly string[] TaxiStems = ["tax"];
+
+    // A pilot who only says "pronto" is ready for the taxi: it is what the controller asks for after startup and pushback.
+    private static readonly string[] ReadyStems = ["pronto", "pronta"];
     private static readonly string[] StandWords = ["box", "pos", "posicao", "stand", "patio", "vaga", "gate"];
 
     public Intent Interpret(string? text, FlightContext flight)
@@ -51,20 +54,23 @@ public sealed class RuleBasedNlu : INlu
 
         var pushback = HasAny(rest, PushbackStems);
         var startup = HasAny(rest, StartupStems);
-        var taxi = HasAny(rest, TaxiStems);
-        var asking = HasAny(rest, RequestStems) && !HasAny(rest, ["chame", "chamo", "chamarei"]);
         var repeating = HasAny(rest, ReadbackStems);
+        var taxi = HasAny(rest, TaxiStems) || (HasAny(rest, ReadyStems) && !pushback && !startup && !repeating);
+        var asking = HasAny(rest, RequestStems) || (HasAny(rest, ReadyStems) && !repeating);
 
         if (!pushback && !startup && !taxi)
         {
             // Only the callsign and who is being called, with no numbers or readback words: not an answer.
-            if (mentioned && !repeating && !asking && !rest.Contains("pista") && SpokenCode.Decode(string.Join(' ', rest)).Length == 0)
+            if (mentioned && !repeating && !asking && !rest.Contains("pista") && !HasNumber(rest))
             {
                 return new CallsignOnly(callsign);
             }
 
-            // Said something, but no request: with an instruction waiting, it is the pilot answering it.
-            return flight.PendingReadback is not null && rest.Count > 0
+            // Said something, but no request: with an instruction waiting, it is the pilot answering it, if it sounds
+            // like an answer (a readback word, a runway or numbers); anything else is not understood.
+            var soundsLikeAnAnswer = repeating || rest.Contains("pista") || HasNumber(rest);
+
+            return flight.PendingReadback is not null && soundsLikeAnAnswer
                 ? new Readback(callsign, string.Join(' ', rest))
                 : new Unknown(text ?? string.Empty);
         }
@@ -103,18 +109,35 @@ public sealed class RuleBasedNlu : INlu
     /// <summary>True when the words mention pushback.</summary>
     internal static bool MentionsPushback(IReadOnlyList<string> tokens) => HasAny(tokens, PushbackStems);
 
-    /// <summary>The runway the pilot named ("pista dois três esquerda" is "23L"), or null.</summary>
-    internal static string? FindRunway(IReadOnlyList<string> tokens)
+    /// <summary>The runway the pilot named after the word "pista" ("pista dois três esquerda" is "23L"), or null.</summary>
+    internal static string? FindRunway(IReadOnlyList<string> tokens) => FindRunwayAfter(tokens, token => token == "pista");
+
+    /// <summary>
+    /// The runway in a readback: after "pista" if the pilot said it, otherwise the first number that is a runway
+    /// ("para o ponto de espera da três três"). Only used on a readback, where the controller just said which runway,
+    /// because in a request a number may be something else ("box 3").
+    /// </summary>
+    internal static string? FindRunwayInReadback(IReadOnlyList<string> tokens) =>
+        FindRunway(tokens) ?? FindRunwayAfter(tokens, _ => true, includeStart: true);
+
+    private static string? FindRunwayAfter(IReadOnlyList<string> tokens, Func<string, bool> marker, bool includeStart = false)
     {
         for (var i = 0; i < tokens.Count; i++)
         {
-            if (tokens[i] != "pista")
+            if (!marker(tokens[i]))
             {
                 continue;
             }
 
-            var run = SpokenCode.ReadRun(tokens, i + 1, out var end);
+            var start = includeStart ? i : i + 1;
+            var run = SpokenCode.ReadRun(tokens, start, out var end);
             var digits = new string([.. run.TakeWhile(char.IsAsciiDigit)]);
+
+            if (digits.Length == 0)
+            {
+                continue;
+            }
+
             var side = SideAt(tokens, end, run, digits);
 
             if (RunwayDesignator.TryParse(digits + side, out _, out _))
@@ -190,6 +213,22 @@ public sealed class RuleBasedNlu : INlu
         }
 
         return [.. tokens];
+    }
+
+    // Letters alone do not count: "a", "o" and "e" are Portuguese words before they are letters of the alphabet.
+    private static bool HasNumber(List<string> tokens)
+    {
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            var index = i;
+
+            if (SpokenCode.TryRead(tokens, ref index, out var value) && value.Any(char.IsAsciiDigit))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool HasAny(IReadOnlyList<string> tokens, params string[][] stemLists) =>

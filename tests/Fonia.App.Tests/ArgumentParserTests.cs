@@ -198,7 +198,7 @@ public class ArgumentParserTests
     [Fact]
     public void The_help_text_describes_every_option()
     {
-        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--help" })
+        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--help" })
         {
             ArgumentParser.HelpText.ShouldContain(option);
         }
@@ -208,5 +208,63 @@ public class ArgumentParserTests
     public void Later_options_override_earlier_ones_of_the_same_kind()
     {
         Ok("--sim", "mock", "--sim", "msfs").Source.ShouldBe(SimSourceKind.Msfs);
+    }
+
+    [Fact]
+    public void The_atc_mode_takes_the_airport_in_capitals_and_reads_the_simulator_by_default()
+    {
+        var options = Ok("--atc", "sbct");
+
+        options.AtcAirport.ShouldBe("SBCT");
+        options.Runway.ShouldBeNull();
+        options.Callsign.ShouldBeNull();
+        options.Source.ShouldBe(SimSourceKind.Msfs);
+    }
+
+    [Fact]
+    public void The_atc_mode_accepts_runway_callsign_and_log_level()
+    {
+        var options = Ok("--atc=SBCT", "--runway", "15", "--callsign", "PR-ABC", "--log-level", "error");
+
+        options.AtcAirport.ShouldBe("SBCT");
+        options.Runway.ShouldBe("15");
+        options.Callsign.ShouldBe("PR-ABC");
+        options.LogLevel.ShouldBe(LogLevel.Error);
+    }
+
+    [Fact]
+    public void The_atc_mode_can_read_the_callsign_from_the_mock_simulator()
+    {
+        Ok("--atc", "SBCT", "--sim", "mock").Source.ShouldBe(SimSourceKind.Mock);
+    }
+
+    [Theory]
+    [InlineData("--runway", "15")]
+    [InlineData("--callsign", "PRABC")]
+    public void Runway_and_callsign_only_make_sense_in_the_atc_mode(string option, string value)
+    {
+        Error(option, value).ShouldContain("--atc");
+    }
+
+    [Theory]
+    [InlineData("--replay", "x.jsonl")]
+    [InlineData("--record", "x.jsonl")]
+    [InlineData("--speed", "2")]
+    [InlineData("--duration", "5")]
+    public void The_atc_mode_does_not_mix_with_the_telemetry_options(string option, string value)
+    {
+        Error("--atc", "SBCT", option, value).ShouldContain("--atc não combina");
+    }
+
+    [Fact]
+    public void A_callsign_makes_the_simulator_option_pointless_and_is_refused_to_avoid_confusion()
+    {
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--sim", "mock").ShouldContain("--callsign dispensa o simulador");
+    }
+
+    [Fact]
+    public void The_atc_option_needs_a_value()
+    {
+        Error("--atc").ShouldContain("precisa de um valor");
     }
 }

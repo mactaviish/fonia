@@ -173,6 +173,105 @@ public class RuleBasedNluTests
         _nlu.Interpret("PRABC", asked).ShouldBe(new CallsignOnly(Own));
     }
 
+    [Theory]
+    [InlineData("blá blá")]
+    [InlineData("qual é o tempo hoje")]
+    public void Nonsense_is_not_a_readback_even_with_an_instruction_waiting(string said)
+    {
+        _nlu.Interpret(said, AwaitingReadback).ShouldBe(new Unknown(said));
+    }
+
+    // The pilot may be as short as he likes: what is in the words is understood.
+    [Theory]
+    [InlineData("pushback", null, false, null)]
+    [InlineData("abc pushback", Own, false, null)]
+    [InlineData("pushback abc", Own, false, null)]
+    [InlineData("acionar pushback abc", Own, true, null)]
+    [InlineData("abc push e start", Own, true, null)]
+    [InlineData("box 3 abc pushback", Own, false, "box 3")]
+    [InlineData("a b c pushback", Own, false, null)]
+    [InlineData("prabc recuar", Own, false, null)]
+    public void A_terse_pushback_request_is_understood(string said, string? callsign, bool withStartup, string? stand)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new RequestPushback(callsign, withStartup, stand));
+    }
+
+    [Theory]
+    [InlineData("acionar", null)]
+    [InlineData("abc acionar", Own)]
+    [InlineData("abc partida", Own)]
+    [InlineData("abc ligar motores", Own)]
+    [InlineData("acionamento abc", Own)]
+    public void A_terse_startup_request_is_understood(string said, string? callsign)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new RequestStartup(callsign, null));
+    }
+
+    [Theory]
+    [InlineData("taxi", null)]
+    [InlineData("abc taxi", Own)]
+    [InlineData("abc pronto", Own)]
+    [InlineData("pronto abc", Own)]
+    [InlineData("pronto", null)]
+    [InlineData("abc pronto pra taxiar", Own)]
+    [InlineData("taxi abc", Own)]
+    public void A_terse_taxi_request_is_understood(string said, string? callsign)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new RequestTaxi(callsign, null));
+    }
+
+    [Theory]
+    [InlineData("33")]
+    [InlineData("3 3")]
+    [InlineData("tres tres")]
+    [InlineData("pista 33")]
+    [InlineData("trinta e tres abc")]
+    [InlineData("abc 15")]
+    public void A_terse_number_is_a_readback_when_a_taxi_clearance_waits(string said)
+    {
+        _nlu.Interpret(said, AwaitingReadback).ShouldBeOfType<Readback>();
+    }
+
+    [Theory]
+    [InlineData("acionamento")]
+    [InlineData("abc acionar")]
+    public void A_terse_word_is_the_startup_readback_when_a_startup_waits(string said)
+    {
+        var startupWaiting = Parked with { PendingReadback = new StartupApproved() };
+
+        _nlu.Interpret(said, startupWaiting).ShouldBeOfType<Readback>();
+    }
+
+    [Fact]
+    public void A_terse_pronto_after_a_pushback_is_a_taxi_request_not_a_readback()
+    {
+        var pushbackWaiting = Parked with { PendingReadback = new PushbackApproved(false) };
+
+        _nlu.Interpret("abc pronto", pushbackWaiting).ShouldBe(new RequestTaxi(Own, null));
+    }
+
+    [Theory]
+    [InlineData("autorizado pushback e acionamento, chamará pronto taxi o alfa bravo charlie")]
+    [InlineData("autorizado pushback e acionamento, chamo pronto para o táxi, PRABC")]
+    [InlineData("pushback e acionamento autorizados, chame pronto, abc")]
+    [InlineData("pushback aprovado, reportarei pronto para o taxi, abc")]
+    [InlineData("pushback, reporto pronto, abc")]
+    public void Repeating_chame_pronto_in_any_form_is_a_readback_not_a_new_request(string said)
+    {
+        var pushbackWaiting = Parked with { PendingReadback = new PushbackApproved(true) };
+
+        _nlu.Interpret(said, pushbackWaiting).ShouldBeOfType<Readback>();
+        _nlu.Interpret(said, Parked).ShouldBeOfType<Readback>();
+    }
+
+    [Fact]
+    public void Chamo_pronto_stays_a_readback_and_not_a_taxi_request()
+    {
+        var startupWaiting = Parked with { PendingReadback = new StartupApproved() };
+
+        _nlu.Interpret("acionamento, chamo pronto", startupWaiting).ShouldBeOfType<Readback>();
+    }
+
     [Fact]
     public void Null_text_is_unknown()
     {

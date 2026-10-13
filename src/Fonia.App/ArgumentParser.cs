@@ -18,7 +18,10 @@ internal sealed record AppOptions(
     double Speed = 1.0,
     string? RecordPath = null,
     TimeSpan? Duration = null,
-    LogLevel LogLevel = LogLevel.Warning);
+    LogLevel LogLevel = LogLevel.Warning,
+    string? AtcAirport = null,
+    string? Runway = null,
+    string? Callsign = null);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -27,9 +30,16 @@ internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool 
 internal static class ArgumentParser
 {
     public const string HelpText = """
-        Fonia: estado da aeronave em tempo real, vindo do simulador.
+        Fonia: estado da aeronave em tempo real, vindo do simulador, e ATC por texto.
 
         Uso: fonia [opções]
+             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>]
+
+          --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
+                                 aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
+          --runway <pista>       Pista em uso (ex.: 15, 33L). Padrão: a mais longa do aeroporto.
+          --callsign <indicativo>  Indicativo da aeronave (ex.: PR-ABC). Sem ele, vem da matrícula
+                                 da aeronave no simulador (--sim). Com ele, não usa simulador.
 
           --sim msfs|mock        Fonte dos dados. msfs (padrão) lê o Microsoft Flight Simulator 2020;
                                  mock mostra um taxi simulado, para testar sem simulador.
@@ -56,6 +66,9 @@ internal static class ArgumentParser
         SimSourceKind? source = null;
         string? replay = null;
         string? record = null;
+        string? atc = null;
+        string? runway = null;
+        string? callsign = null;
         double? speed = null;
         TimeSpan? duration = null;
         var logLevel = LogLevel.Warning;
@@ -74,7 +87,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -99,6 +112,15 @@ internal static class ArgumentParser
                 case "--record":
                     record = value;
                     break;
+                case "--atc":
+                    atc = value.Trim().ToUpperInvariant();
+                    break;
+                case "--runway":
+                    runway = value;
+                    break;
+                case "--callsign":
+                    callsign = value;
+                    break;
                 case "--speed":
                     speed = ParseSpeed(value, out problem);
                     break;
@@ -116,11 +138,22 @@ internal static class ArgumentParser
             }
         }
 
-        return Validate(source, replay, record, speed, duration, logLevel);
+        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign);
     }
 
-    private static ParsedArguments Validate(SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel)
+    private static ParsedArguments Validate(
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign)
     {
+        if (atc is null && (runway is not null || callsign is not null))
+        {
+            return Failure("--runway e --callsign só valem no modo ATC: use também --atc <ICAO>.");
+        }
+
+        if (atc is not null)
+        {
+            return ValidateAtc(source, replay, record, speed, duration, logLevel, atc, runway, callsign);
+        }
+
         if (replay is not null && source is SimSourceKind.Msfs or SimSourceKind.Mock)
         {
             return Failure("--replay não pode ser usado com --sim msfs ou --sim mock; use só --replay <arquivo>.");
@@ -139,6 +172,22 @@ internal static class ArgumentParser
         }
 
         return new ParsedArguments(new AppOptions(effective, replay, speed ?? 1.0, record, duration, logLevel), null, ShowHelp: false);
+    }
+
+    private static ParsedArguments ValidateAtc(
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string atc, string? runway, string? callsign)
+    {
+        if (replay is not null || record is not null || speed is not null || duration is not null || source == SimSourceKind.Replay)
+        {
+            return Failure("--atc não combina com --replay, --record, --speed nem --duration.");
+        }
+
+        if (callsign is not null && source is not null)
+        {
+            return Failure("--callsign dispensa o simulador: remova --sim, ou remova --callsign para usar a matrícula do simulador.");
+        }
+
+        return new ParsedArguments(new AppOptions(source ?? SimSourceKind.Msfs, LogLevel: logLevel, AtcAirport: atc, Runway: runway, Callsign: callsign), null, ShowHelp: false);
     }
 
     private static (string Name, string? Value) Split(string argument)
