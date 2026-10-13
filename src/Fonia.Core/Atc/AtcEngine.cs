@@ -78,7 +78,8 @@ public sealed class AtcEngine : IAtcEngine
 
         var heard = SpokenTokens.Tokenize(readback.Text);
 
-        if (IsCorrect(expected, heard))
+        // The callsign is part of the readback (Art. 12 lists the registration; the practice ends the readback with it).
+        if (readback.Callsign is not null && IsCorrect(expected, heard))
         {
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }

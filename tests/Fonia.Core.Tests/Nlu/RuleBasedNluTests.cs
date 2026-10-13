@@ -250,6 +250,20 @@ public class RuleBasedNluTests
         _nlu.Interpret("abc pronto", pushbackWaiting).ShouldBe(new RequestTaxi(Own, null));
     }
 
+    [Theory]
+    [InlineData("autorizado pushback e acionamento, chamará pronto taxi o alfa bravo charlie")]
+    [InlineData("autorizado pushback e acionamento, chamo pronto para o táxi, PRABC")]
+    [InlineData("pushback e acionamento autorizados, chame pronto, abc")]
+    [InlineData("pushback aprovado, reportarei pronto para o taxi, abc")]
+    [InlineData("pushback, reporto pronto, abc")]
+    public void Repeating_chame_pronto_in_any_form_is_a_readback_not_a_new_request(string said)
+    {
+        var pushbackWaiting = Parked with { PendingReadback = new PushbackApproved(true) };
+
+        _nlu.Interpret(said, pushbackWaiting).ShouldBeOfType<Readback>();
+        _nlu.Interpret(said, Parked).ShouldBeOfType<Readback>();
+    }
+
     [Fact]
     public void Chamo_pronto_stays_a_readback_and_not_a_taxi_request()
     {

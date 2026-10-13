@@ -17,13 +17,13 @@ public sealed class RuleBasedNlu : INlu
     private static readonly string[] SayAgainWords =
         ["repita", "repete", "repetir", "repeti", "novamente", "denovo", "copiei", "entendi", "confirme", "como"];
 
-    // The pilot is asking for something.
+    // The pilot is asking for something ("pronto" alone is a request too, unless the pilot is repeating "chame pronto").
     private static readonly string[] RequestStems =
-        ["solicit", "pedi", "pedido", "gostaria", "gostariamos", "preciso", "posso", "quero", "instruco", "instrucao", "pronto", "prontos"];
+        ["solicit", "pedi", "pedido", "gostaria", "gostariamos", "preciso", "posso", "quero", "instruco", "instrucao"];
 
     // The pilot is repeating what the controller said, or acknowledging it.
     private static readonly string[] ReadbackStems =
-        ["autorizad", "aprovad", "ciente", "copiad", "coteja", "chamo", "chamarei", "chamara", "reporto", "reportarei", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
+        ["autorizad", "aprovad", "ciente", "copiad", "coteja", "chame", "chamo", "chamar", "report", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
 
     private static readonly string[] PushbackStems = ["pushback", "push", "empurr", "recu"];
     private static readonly string[] StartupStems = ["acion", "partida", "start", "ligar", "ligand", "motor"];
@@ -56,7 +56,7 @@ public sealed class RuleBasedNlu : INlu
         var startup = HasAny(rest, StartupStems);
         var repeating = HasAny(rest, ReadbackStems);
         var taxi = HasAny(rest, TaxiStems) || (HasAny(rest, ReadyStems) && !pushback && !startup && !repeating);
-        var asking = HasAny(rest, RequestStems) && !HasAny(rest, ["chame", "chamo", "chamarei"]);
+        var asking = HasAny(rest, RequestStems) || (HasAny(rest, ReadyStems) && !repeating);
 
         if (!pushback && !startup && !taxi)
         {

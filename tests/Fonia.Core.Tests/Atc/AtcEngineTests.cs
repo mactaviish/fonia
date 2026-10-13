@@ -308,11 +308,23 @@ public class AtcEngineTests
     }
 
     [Fact]
-    public void A_readback_is_accepted_without_the_callsign()
+    public void A_readback_without_the_callsign_is_incomplete_and_is_corrected()
     {
         var approved = _engine.Handle(new RequestStartup(Own, null), Parked, Solo).NextContext;
 
-        _engine.Handle(new Readback(null, "acionamento aprovado"), approved, Solo).Instruction.ShouldBe(new NoResponse());
+        var decision = _engine.Handle(new Readback(null, "acionamento aprovado"), approved, Solo);
+
+        decision.Instruction.ShouldBe(new RequestReadbackCorrection(new StartupApproved()));
+        decision.NextContext.PendingReadback.ShouldBe(new StartupApproved());
+    }
+
+    [Fact]
+    public void A_readback_with_the_callsign_added_afterwards_is_then_accepted()
+    {
+        var approved = _engine.Handle(new RequestStartup(Own, null), Parked, Solo).NextContext;
+        var corrected = _engine.Handle(new Readback(null, "acionamento aprovado"), approved, Solo).NextContext;
+
+        _engine.Handle(new Readback(Own, "acionamento aprovado"), corrected, Solo).Instruction.ShouldBe(new NoResponse());
     }
 
     [Fact]
@@ -339,9 +351,9 @@ public class AtcEngineTests
 
         Say("pushback").ShouldBe(new RequestCallsign());
         Say("abc").ShouldBe(new PushbackApproved(false));
-        Say("pushback").ShouldBe(new NoResponse());
+        Say("abc pushback").ShouldBe(new NoResponse());
         Say("abc pronto").ShouldBe(new TaxiClearance("11"));
-        Say("um um").ShouldBe(new NoResponse());
+        Say("abc um um").ShouldBe(new NoResponse());
         flight.PendingReadback.ShouldBeNull();
         flight.Phase.ShouldBe(FlightPhase.Taxiing);
     }
