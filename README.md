@@ -4,7 +4,7 @@
 
 Fonia (Fonia.IA) é um aplicativo que roda ao lado do simulador e permite que você converse com controladores de tráfego aéreo usando a própria voz, no rádio, com fraseologia correta. Você fala naturalmente, o app entende o que você pretende fazer e responde como um controlador responderia.
 
-> **Status: em planejamento / fase inicial.** O projeto ainda não tem uma versão utilizável. Este README descreve o objetivo e o rumo do projeto. Acompanhe o progresso no [roadmap](docs/ROADMAP.md).
+> **Status: em desenvolvimento inicial.** Ainda não há ATC por voz. Hoje o app lê o estado da aeronave no Microsoft Flight Simulator 2020 em tempo real, reconecta sozinho se o simulador fechar e abrir, e grava e reproduz sessões (marcos M0 e M1). Este README descreve o objetivo e o rumo do projeto. Acompanhe o progresso no [roadmap](docs/ROADMAP.md).
 
 ## Por que o Fonia
 

@@ -1,6 +1,6 @@
 # Decisão: como falar com o SimConnect (M1)
 
-- **Status:** proposta aprovada em 2026-10-12; spike concluído em 2026-10-12 (resultados abaixo). A reconexão **não** é resolvida pela biblioteca; o algoritmo próprio foi prototipado e validado nos dois cenários (MSFS fecha/reabre; app abre antes do MSFS). Falta só validar o adapter real (tarefa 10).
+- **Status:** proposta aprovada em 2026-10-12; spike concluído em 2026-10-12 (resultados abaixo). A reconexão **não** é resolvida pela biblioteca; o algoritmo próprio foi prototipado no spike e **validado com o `MsfsSimAdapter` real pelo mantenedor** (MSFS fechado e reaberto com o app rodando, app aberto antes do MSFS, recarga de voo, mudanças de rádio e squawk).
 - **Escopo:** MSFS 2020 no M1. MSFS 2024 é M5.
 
 ## Contexto
@@ -101,6 +101,6 @@ Detalhes extras que afetam o desenho:
 
 ## Pendências
 
-1. Validar o adapter real no Windows com o MSFS (tarefa 10 do M1): mesmo roteiro dos cenários A e B, mais um voo completo.
-2. Investigar a causa do `UnrecognizedId` em assinaturas criadas antes do `Open` (a regra de esperar o `Open` evita o problema, mas a causa não foi isolada).
-3. Medir o tempo entre o `Open` e o primeiro snapshot válido com o voo carregando, para ajustar a sonda e a espera.
+1. Investigar a causa do `UnrecognizedId` em assinaturas criadas antes do `Open` (a regra de esperar o `Open` evita o problema, mas a causa não foi isolada).
+2. Medir o tempo entre o `Open` e o primeiro snapshot válido com o voo carregando, para ajustar a sonda e a espera. A validação manual do mantenedor não registrou tempos.
+3. Redistribuição do `SimConnect.dll` (risco aberto para o M4) e compatibilidade com o MSFS 2024 (M5).
