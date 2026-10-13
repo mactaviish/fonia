@@ -78,6 +78,8 @@ public class AppRunnerTests : IDisposable
         public SimSource Create(AppOptions options, Stream? replay) => create(options, replay);
     }
 
+    private static readonly string[] ThreeRegistrations = ["PR-AAA", "PR-BBB", "PR-CCC"];
+
     private static AircraftState Parked(string registration = "PR-ABC") => MockAircraft.Parked() with { Registration = registration };
 
     private static SimSourceFactory RealFactory() => new SimSourceFactory(NullLoggerFactory.Instance, TimeProvider.System);
@@ -96,11 +98,20 @@ public class AppRunnerTests : IDisposable
         return path;
     }
 
-    private static (AppRunner Runner, SyncWriter Output, SyncWriter Error) NewRunner(ISimSourceFactory? factory = null, bool interactive = false)
+    private static (AppRunner Runner, SyncWriter Output, SyncWriter Error) NewRunner(
+        ISimSourceFactory? factory = null,
+        bool interactive = false,
+        Func<int>? lineWidth = null)
     {
         var output = new SyncWriter();
         var error = new SyncWriter();
-        return (new AppRunner(factory ?? RealFactory(), output, error, interactive), output, error);
+        return (new AppRunner(factory ?? RealFactory(), output, error, interactive, lineWidth), output, error);
+    }
+
+    /// <summary>The lines the display wrote in place: what follows each carriage return, up to its line feed.</summary>
+    private static List<string> RewrittenLines(string text)
+    {
+        return [.. text.Split('\r').Skip(1).Select(segment => segment.Split('\n')[0])];
     }
 
     // ---- replay ----
@@ -323,6 +334,77 @@ public class AppRunnerTests : IDisposable
         var closing = text.LastIndexOf("Desconectado.", StringComparison.Ordinal);
         closing.ShouldBeGreaterThan(lastState);
         text[lastState..closing].ShouldContain("\n");
+    }
+
+    [Fact]
+    public async Task In_a_narrow_terminal_the_state_is_still_one_line_that_never_exceeds_the_width()
+    {
+        var sim = new MockSimAdapter();
+        var (runner, output, _) = NewRunner(
+            new DelegateFactory((_, _) => ScriptedSource(sim, async (s, ct) =>
+            {
+                foreach (var registration in ThreeRegistrations)
+                {
+                    s.SetState(Parked(registration));
+                    await Task.Delay(100, ct);
+                }
+            })),
+            interactive: true,
+            lineWidth: () => 60);
+
+        await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
+
+        var lines = RewrittenLines(output.Text);
+        lines.Count.ShouldBeGreaterThanOrEqualTo(3);
+        lines.ShouldAllBe(line => line.Length <= 60);
+
+        // Every state replaces the previous one on the same screen line: no line feed between the rewrites.
+        var segments = output.Text.Split('\r').Skip(1).ToList();
+        segments[..^1].ShouldAllBe(segment => !segment.Contains('\n'));
+    }
+
+    [Fact]
+    public async Task The_width_is_read_again_on_every_update_so_resizing_the_window_works()
+    {
+        var width = 200;
+        var sim = new MockSimAdapter();
+        var (runner, output, _) = NewRunner(
+            new DelegateFactory((_, _) => ScriptedSource(sim, async (s, ct) =>
+            {
+                s.SetState(Parked("PR-AAA"));
+                await Task.Delay(100, ct);
+                width = 70; // the user shrinks the window
+                s.SetState(Parked("PR-BBB"));
+                await Task.Delay(100, ct);
+            })),
+            interactive: true,
+            lineWidth: () => width);
+
+        await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
+
+        var lines = RewrittenLines(output.Text);
+        var wide = lines.Single(line => line.Contains("PR-AAA", StringComparison.Ordinal));
+        var narrow = lines.Single(line => line.Contains("PR-BBB", StringComparison.Ordinal));
+        wide.TrimEnd().Length.ShouldBeGreaterThan(100); // the full line, while the window was wide
+        narrow.Length.ShouldBeLessThanOrEqualTo(70);    // shortened, padding included, as soon as it shrank
+    }
+
+    [Fact]
+    public async Task Redirected_output_is_never_shortened_whatever_the_width()
+    {
+        var sim = new MockSimAdapter();
+        var (runner, output, _) = NewRunner(
+            new DelegateFactory((_, _) => ScriptedSource(sim, (s, _) =>
+            {
+                s.SetState(Parked());
+                return Task.CompletedTask;
+            })),
+            interactive: false,
+            lineWidth: () => 40);
+
+        await runner.RunAsync(new AppOptions(SimSourceKind.Mock), Ct).WaitAsync(Timeout, Ct);
+
+        output.Text.ShouldContain(StateFormatter.Format(Parked()));
     }
 
     [Fact]

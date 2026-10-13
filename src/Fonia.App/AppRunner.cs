@@ -9,14 +9,17 @@ namespace Fonia.App;
 /// optionally recording the session. Everything it needs comes in through the constructor, so tests drive it without a
 /// console or a simulator.
 /// </summary>
-/// <param name="interactive">True on a terminal: the state line is rewritten in place instead of scrolling.</param>
-/// <param name="maxLineWidth">Width of the terminal minus one, or 0 for unlimited. A line wider than that cannot be rewritten in place and scrolls instead.</param>
+/// <param name="interactive">True on a terminal: the state is one line rewritten in place. Otherwise (output redirected to a file) every snapshot is its own line.</param>
+/// <param name="lineWidth">
+/// How many characters the terminal line can hold right now, asked again on every update so resizing the window works.
+/// The state line is shortened to fit, so it never wraps and stays a single line. Zero or <see langword="null"/> means unknown: no limit.
+/// </param>
 internal sealed class AppRunner(
     ISimSourceFactory sourceFactory,
     TextWriter output,
     TextWriter error,
     bool interactive,
-    int maxLineWidth = 0,
+    Func<int>? lineWidth = null,
     TimeProvider? timeProvider = null)
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
@@ -119,7 +122,7 @@ internal sealed class AppRunner(
     {
         await foreach (var state in states)
         {
-            WriteState(StateFormatter.Format(state));
+            WriteState(state);
         }
     }
 
@@ -191,25 +194,26 @@ internal sealed class AppRunner(
         }
     }
 
-    private void WriteState(string line)
+    private void WriteState(AircraftState state)
     {
         lock (_writeLock)
         {
-            var fits = maxLineWidth <= 0 || line.Length <= maxLineWidth;
+            if (!interactive)
+            {
+                output.WriteLine(StateFormatter.Format(state));
+                return;
+            }
 
-            if (interactive && fits)
-            {
-                // Overwrite the previous state line; pad so a shorter line leaves nothing behind.
-                output.Write('\r');
-                output.Write(line.PadRight(_lineWidth));
-                _lineWidth = line.Length;
-                _lineOpen = true;
-            }
-            else
-            {
-                EndLineLocked();
-                output.WriteLine(line);
-            }
+            // Overwrite the previous state line. It is fitted to the window as it is right now, so it can never
+            // wrap; padding erases what a longer previous line left behind, but never goes past the window.
+            var width = lineWidth?.Invoke() ?? 0;
+            var line = StateFormatter.Format(state, width);
+            var padTo = width > 0 ? Math.Min(_lineWidth, width) : _lineWidth;
+
+            output.Write('\r');
+            output.Write(line.PadRight(padTo));
+            _lineWidth = line.Length;
+            _lineOpen = true;
         }
     }
 

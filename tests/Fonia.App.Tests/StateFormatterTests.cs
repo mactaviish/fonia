@@ -85,6 +85,126 @@ public class StateFormatterTests
         line.ShouldContain("  ?  ");
     }
 
+    // ---- fitting a narrow terminal: one line, never wider than the window ----
+
+    [Fact]
+    public void When_the_window_is_wide_enough_the_full_line_is_used()
+    {
+        StateFormatter.Format(Flying(), 400).ShouldBe(StateFormatter.Format(Flying()));
+        StateFormatter.Format(Flying(), StateFormatter.Format(Flying()).Length).ShouldBe(StateFormatter.Format(Flying()));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void An_unknown_width_means_no_limit(int width)
+    {
+        StateFormatter.Format(Flying(), width).ShouldBe(StateFormatter.Format(Flying()));
+    }
+
+    [Fact]
+    public void A_narrower_window_drops_the_least_essential_information_first()
+    {
+        var full = StateFormatter.Format(Flying());
+
+        // One column short: the standby frequencies go, everything else stays.
+        var noStandby = StateFormatter.Format(Flying(), full.Length - 1);
+        noStandby.ShouldNotContain("/");
+        noStandby.ShouldContain("COM1 130.850");
+        noStandby.ShouldContain("COM2 121.500");
+        noStandby.ShouldContain("AGL");
+        noStandby.ShouldContain("XPDR 1200");
+
+        // Then the height above ground, keeping both radios.
+        var noAgl = StateFormatter.Format(Flying(), noStandby.Length - 1);
+        noAgl.ShouldNotContain("AGL");
+        noAgl.ShouldContain("COM1 130.850");
+        noAgl.ShouldContain("COM2 121.500");
+        noAgl.ShouldContain("XPDR 1200");
+
+        // Then COM2.
+        var core = StateFormatter.Format(Flying(), noAgl.Length - 1);
+        core.ShouldNotContain("COM2");
+        core.ShouldContain("COM1 130.850");
+        core.ShouldContain("XPDR 1200");
+
+        // Then the radios, keeping where the aircraft is and how it moves.
+        var minimal = StateFormatter.Format(Flying(), core.Length - 1);
+        minimal.ShouldNotContain("COM");
+        minimal.ShouldContain("PR-FRA");
+        minimal.ShouldContain("27.13246°S 52.66867°W");
+        minimal.ShouldContain("5675 ft");
+        minimal.ShouldContain("GS 79 kt");
+        minimal.ShouldContain("HDG 021°");
+        minimal.ShouldContain("XPDR 1200");
+    }
+
+    [Fact]
+    public void Below_the_smallest_layout_the_line_is_cut_with_an_ellipsis_to_exactly_the_width()
+    {
+        var width = StateFormatter.Format(Flying()).Length;
+        var minimal = StateFormatter.Format(Flying(), width);
+
+        // Shrink one column at a time until the layouts run out: the last one that is not an ellipsis cut.
+        while (width > 1)
+        {
+            var next = StateFormatter.Format(Flying(), width - 1);
+            if (next.EndsWith('…'))
+            {
+                break;
+            }
+
+            minimal = next;
+            width--;
+        }
+
+        var cut = StateFormatter.Format(Flying(), minimal.Length - 1);
+
+        cut.Length.ShouldBe(minimal.Length - 1);
+        cut.ShouldEndWith("…");
+        minimal.ShouldStartWith(cut[..^1]); // the same line, just shortened at the end
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(5)]
+    public void A_tiny_window_still_gets_a_line_of_exactly_that_width(int width)
+    {
+        var line = StateFormatter.Format(Flying(), width);
+        var timeOfDay = Flying().Timestamp.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
+        line.Length.ShouldBe(width);
+        line.ShouldEndWith("…");
+        line[..^1].ShouldBe(timeOfDay[..(width - 1)]);
+    }
+
+    [Fact]
+    public void For_every_window_width_the_line_never_wraps_and_never_grows_when_the_window_shrinks()
+    {
+        var previous = int.MaxValue;
+
+        for (var width = 220; width >= 1; width--)
+        {
+            var line = StateFormatter.Format(Flying(), width);
+
+            line.Length.ShouldBeLessThanOrEqualTo(width, $"width {width}");
+            line.ShouldNotBeEmpty();
+            line.ShouldNotContain("\n");
+            line.Length.ShouldBeLessThanOrEqualTo(previous, $"the line grew while the window shrank at width {width}");
+            previous = line.Length;
+        }
+    }
+
+    [Fact]
+    public void A_radio_the_aircraft_does_not_have_stays_marked_in_the_compact_layouts()
+    {
+        var line = StateFormatter.Format(Flying() with { Com2 = null }, StateFormatter.Format(Flying() with { Com2 = null }).Length - 1);
+
+        line.ShouldContain("COM1");
+        line.ShouldContain("COM2 --");
+    }
+
     [Fact]
     public void The_result_does_not_depend_on_the_current_culture()
     {
