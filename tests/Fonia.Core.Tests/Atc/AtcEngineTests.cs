@@ -187,6 +187,31 @@ public class AtcEngineTests
         _engine.Handle(new Readback(Own, "pushback aprovado"), approved, Solo).Instruction.ShouldBe(new NoResponse());
     }
 
+    [Theory]
+    [InlineData("autorizado taxi para o ponto de espera da um um")]
+    [InlineData("autorizado taxi para o ponto de espera da onze o")]
+    [InlineData("táxi um um")]
+    [InlineData("autorizado taxi para o ponto de espera da pista onze")]
+    public void A_taxi_readback_may_leave_out_the_word_pista(string said)
+    {
+        var cleared = _engine.Handle(new RequestTaxi(Own, null), Parked, Solo).NextContext;
+
+        var decision = _engine.Handle(new Readback(Own, said), cleared, Solo);
+
+        decision.Instruction.ShouldBe(new NoResponse());
+        decision.NextContext.PendingReadback.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("autorizado taxi para o ponto de espera da um cinco")]
+    [InlineData("autorizado taxi para o ponto de espera da um um esquerda")]
+    public void A_wrong_runway_without_the_word_pista_is_still_corrected(string said)
+    {
+        var cleared = _engine.Handle(new RequestTaxi(Own, null), Parked, Solo).NextContext;
+
+        _engine.Handle(new Readback(Own, said), cleared, Solo).Instruction.ShouldBe(new RequestReadbackCorrection(new TaxiClearance("11")));
+    }
+
     [Fact]
     public void A_readback_with_nothing_pending_gets_no_answer()
     {

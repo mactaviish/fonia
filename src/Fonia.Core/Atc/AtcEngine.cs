@@ -90,7 +90,7 @@ public sealed class AtcEngine : IAtcEngine
     // The taxi readback must have the runway; the startup and pushback ones must say what was approved.
     private static bool IsCorrect(AtcInstruction expected, IReadOnlyList<string> heard) => expected switch
     {
-        TaxiClearance taxi => RuleBasedNlu.FindRunway(heard) is { } runway && RunwayDesignator.AreSame(runway, taxi.Runway),
+        TaxiClearance taxi => RuleBasedNlu.FindRunwayInReadback(heard) is { } runway && RunwayDesignator.AreSame(runway, taxi.Runway),
         StartupApproved => RuleBasedNlu.MentionsStartup(heard),
         PushbackApproved pushback => RuleBasedNlu.MentionsPushback(heard) && (!pushback.WithStartup || RuleBasedNlu.MentionsStartup(heard)),
         _ => true,

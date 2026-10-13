@@ -106,18 +106,35 @@ public sealed class RuleBasedNlu : INlu
     /// <summary>True when the words mention pushback.</summary>
     internal static bool MentionsPushback(IReadOnlyList<string> tokens) => HasAny(tokens, PushbackStems);
 
-    /// <summary>The runway the pilot named ("pista dois três esquerda" is "23L"), or null.</summary>
-    internal static string? FindRunway(IReadOnlyList<string> tokens)
+    /// <summary>The runway the pilot named after the word "pista" ("pista dois três esquerda" is "23L"), or null.</summary>
+    internal static string? FindRunway(IReadOnlyList<string> tokens) => FindRunwayAfter(tokens, token => token == "pista");
+
+    /// <summary>
+    /// The runway in a readback: after "pista" if the pilot said it, otherwise the first number that is a runway
+    /// ("para o ponto de espera da três três"). Only used on a readback, where the controller just said which runway,
+    /// because in a request a number may be something else ("box 3").
+    /// </summary>
+    internal static string? FindRunwayInReadback(IReadOnlyList<string> tokens) =>
+        FindRunway(tokens) ?? FindRunwayAfter(tokens, _ => true, includeStart: true);
+
+    private static string? FindRunwayAfter(IReadOnlyList<string> tokens, Func<string, bool> marker, bool includeStart = false)
     {
         for (var i = 0; i < tokens.Count; i++)
         {
-            if (tokens[i] != "pista")
+            if (!marker(tokens[i]))
             {
                 continue;
             }
 
-            var run = SpokenCode.ReadRun(tokens, i + 1, out var end);
+            var start = includeStart ? i : i + 1;
+            var run = SpokenCode.ReadRun(tokens, start, out var end);
             var digits = new string([.. run.TakeWhile(char.IsAsciiDigit)]);
+
+            if (digits.Length == 0)
+            {
+                continue;
+            }
+
             var side = SideAt(tokens, end, run, digits);
 
             if (RunwayDesignator.TryParse(digits + side, out _, out _))
