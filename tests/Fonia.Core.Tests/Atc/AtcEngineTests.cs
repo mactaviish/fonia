@@ -325,6 +325,28 @@ public class AtcEngineTests
     }
 
     [Fact]
+    public void A_whole_flow_in_the_fewest_words_possible()
+    {
+        var nlu = new RuleBasedNlu();
+        var flight = Parked;
+
+        AtcInstruction Say(string said)
+        {
+            var decision = _engine.Handle(nlu.Interpret(said, flight), flight, Solo);
+            flight = decision.NextContext;
+            return decision.Instruction;
+        }
+
+        Say("pushback").ShouldBe(new RequestCallsign());
+        Say("abc").ShouldBe(new PushbackApproved(false));
+        Say("pushback").ShouldBe(new NoResponse());
+        Say("abc pronto").ShouldBe(new TaxiClearance("11"));
+        Say("um um").ShouldBe(new NoResponse());
+        flight.PendingReadback.ShouldBeNull();
+        flight.Phase.ShouldBe(FlightPhase.Taxiing);
+    }
+
+    [Fact]
     public void A_full_flow_from_the_gate_to_the_taxi_readback()
     {
         var nlu = new RuleBasedNlu();

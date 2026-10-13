@@ -25,9 +25,12 @@ public sealed class RuleBasedNlu : INlu
     private static readonly string[] ReadbackStems =
         ["autorizad", "aprovad", "ciente", "copiad", "coteja", "chamo", "chamarei", "chamara", "reporto", "reportarei", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
 
-    private static readonly string[] PushbackStems = ["pushback", "push", "empurr"];
-    private static readonly string[] StartupStems = ["acion", "partida", "start"];
+    private static readonly string[] PushbackStems = ["pushback", "push", "empurr", "recu"];
+    private static readonly string[] StartupStems = ["acion", "partida", "start", "ligar", "ligand", "motor"];
     private static readonly string[] TaxiStems = ["tax"];
+
+    // A pilot who only says "pronto" is ready for the taxi: it is what the controller asks for after startup and pushback.
+    private static readonly string[] ReadyStems = ["pronto", "pronta"];
     private static readonly string[] StandWords = ["box", "pos", "posicao", "stand", "patio", "vaga", "gate"];
 
     public Intent Interpret(string? text, FlightContext flight)
@@ -51,9 +54,9 @@ public sealed class RuleBasedNlu : INlu
 
         var pushback = HasAny(rest, PushbackStems);
         var startup = HasAny(rest, StartupStems);
-        var taxi = HasAny(rest, TaxiStems);
-        var asking = HasAny(rest, RequestStems) && !HasAny(rest, ["chame", "chamo", "chamarei"]);
         var repeating = HasAny(rest, ReadbackStems);
+        var taxi = HasAny(rest, TaxiStems) || (HasAny(rest, ReadyStems) && !pushback && !startup && !repeating);
+        var asking = HasAny(rest, RequestStems) && !HasAny(rest, ["chame", "chamo", "chamarei"]);
 
         if (!pushback && !startup && !taxi)
         {
