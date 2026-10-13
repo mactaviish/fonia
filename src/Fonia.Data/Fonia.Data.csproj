@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Airport data (OurAirports, public domain) and the spoken names of the controlled airports, embedded in the
+       assembly: the app works offline and as a single file. Refresh with tools/update-ourairports.cs. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fonia.Core\Fonia.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\data\ourairports\br-*.csv" LogicalName="Fonia.Data.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\data\atc-names.csv" LogicalName="Fonia.Data.atc-names.csv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fonia.Data.Tests" />
+  </ItemGroup>
+
+</Project>
