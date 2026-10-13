@@ -34,7 +34,7 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 - [x] Quem responde, como no aeroporto real: Solo, senão Torre, senão AFIS (só informação), senão nenhum serviço
 - [x] NLU por regras, tolerante a frases fora do padrão, para: `RequestStartup`, `RequestPushback`, `RequestTaxi`, `Readback`, `SayAgain`
 - [x] Máquina de estados do Solo (`AtcEngine`)
-- [ ] Templates de fraseologia pt-BR para essas instruções (números, letras e indicativos como o manual manda)
+- [x] Templates de fraseologia pt-BR para essas instruções (números, letras e indicativos como o manual manda)
 - [ ] Console: você digita a fala do piloto, o app responde em texto, usando o estado real (ou mockado) do simulador
 
 **Pronto quando:** no terminal, você faz o ciclo partida → pushback → táxi com readbacks, e os testes cobrem os caminhos felizes e erros comuns (readback errado, pista inexistente).

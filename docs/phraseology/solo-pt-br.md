@@ -111,7 +111,11 @@ Depois de estabelecido o contato, a matrícula pode ser abreviada para **pelo me
 - AFIS: o MCA tem uma seção própria (Serviço de Informação de Voo de Aeródromo); no M2 o app diz que não há serviço de controle ali.
 - Vento e altitude/nível ditos em voz: o Solo do M2 não precisa deles (só pista, frequência e ajuste de altímetro); `SpokenText` ainda não os fala. `TODO(fraseologia)` quando a Torre entrar.
 - Convidar a falar (`GoAhead`, quando o piloto só chama o Solo): **"PRABC, prossiga"** (indicativo + "prossiga"), como informou o mantenedor; o MCA não traz frase para o Solo. Falta a fonte oficial, se houver.
-- Pedir o indicativo de novo (`RequestCallsign`): o MCA não traz frase para o Solo; precisa de texto do mantenedor. `TODO(fraseologia)`.
+- Pedir o indicativo de novo (`RequestCallsign`): o MCA não traz frase para o Solo. **Proposta em uso, a confirmar:** "Estação chamando SOLO Curitiba, repita o indicativo." `TODO(fraseologia)`.
+- AFIS (`NoControlService`): sem frase no MCA para dizer que só informa. **Proposta em uso, a confirmar:** "PRABC, RÁDIO Curitiba, sem serviço de controle neste aeródromo, apenas informações de voo." `TODO(fraseologia)`.
+- Aeroporto sem serviço e aeroporto sem pista nos dados: ninguém fala; o app mostra um aviso (`UtteranceKind.Notice`), não é fraseologia.
+- O controlador responde sem dizer o próprio órgão (como nos exemplos do MCA, "TAM 3702, acionamento aprovado…"); a prática VATSIM-BR diz ("GOL 1419, Solo Brasília, …"). Segue o MCA até o mantenedor decidir outra coisa.
+- Ajuste de altímetro no táxi (prática VATSIM-BR) fica de fora até haver fonte de QNH. `TODO(fraseologia)`.
 - Reboque de aeronave e movimento de veículos: Anexo III, fora do M2.
 - Qual forma o controlador usa quando o manual dá duas ("taxie / autorizado táxi"): usar **"autorizado táxi"** até o mantenedor decidir outra coisa.
 - Estilo de fala (MCA × VATSIM-BR): padrão **MCA 2025**; as variantes da prática ficam documentadas aqui e entendidas pelo NLU.
