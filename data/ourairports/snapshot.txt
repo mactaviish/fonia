@@ -1,0 +1,4 @@
+Source: https://raw.githubusercontent.com/davidmegginson/ourairports-data/main (OurAirports, public domain)
+Retrieved: 2026-10-13 (UTC)
+Filter: iso_country BR; airport types large, medium, small
+Airports: 5722; runways: 4403; frequencies: 338
