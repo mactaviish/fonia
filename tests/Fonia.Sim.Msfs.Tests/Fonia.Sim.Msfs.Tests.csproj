@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The fake clock that reports every wait is shared with the core tests. -->
+    <Compile Include="..\Fonia.Core.Tests\TestSupport\TimerSpyTimeProvider.cs" Link="TestSupport\TimerSpyTimeProvider.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
   </ItemGroup>

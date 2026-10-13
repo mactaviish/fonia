@@ -85,6 +85,18 @@ O adapter do MSFS lê cinco grupos de variáveis, cada um no seu ritmo (1 Hz), e
 
 **Quando publicar.** Um snapshot só sai se a simulação está rodando (evento de sistema `Sim`), todos os grupos chegaram desde a última mudança do `Sim`, e a posição não é o valor provisório que o MSFS informa enquanto o voo carrega (a menos de 0,05° de 0°, 0°; ele continua provisório por ~10 s depois de o `Sim` indicar que a simulação rodou). O movimento é o "batimento": todo movimento válido é publicado; a mudança de qualquer outro grupo (frequência, squawk, matrícula) é publicada na hora; repetições sem mudança não geram snapshot. Cada mudança do `Sim` (menu, recarga do voo) descarta os grupos recebidos, para nunca misturar valores de um voo com os de outro.
 
+#### Conexão com o MSFS (`MsfsSimAdapter`)
+
+Depois de `ConnectAsync`, uma tarefa de fundo (o supervisor) é dona da conexão e segue o algoritmo validado no spike (`docs/decisions/simconnect.md`):
+
+1. **Conectar sem desistir.** Cria uma sessão (`ISimConnectSession`); se o MSFS não está lá, espera **2 s, depois 4, 8 e 10 s** (teto) e tenta de novo, indefinidamente. A espera volta a 2 s depois de uma conexão bem-sucedida.
+2. **Esperar o MSFS ficar pronto** (mensagem `Open`) e só então assinar o evento `Sim` e os grupos de variáveis.
+3. **Monitorar:** a cada 3 s uma sonda. Só `Dead` (`E_FAIL`) conta, e **duas seguidas** reconstroem a conexão; `NotResponding` (menu, carregamento) nunca derruba, e qualquer resposta que não seja `Dead` zera a contagem. Uma falha reportada pela própria sessão (`OnFault`) reconstrói na hora.
+4. **Perda:** descarta a sessão (sem deixar o `Dispose` travar), zera o montador de snapshots, estado `Connecting`, nova sessão. Os streams ficam abertos e o `LatestState` é mantido. Dados que uma sessão descartada ainda entregue são ignorados.
+5. `DisconnectAsync`/`DisposeAsync` param o supervisor, encerram os streams e levam a `Disconnected`.
+
+Os tempos são `MsfsAdapterOptions` (padrões acima). Streams e `LatestState` vêm do `AircraftStateBroadcaster` do Core, o mesmo do mock. A parte que fala com a biblioteca é a `SimConnectNetSession`; o resto é testado com uma sessão falsa e um relógio injetável, sem MSFS. Testes ao vivo (`FONIA_LIVE_MSFS=1`) cobrem a sessão e o adapter contra um MSFS real. Ainda não implementa `IComRadioControl` (sintonizar o rádio pelo app chega com a transferência de frequência, no M4).
+
 #### Gravação de telemetria (`Fonia.Sim.Mock`)
 
 `TelemetryRecorder` grava o que qualquer `ISimAdapter` publica (inclusive o do MSFS) em um arquivo, e `TelemetryReader` lê de volta, para reproduzir uma sessão sem o simulador. O formato é **JSON Lines**: UTF-8 sem BOM, finais de linha `
