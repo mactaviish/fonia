@@ -92,6 +92,14 @@ dotnet format --verify-no-changes
 
 O núcleo e os testes rodam sem simulador, usando o `MockSimAdapter`. Apenas a integração com o MSFS exige Windows e o simulador aberto.
 
+Para ver o estado da aeronave em tempo real (com o MSFS 2020 aberto e um voo carregado):
+
+```bash
+dotnet run --project src/Fonia.App                 # lê o MSFS
+dotnet run --project src/Fonia.App -- --sim mock   # taxi simulado, sem simulador
+dotnet run --project src/Fonia.App -- --help       # todas as opções (gravar e reproduzir sessões)
+```
+
 O arquivo [CLAUDE.md](CLAUDE.md) descreve as convenções do projeto e orienta o trabalho com o Claude Code.
 
 ## Aviso

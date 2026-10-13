@@ -97,6 +97,22 @@ Depois de `ConnectAsync`, uma tarefa de fundo (o supervisor) é dona da conexão
 
 Os tempos são `MsfsAdapterOptions` (padrões acima). Streams e `LatestState` vêm do `AircraftStateBroadcaster` do Core, o mesmo do mock. A parte que fala com a biblioteca é a `SimConnectNetSession`; o resto é testado com uma sessão falsa e um relógio injetável, sem MSFS. Testes ao vivo (`FONIA_LIVE_MSFS=1`) cobrem a sessão e o adapter contra um MSFS real. Ainda não implementa `IComRadioControl` (sintonizar o rádio pelo app chega com a transferência de frequência, no M4).
 
+#### Aplicativo de console (`Fonia.App`)
+
+`fonia` mostra o estado da aeronave em tempo real, vindo de qualquer `ISimAdapter`, e é a forma de ver o M1 funcionando:
+
+```
+fonia                                   # lê o MSFS 2020 (reconecta sozinho)
+fonia --sim mock                        # um taxi simulado, sem simulador
+fonia --record sessao.jsonl             # mostra e grava a sessão
+fonia --replay sessao.jsonl             # reproduz uma gravação, sem simulador (--speed 2, --speed max)
+fonia --duration 30 --log-level debug   # encerra sozinho; logs na saída de erro
+```
+
+Uma linha por snapshot (reescrita no lugar quando cabe no terminal; rolando quando é redirecionada ou larga demais), mais mensagens de conexão ("Conectando...", "Conexão com o simulador perdida; tentando reconectar...", "Reconectado."). Ctrl+C encerra com limpeza: a gravação fica válida e o adapter é desconectado. Códigos de saída: 0 normal, 1 erro durante a execução (arquivo inválido ou ilegível), 2 uso incorreto.
+
+É um executável `net10.0` sem identificador de runtime: roda no Linux com `--sim mock` e `--replay`, e a DLL nativa do SimConnect fica em `runtimes/win-x64/native`, usada só pela fonte `msfs`. A composição é manual (sem Generic Host) para abrir rápido e consumir pouco, e a linha de comando é lida à mão. Logs com `Microsoft.Extensions.Logging.Console`, enviados para a saída de erro. A lógica está em `ArgumentParser`, `StateFormatter` e `AppRunner`, testados sem console e sem simulador; `Program.cs` só liga as peças e trata o Ctrl+C. Configuração por `appsettings.json` fica para o M4.
+
 #### Gravação de telemetria (`Fonia.Sim.Mock`)
 
 `TelemetryRecorder` grava o que qualquer `ISimAdapter` publica (inclusive o do MSFS) em um arquivo, e `TelemetryReader` lê de volta, para reproduzir uma sessão sem o simulador. O formato é **JSON Lines**: UTF-8 sem BOM, finais de linha `

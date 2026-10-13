@@ -7,9 +7,11 @@
 
   <ItemGroup Label="Runtime">
     <!-- SimConnect.NET: MIT (beta; pinned on purpose, see docs/decisions/simconnect.md).
-         Logging.Abstractions: MIT, only the ILogger abstraction. -->
+         Logging.Abstractions: MIT, only the ILogger abstraction.
+         Logging.Console: MIT, console logger of the app. -->
     <PackageVersion Include="SimConnect.NET" Version="0.2.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">
