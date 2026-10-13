@@ -52,5 +52,9 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build
 
+      # The data refresh tool is a single file outside the solution; this keeps it from rotting.
+      - name: Build the data tool
+        run: dotnet build tools/update-ourairports.cs --configuration Release
+
       - name: Check formatting
         run: dotnet format --verify-no-changes --no-restore

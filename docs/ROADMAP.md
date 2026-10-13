@@ -37,7 +37,17 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 - [x] Templates de fraseologia pt-BR para essas instruções (números, letras e indicativos como o manual manda)
 - [x] Console (`fonia --atc <ICAO>`): você digita a fala do piloto, o app responde em texto, usando o estado real (ou mockado) do simulador
 
+**Concluído em 2026-10-13.** No terminal (`fonia --atc <ICAO>`), o ciclo partida → pushback → táxi com readbacks funciona em qualquer aeroporto do Brasil dos dados (5.722), com o órgão que responde como no aeroporto real, e foi exercitado pelo mantenedor digitando frases livres e telegráficas.
+
 **Pronto quando:** no terminal, você faz o ciclo partida → pushback → táxi com readbacks, e os testes cobrem os caminhos felizes e erros comuns (readback errado, pista inexistente).
+
+**Pendências conhecidas do M2** (nenhuma bloqueia o marco):
+
+- Confirmar com o mantenedor duas frases que o MCA não traz e que estão como proposta: pedir o indicativo de novo e o AFIS dizendo que só informa (`TODO(fraseologia)` em `docs/phraseology/solo-pt-br.md`).
+- O piloto que avisa "no ponto de espera da 33" ainda recebe "Repita.": a transferência Solo → Torre é uma tarefa própria.
+- Uma fala com dois pedidos ("quero táxi, pushback") responde só ao primeiro (o pushback); o segundo precisa ser repetido.
+- O ajuste de altímetro (QNH) não é dito no táxi: falta fonte de pressão.
+- Telefonia de empresas: só FAB, GLO e TAM, os exemplos do manual.
 
 ## M3: Voz
 
