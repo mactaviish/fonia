@@ -110,7 +110,8 @@ Depois de estabelecido o contato, a matrícula pode ser abreviada para **pelo me
 - Tráfego (autorização de plano) e a transferência para a Torre ("chame a Torre … em …") ficam para depois do M2.
 - AFIS: o MCA tem uma seção própria (Serviço de Informação de Voo de Aeródromo); no M2 o app diz que não há serviço de controle ali.
 - Vento e altitude/nível ditos em voz: o Solo do M2 não precisa deles (só pista, frequência e ajuste de altímetro); `SpokenText` ainda não os fala. `TODO(fraseologia)` quando a Torre entrar.
-- Pedir o indicativo de novo (`RequestCallsign`) e convidar a falar (`GoAhead`, quando o piloto só chama o Solo): o MCA não traz frase para o Solo; precisa de texto do mantenedor. `TODO(fraseologia)`.
+- Convidar a falar (`GoAhead`, quando o piloto só chama o Solo): **"PRABC, prossiga"** (indicativo + "prossiga"), como informou o mantenedor; o MCA não traz frase para o Solo. Falta a fonte oficial, se houver.
+- Pedir o indicativo de novo (`RequestCallsign`): o MCA não traz frase para o Solo; precisa de texto do mantenedor. `TODO(fraseologia)`.
 - Reboque de aeronave e movimento de veículos: Anexo III, fora do M2.
 - Qual forma o controlador usa quando o manual dá duas ("taxie / autorizado táxi"): usar **"autorizado táxi"** até o mantenedor decidir outra coisa.
 - Estilo de fala (MCA × VATSIM-BR): padrão **MCA 2025**; as variantes da prática ficam documentadas aqui e entendidas pelo NLU.

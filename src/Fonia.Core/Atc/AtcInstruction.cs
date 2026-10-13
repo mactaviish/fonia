@@ -29,7 +29,7 @@ public sealed record NoRunwayAvailable : AtcInstruction;
 public sealed record RequestCallsign : AtcInstruction;
 
 /// <summary>The pilot called the controller and nothing more: the controller invites them to go ahead.</summary>
-// TODO(fraseologia): the phrase is pending (the manual does not give one for the Solo).
+// The phrase is "<callsign>, prossiga" (from the maintainer; the manual has none for the Solo).
 public sealed record GoAhead : AtcInstruction;
 
 /// <summary>The controller did not understand: "REPITA".</summary>
