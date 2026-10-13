@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Fonia.Core\Fonia.Core.csproj" />
+    <ProjectReference Include="..\Fonia.Data\Fonia.Data.csproj" />
     <ProjectReference Include="..\Fonia.Sim.Mock\Fonia.Sim.Mock.csproj" />
     <ProjectReference Include="..\Fonia.Sim.Msfs\Fonia.Sim.Msfs.csproj" />
   </ItemGroup>

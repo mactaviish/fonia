@@ -173,6 +173,14 @@ public class RuleBasedNluTests
         _nlu.Interpret("PRABC", asked).ShouldBe(new CallsignOnly(Own));
     }
 
+    [Theory]
+    [InlineData("blá blá")]
+    [InlineData("qual é o tempo hoje")]
+    public void Nonsense_is_not_a_readback_even_with_an_instruction_waiting(string said)
+    {
+        _nlu.Interpret(said, AwaitingReadback).ShouldBe(new Unknown(said));
+    }
+
     [Fact]
     public void Null_text_is_unknown()
     {

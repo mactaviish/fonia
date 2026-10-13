@@ -58,13 +58,16 @@ public sealed class RuleBasedNlu : INlu
         if (!pushback && !startup && !taxi)
         {
             // Only the callsign and who is being called, with no numbers or readback words: not an answer.
-            if (mentioned && !repeating && !asking && !rest.Contains("pista") && SpokenCode.Decode(string.Join(' ', rest)).Length == 0)
+            if (mentioned && !repeating && !asking && !rest.Contains("pista") && !HasNumber(rest))
             {
                 return new CallsignOnly(callsign);
             }
 
-            // Said something, but no request: with an instruction waiting, it is the pilot answering it.
-            return flight.PendingReadback is not null && rest.Count > 0
+            // Said something, but no request: with an instruction waiting, it is the pilot answering it, if it sounds
+            // like an answer (a readback word, a runway or numbers); anything else is not understood.
+            var soundsLikeAnAnswer = repeating || rest.Contains("pista") || HasNumber(rest);
+
+            return flight.PendingReadback is not null && soundsLikeAnAnswer
                 ? new Readback(callsign, string.Join(' ', rest))
                 : new Unknown(text ?? string.Empty);
         }
@@ -190,6 +193,22 @@ public sealed class RuleBasedNlu : INlu
         }
 
         return [.. tokens];
+    }
+
+    // Letters alone do not count: "a", "o" and "e" are Portuguese words before they are letters of the alphabet.
+    private static bool HasNumber(List<string> tokens)
+    {
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            var index = i;
+
+            if (SpokenCode.TryRead(tokens, ref index, out var value) && value.Any(char.IsAsciiDigit))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool HasAny(IReadOnlyList<string> tokens, params string[][] stemLists) =>

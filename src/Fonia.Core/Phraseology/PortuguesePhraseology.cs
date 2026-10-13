@@ -20,9 +20,11 @@ public sealed class PortuguesePhraseology : IPhraseology
         {
             NoResponse => null,
             SayAgainRequest => new Utterance("Repita."),
-            RequestCallsign => new Utterance(RequestCallsignText(context)),
+            // TODO(fraseologia): the manual has no phrase for asking the callsign again; this one is a proposal to confirm.
+            RequestCallsign => new Utterance($"Estação chamando {UnitName(context.Airport)}, repita o indicativo."),
             GoAhead => new Utterance($"{callsign}, prossiga."),
-            NoControlService { Unit: ServiceUnit.Afis } => new Utterance(AfisText(callsign, context)),
+            // TODO(fraseologia): the phrase of the AFIS saying it only informs is a proposal to confirm.
+            NoControlService { Unit: ServiceUnit.Afis } => new Utterance($"{callsign}, {UnitName(context.Airport)}, sem serviço de controle neste aeródromo, apenas informações de voo."),
             NoControlService => new Utterance($"Sem serviço de controle em {context.Airport.Airport.Ident}: ninguém responde neste aeródromo.", UtteranceKind.Notice),
             NoRunwayAvailable => new Utterance($"Os dados de {context.Airport.Airport.Ident} não têm pista utilizável: o controlador não pode autorizar o táxi.", UtteranceKind.Notice),
             RequestReadbackCorrection correction => new Utterance($"{callsign}, negativo, {Body(correction.Expected)}"),
@@ -46,8 +48,12 @@ public sealed class PortuguesePhraseology : IPhraseology
     };
 
     // "SOLO Curitiba", "TORRE Guarulhos", "RÁDIO Marte" (MCA 100-16 Art. 37).
-    private static string UnitName(PhraseContext context) =>
-        $"{UnitWord(context.Airport.Unit)} {context.Airport.Airport.SpokenName}";
+    public string UnitName(AirportContext airport)
+    {
+        ArgumentNullException.ThrowIfNull(airport);
+
+        return $"{UnitWord(airport.Unit)} {airport.Airport.SpokenName}";
+    }
 
     private static string UnitWord(ServiceUnit unit) => unit switch
     {
@@ -56,11 +62,4 @@ public sealed class PortuguesePhraseology : IPhraseology
         _ => "RÁDIO",
     };
 
-    // TODO(fraseologia): the manual has no phrase for asking the callsign again; this one is a proposal to confirm.
-    private static string RequestCallsignText(PhraseContext context) =>
-        $"Estação chamando {UnitName(context)}, repita o indicativo.";
-
-    // TODO(fraseologia): the phrase of the AFIS saying it only informs is a proposal to confirm.
-    private static string AfisText(string callsign, PhraseContext context) =>
-        $"{callsign}, {UnitName(context)}, sem serviço de controle neste aeródromo, apenas informações de voo.";
 }

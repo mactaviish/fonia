@@ -100,6 +100,15 @@ dotnet run --project src/Fonia.App -- --sim mock   # taxi simulado, sem simulado
 dotnet run --project src/Fonia.App -- --help       # todas as opções (gravar e reproduzir sessões)
 ```
 
+Para conversar com o controlador por texto (ATC do M2, sem áudio): você digita a fala do piloto e o Solo, a Torre ou o AFIS do aeroporto responde.
+
+```bash
+dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC          # sem simulador
+dotnet run --project src/Fonia.App -- --atc SBCT --runway 15                # indicativo da matrícula no MSFS
+```
+
+Por exemplo: `Solo Curitiba, PRABC, box 3, solicito pushback e acionamento`, depois o readback `autorizado pushback e acionamento, PRABC`, depois `PRABC, pronto para o táxi`. `sair` encerra.
+
 O arquivo [CLAUDE.md](CLAUDE.md) descreve as convenções do projeto e orienta o trabalho com o Claude Code.
 
 ## Aviso
@@ -107,6 +116,10 @@ O arquivo [CLAUDE.md](CLAUDE.md) descreve as convenções do projeto e orienta o
 O Fonia é um projeto de entretenimento e simulação. **Não deve ser usado para treinamento aeronáutico real, navegação ou qualquer operação de voo real.** A fraseologia e os procedimentos implementados são aproximações para fins de simulação.
 
 O projeto é independente e não tem afiliação com a Microsoft, a Asobo Studio, a Laminar Research, a SayIntentions.AI ou o DECEA. Os nomes de produtos citados pertencem aos seus respectivos donos.
+
+## Créditos
+
+Os aeroportos, pistas e frequências vêm do [OurAirports](https://ourairports.com/data/) (domínio público); veja [`data/ourairports/README.md`](data/ourairports/README.md).
 
 ## Licença
 
