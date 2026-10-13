@@ -171,7 +171,7 @@ Interface `ISynthesizer` (`SynthesizeAsync(string text, Voice voice) -> AudioCli
 
 ### 8. Dados (`Fonia.Data`)
 
-- Aeroportos, pistas e frequências: OurAirports (domínio público).
+- Aeroportos, pistas e frequências: OurAirports (domínio público), em um **recorte do Brasil embutido no app** (`data/ourairports/`, ~0,8 MB, atualizado com `tools/update-ourairports.cs`). `AirportCatalog` lê os CSVs (leitor de CSV próprio, sem pacote) e entrega os modelos `Airport`/`Runway`/`AirportFrequency` do Core em ~50 ms; linha inválida não derruba a carga, vira um aviso com o número da linha. O rumo da pista, que quase nunca vem nos dados, é derivado do número do designador (`RunwayDesignator`). O nome falado de cada aeroporto vem de `data/atc-names.csv`.
 - METAR/TAF: aviationweather.gov, com cache e fallback para clima do simulador.
 - Plano de voo (futuro): API do SimBrief.
 
