@@ -24,8 +24,11 @@ internal sealed class TimerSpyTimeProvider(FakeTimeProvider inner) : TimeProvide
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
+        // Register the timer first and only then tell the test about it: a test that advances the clock the
+        // moment it sees the request must find the timer already waiting, or it would never fire.
+        var timer = inner.CreateTimer(callback, state, dueTime, period);
         _requestedDelays.Writer.TryWrite(dueTime);
-        return inner.CreateTimer(callback, state, dueTime, period);
+        return timer;
     }
 
     /// <summary>Waits for the next timer the code creates and returns how long it asked to wait.</summary>
