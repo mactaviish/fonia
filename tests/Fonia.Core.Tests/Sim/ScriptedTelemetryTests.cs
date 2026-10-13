@@ -1,4 +1,5 @@
 using Fonia.Core.Sim;
+using Fonia.Core.Tests.TestSupport;
 using Fonia.Sim.Mock;
 using Microsoft.Extensions.Time.Testing;
 
@@ -35,7 +36,9 @@ public class ScriptedTelemetryTests
     [Fact]
     public async Task PlayAsync_waits_the_interval_between_snapshots()
     {
-        var clock = new FakeTimeProvider();
+        // The spy clock says exactly what the code waits for and only then lets the test move time, so the test
+        // never guesses how far to advance (guessing is what made it fail on slow machines).
+        var clock = new TimerSpyTimeProvider(new FakeTimeProvider());
         await using var sim = new MockSimAdapter(clock);
         await sim.ConnectAsync(Ct);
         var script = MockAircraft.TaxiSequence(3);
@@ -46,19 +49,21 @@ public class ScriptedTelemetryTests
         // The first snapshot is published immediately, without any delay.
         (await NextAsync(stream)).ShouldBe(script[0]);
 
-        // Without advancing the clock nothing else is published, however long we wait.
+        // Then it waits one interval; without advancing the clock nothing else is published.
+        (await clock.NextRequestedDelayAsync(Ct)).ShouldBe(Interval);
         var second = stream.MoveNextAsync().AsTask();
         await Task.Delay(50, Ct);
         second.IsCompleted.ShouldBeFalse();
         play.IsCompleted.ShouldBeFalse();
 
-        // Advance until the script moves on (the timer may not exist yet when we first advance).
-        await AdvanceUntilCompletedAsync(clock, second);
-        (await second).ShouldBeTrue();
+        clock.Advance(Interval);
+        (await second.WaitAsync(Timeout, Ct)).ShouldBeTrue();
         stream.Current.ShouldBe(script[1]);
 
+        (await clock.NextRequestedDelayAsync(Ct)).ShouldBe(Interval);
         var third = stream.MoveNextAsync().AsTask();
-        await AdvanceUntilCompletedAsync(clock, third);
+        clock.Advance(Interval);
+        (await third.WaitAsync(Timeout, Ct)).ShouldBeTrue();
         stream.Current.ShouldBe(script[2]);
 
         await play.WaitAsync(Timeout, Ct);
@@ -68,14 +73,14 @@ public class ScriptedTelemetryTests
     [Fact]
     public async Task PlayAsync_cancelled_while_waiting_throws_and_keeps_published_snapshots()
     {
-        var clock = new FakeTimeProvider();
+        var clock = new TimerSpyTimeProvider(new FakeTimeProvider());
         await using var sim = new MockSimAdapter(clock);
         await sim.ConnectAsync(Ct);
         var script = MockAircraft.TaxiSequence(3);
         using var cts = new CancellationTokenSource();
 
         var play = sim.PlayAsync(script, Interval, cts.Token);
-        await WaitUntilAsync(() => sim.LatestState == script[0]);
+        await clock.NextRequestedDelayAsync(Ct); // it is now waiting for the second snapshot
 
         await cts.CancelAsync();
 
@@ -122,28 +127,5 @@ public class ScriptedTelemetryTests
     {
         Should.Throw<ArgumentOutOfRangeException>(() => MockAircraft.TaxiSequence(0));
         MockAircraft.TaxiSequence(1).Single().GroundSpeedKnots.ShouldBe(10);
-    }
-
-    private static async Task AdvanceUntilCompletedAsync(FakeTimeProvider clock, Task task)
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Ct);
-        timeout.CancelAfter(Timeout);
-
-        while (!task.IsCompleted)
-        {
-            clock.Advance(Interval);
-            await Task.Delay(10, timeout.Token);
-        }
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> condition)
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Ct);
-        timeout.CancelAfter(Timeout);
-
-        while (!condition())
-        {
-            await Task.Delay(10, timeout.Token);
-        }
     }
 }
