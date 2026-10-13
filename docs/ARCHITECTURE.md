@@ -97,6 +97,22 @@ Depois de `ConnectAsync`, uma tarefa de fundo (o supervisor) é dona da conexão
 
 Os tempos são `MsfsAdapterOptions` (padrões acima). Streams e `LatestState` vêm do `AircraftStateBroadcaster` do Core, o mesmo do mock. A parte que fala com a biblioteca é a `SimConnectNetSession`; o resto é testado com uma sessão falsa e um relógio injetável, sem MSFS. Testes ao vivo (`FONIA_LIVE_MSFS=1`) cobrem a sessão e o adapter contra um MSFS real. Ainda não implementa `IComRadioControl` (sintonizar o rádio pelo app chega com a transferência de frequência, no M4).
 
+#### Aplicativo de console (`Fonia.App`)
+
+`fonia` mostra o estado da aeronave em tempo real, vindo de qualquer `ISimAdapter`, e é a forma de ver o M1 funcionando:
+
+```
+fonia                                   # lê o MSFS 2020 (reconecta sozinho)
+fonia --sim mock                        # um taxi simulado, sem simulador
+fonia --record sessao.jsonl             # mostra e grava a sessão
+fonia --replay sessao.jsonl             # reproduz uma gravação, sem simulador (--speed 2, --speed max)
+fonia --duration 30 --log-level debug   # encerra sozinho; logs na saída de erro
+```
+
+Em um terminal, o estado é **um bloco que é reescrito sempre no mesmo lugar**, sem criar linha nova a cada atualização. A informação é **sempre completa**: os campos (hora, aeronave, posição, altitude, velocidade, proa, solo/ar, COM1, COM2, squawk) são distribuídos pelas linhas que a largura da janela exigir, sem partir um campo ao meio e sem esconder nenhum. Em janela larga é uma linha; em janela estreita, duas ou três. A largura é lida a cada atualização. Se a janela mudar de tamanho com o bloco já na tela, o terminal reflui as linhas antigas; o app calcula quantas linhas da tela o bloco antigo passou a ocupar, volta o cursor à primeira, apaga todas e desenha o novo ali (as linhas apagadas ficam em branco, em vez de sobrar um pedaço da antiga). A tela é abstraída em `ITerminal`, e os testes usam uma tela simulada que faz esse reflow. Só quando a saída é redirecionada para arquivo cada snapshot vira uma linha. Além do estado, há as mensagens de conexão ("Conectando...", "Conexão com o simulador perdida; tentando reconectar...", "Reconectado."). Ctrl+C encerra com limpeza: a gravação fica válida e o adapter é desconectado. Códigos de saída: 0 normal, 1 erro durante a execução (arquivo inválido ou ilegível), 2 uso incorreto.
+
+É um executável `net10.0` sem identificador de runtime: roda no Linux com `--sim mock` e `--replay`, e a DLL nativa do SimConnect fica em `runtimes/win-x64/native`, usada só pela fonte `msfs`. A composição é manual (sem Generic Host) para abrir rápido e consumir pouco, e a linha de comando é lida à mão. Logs com `Microsoft.Extensions.Logging.Console`, enviados para a saída de erro. A lógica está em `ArgumentParser`, `StateFormatter` e `AppRunner`, testados sem console e sem simulador; `Program.cs` só liga as peças e trata o Ctrl+C. Configuração por `appsettings.json` fica para o M4.
+
 #### Gravação de telemetria (`Fonia.Sim.Mock`)
 
 `TelemetryRecorder` grava o que qualquer `ISimAdapter` publica (inclusive o do MSFS) em um arquivo, e `TelemetryReader` lê de volta, para reproduzir uma sessão sem o simulador. O formato é **JSON Lines**: UTF-8 sem BOM, finais de linha `
