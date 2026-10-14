@@ -89,11 +89,11 @@ public class AtcConsoleFrequencyTests
     }
 
     [Fact]
-    public async Task On_the_torres_frequency_the_request_gets_the_notice_not_the_solos_answer()
+    public async Task On_the_torres_frequency_an_engine_start_gets_the_notice_to_call_the_solo_not_the_solos_answer()
     {
         var result = await RunAsync(Atc(new Frequency(119500)), "PRABC, solicito acionamento\nsair\n");
 
-        result.Output.ShouldContain("[aviso] TORRE Curitiba: a fraseologia da Torre ainda não existe");
+        result.Output.ShouldContain("[aviso] TORRE Curitiba: a Torre não trata de acionamento");
         result.Output.ShouldNotContain("acionamento aprovado");
     }
 
@@ -195,8 +195,8 @@ public class AtcConsoleFrequencyTests
             "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento",
             "acionamento aprovado, Papa Romeo Alfa Bravo Charlie",
             "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
-            "autorizado táxi pista um um, Papa Romeo Alfa Bravo Charlie",
-            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista um um",
+            "autorizado táxi pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
             "Uno noito, decimal cinco, cinco, Alfa Bravo Charlie.",
             "sair\n");
 
@@ -206,6 +206,55 @@ public class AtcConsoleFrequencyTests
         result.Output.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, chame Torre Curitiba UNO UNO NOVE DECIMAL CINCO.");
         result.Output.ShouldNotContain("Repita");
         result.Output.ShouldContain("(o controlador não responde)");
+    }
+
+    [Fact]
+    public async Task The_whole_way_from_the_apron_to_the_takeoff_clearance_on_two_frequencies()
+    {
+        var typed = string.Join(
+            '\n',
+            "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento",
+            "acionamento aprovado, Papa Romeo Alfa Bravo Charlie",
+            "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
+            "autorizado táxi pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
+            "Chamando Torre Curitiba, uno uno nove decimal cinco, Alfa Bravo Charlie",
+            "/com1 119.5",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, ponto de espera pista uno uno, pronto para partida",
+            "alinhe e mantenha pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Papa Romeo Alfa Bravo Charlie, alinhado",
+            "autorizado decolagem pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Papa Romeo Alfa Bravo Charlie, decolando",
+            "sair\n");
+
+        var result = await RunAsync(Atc(), typed);
+
+        var text = result.Output;
+        text.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, chame Torre Curitiba UNO UNO NOVE DECIMAL CINCO.");
+        text.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, PISTA UNO UNO, alinhe e mantenha.");
+        text.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, PISTA UNO UNO, autorizado decolagem.");
+        text.ShouldNotContain("repita");
+        text.ShouldNotContain("negativo");
+        result.Error.ShouldBeEmpty();
+        text.Split('\n').Count(l => l.Contains("(o controlador não responde)", StringComparison.Ordinal)).ShouldBe(6, "five readbacks (startup, taxi, handoff, line up, takeoff) and the takeoff roll are taken in silence");
+    }
+
+    [Fact]
+    public async Task A_wrong_readback_of_the_line_up_is_corrected_by_the_torre()
+    {
+        var typed = string.Join(
+            '\n',
+            "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento",
+            "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
+            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
+            "/com1 119.5",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, pronto para decolagem",
+            "alinhe e mantenha pista uno cinco, Papa Romeo Alfa Bravo Charlie",
+            "sair\n");
+
+        var result = await RunAsync(Atc(), typed);
+
+        result.Output.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, negativo, PISTA UNO UNO, alinhe e mantenha.");
     }
 
     // A reader that hands over its lines one at a time and runs an action between them, like a person at a keyboard.

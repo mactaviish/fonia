@@ -15,12 +15,12 @@ public class HoldingShortNluTests
 
     [Theory]
     [InlineData("Solo Curitiba, PRABC, no ponto de espera da pista 15", "15")]
-    [InlineData("PRABC no ponto de espera da pista um cinco", "15")]
+    [InlineData("PRABC no ponto de espera da pista uno cinco", "15")]
     [InlineData("PRABC, em ponto de espera pista dois três esquerda", "23L")]
     [InlineData("Papa Romeo Alfa Bravo Charlie, no ponto de espera da 33", "33")]
     [InlineData("PRABC no ponto de espera, pronto", null)]
     [InlineData("alfa bravo charlie, no ponto de espera", null)]
-    [InlineData("PRABC chegando no ponto de espera da pista 15, pronto para decolagem", "15")]
+    [InlineData("PRABC chegando no ponto de espera da pista 15", "15")]
     [InlineData("Solo, PRABC, no ponto de espera pista 1,5", "15")]
     public void The_pilot_who_reports_being_at_the_holding_point_is_understood_even_with_a_readback_waiting(string said, string? runway)
     {
@@ -28,9 +28,9 @@ public class HoldingShortNluTests
     }
 
     [Theory]
-    [InlineData("autorizado táxi para o ponto de espera da pista um cinco, PRABC")]
-    [InlineData("táxi para o ponto de espera da pista um cinco, PRABC")]
-    [InlineData("PRABC, ponto de espera, pista um cinco")]
+    [InlineData("autorizado táxi para o ponto de espera da pista uno cinco, PRABC")]
+    [InlineData("táxi para o ponto de espera da pista uno cinco, PRABC")]
+    [InlineData("PRABC, ponto de espera, pista uno cinco")]
     [InlineData("para o ponto de espera da 15, PRABC")]
     public void Repeating_the_taxi_clearance_is_still_a_readback(string said)
     {
@@ -44,7 +44,7 @@ public class HoldingShortNluTests
     [InlineData("Chamará Torre Curitiba no...")]
     [InlineData("Uno noito, decimal cinco, cinco, Alfa Bravo Charlie.")]
     [InlineData("1, 1, 8, decimal cinco para o Alfa Bravo Charlie.")]
-    [InlineData("Chamando Torre Curitiba, um um oito decimal cinco cinco, Papa Romeo Alfa Bravo Charlie")]
+    [InlineData("Chamando Torre Curitiba, uno uno oito decimal cinco cinco, Papa Romeo Alfa Bravo Charlie")]
     public void The_pilot_reading_the_handoff_back_is_a_readback_however_the_recognizer_wrote_it(string said)
     {
         _nlu.Interpret(said, Handed).ShouldBeOfType<Readback>();

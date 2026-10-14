@@ -30,6 +30,11 @@ public sealed class RuleBasedNlu : INlu
     private static readonly string[] StartupStems = ["acion", "partida", "start", "ligar", "ligand", "motor"];
     private static readonly string[] TaxiStems = ["tax"];
 
+    // The departure (MCA 100-16, Art. 126). "partida" is also the engine start of the Solo, so it counts only after the taxi.
+    private static readonly string[] DepartureStems = ["decol"];
+    private static readonly string[] LinedUpStems = ["alinhad", "alinhei"];
+    private static readonly string[] LineUpStems = ["alinh"];
+
     // A pilot who only says "pronto" is ready for the taxi: it is what the controller asks for after startup and pushback.
     private static readonly string[] ReadyStems = ["pronto", "pronta"];
     private static readonly string[] StandWords = ["box", "pos", "posicao", "stand", "patio", "vaga", "gate"];
@@ -56,6 +61,13 @@ public sealed class RuleBasedNlu : INlu
         var pushback = HasAny(rest, PushbackStems);
         var startup = HasAny(rest, StartupStems);
         var repeating = HasAny(rest, ReadbackStems);
+
+        var departure = DepartureIntent(rest, flight, repeating, callsign);
+
+        if (departure is not null)
+        {
+            return departure;
+        }
 
         // "no ponto de espera da 15" is the pilot reporting where the aircraft is, which is not a request ("pronto" in it
         // is not "pronto para o taxi") and not the readback of the taxi clearance (which says "para o ponto de espera").
@@ -102,6 +114,32 @@ public sealed class RuleBasedNlu : INlu
         return new RequestTaxi(callsign, FindRunway(rest));
     }
 
+    // What the pilot says at the holding point and on the runway: ready for departure, lined up, taking off. A readback (which
+    // has words like "autorizado") is none of these, and neither is the repeating of the line-up or the takeoff clearance.
+    private static Intent? DepartureIntent(List<string> rest, FlightContext flight, bool repeating, string? callsign)
+    {
+        if (repeating)
+        {
+            return null;
+        }
+
+        if (HasAny(rest, ["decolando", "decolei"]) || (rest.Contains("iniciando") && HasAny(rest, DepartureStems)))
+        {
+            return new ReportTakingOff(callsign);
+        }
+
+        if (HasAny(rest, LinedUpStems))
+        {
+            return new ReportLinedUp(callsign, FindRunwayInReadback(rest));
+        }
+
+        var wantsDeparture = HasAny(rest, DepartureStems)
+            || (flight.Phase >= FlightPhase.Taxiing && HasAny(rest, ["partida"]) && !HasAny(rest, ["motor"]));
+        var ready = HasAny(rest, RequestStems) || HasAny(rest, ReadyStems);
+
+        return wantsDeparture && ready ? new RequestDeparture(callsign, FindRunwayInReadback(rest)) : null;
+    }
+
     // "no ponto de espera", "em ponto de espera", "holding": the aircraft is there. The "no"/"em" before "ponto" is what tells
     // the report from "para o ponto de espera", the way a readback repeats the instruction.
     private static bool IsHoldingShortReport(List<string> tokens)
@@ -134,6 +172,12 @@ public sealed class RuleBasedNlu : INlu
 
     /// <summary>True when the words mention starting the engines ("acionamento", "partida").</summary>
     internal static bool MentionsStartup(IReadOnlyList<string> tokens) => HasAny(tokens, StartupStems);
+
+    /// <summary>True when the words mention lining up ("alinhe e mantenha", "alinhando").</summary>
+    internal static bool MentionsLineUp(IReadOnlyList<string> tokens) => HasAny(tokens, LineUpStems);
+
+    /// <summary>True when the words mention the takeoff ("autorizado decolagem", "decolar").</summary>
+    internal static bool MentionsTakeoff(IReadOnlyList<string> tokens) => HasAny(tokens, DepartureStems);
 
     /// <summary>True when the words mention pushback.</summary>
     internal static bool MentionsPushback(IReadOnlyList<string> tokens) => HasAny(tokens, PushbackStems);

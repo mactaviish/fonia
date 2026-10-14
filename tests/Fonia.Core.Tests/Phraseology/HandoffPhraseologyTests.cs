@@ -29,7 +29,7 @@ public class HandoffPhraseologyTests
     [Fact]
     public void The_messages_of_the_app_about_the_frequency_are_notices_not_radio()
     {
-        foreach (var instruction in new AtcInstruction[] { new NoTowerAvailable(), new NoOneOnFrequency(new Frequency(121500)), new TowerPhraseologyPending() })
+        foreach (var instruction in new AtcInstruction[] { new NoTowerAvailable(), new NoOneOnFrequency(new Frequency(121500)), new CallTheSolo(new Frequency(118000)) })
         {
             _phraseology.Speak(instruction, Solo)!.Kind.ShouldBe(UtteranceKind.Notice, instruction.GetType().Name);
         }
@@ -53,14 +53,4 @@ public class HandoffPhraseologyTests
         Say(new NoTowerAvailable()).ShouldNotBeNull().ShouldContain("SBXX");
     }
 
-    [Fact]
-    public void The_torre_that_cannot_speak_yet_says_so_and_points_back_to_the_solo()
-    {
-        var onTower = new PhraseContext("PRABC", FrequencyResolver.Apply(Solo.Airport, Solo.Airport.Airport.FrequencyOf(AirportFrequencyType.Tower)!.Frequency));
-
-        var text = _phraseology.Speak(new TowerPhraseologyPending(), onTower)!.Text;
-
-        text.ShouldContain("TORRE Curitiba");
-        text.ShouldContain("Solo 118.0");
-    }
 }

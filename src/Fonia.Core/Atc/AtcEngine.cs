@@ -26,14 +26,21 @@ public sealed class AtcEngine : IAtcEngine
             CallsignOnly called => Called(called, flight, airport),
             SayAgain => Repeat(flight),
             Readback readback => CheckReadback(readback, flight),
+
+            // The pilot rolling for takeoff needs no answer, with or without the callsign.
+            ReportTakingOff when airport.Unit == ServiceUnit.Tower && flight.Phase >= FlightPhase.TakeoffCleared
+                => new AtcDecision(new NoResponse(), flight with { PendingReadback = null, AwaitingCallsign = null }),
             _ when intent.Callsign is null => new AtcDecision(new RequestCallsign(), flight with { AwaitingCallsign = intent }),
             _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight with { AwaitingCallsign = null }),
 
-            // On the Torre's frequency: the Torre does not do the Solo's job when the airport has a Solo, and its own phrases
-            // (line up, take off) are not written yet.
-            _ when airport.Unit == ServiceUnit.Tower && (intent is ReportHoldingShort || airport.Airport.HasFrequency(AirportFrequencyType.Ground))
-                => Say(new TowerPhraseologyPending(), flight with { AwaitingCallsign = null }),
-            ReportHoldingShort => HoldingShort(Released(flight), airport),
+            // On the Torre's frequency the Torre does not do the Solo's job when the airport has a Solo: it says where to call.
+            RequestStartup or RequestPushback or RequestTaxi when airport.Unit == ServiceUnit.Tower && airport.Airport.FrequencyOf(AirportFrequencyType.Ground) is { } ground
+                => Say(new CallTheSolo(ground.Frequency), Released(flight)),
+
+            // The departure belongs to the Torre; the Solo, asked for it, passes the flight on.
+            ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff when airport.Unit == ServiceUnit.Tower
+                => Departure(intent, Released(flight), airport),
+            ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff => HoldingShort(Released(flight), airport),
             RequestStartup => Issue(new StartupApproved(), Released(flight), FlightPhase.StartupApproved),
             RequestPushback pushback => Issue(new PushbackApproved(pushback.WithStartup), Released(flight), pushback.WithStartup ? FlightPhase.StartupApproved : FlightPhase.PushbackApproved),
             RequestTaxi => Taxi(Released(flight), airport),
@@ -55,6 +62,39 @@ public sealed class AtcEngine : IAtcEngine
         return flight.AwaitingCallsign is { } held
             ? Handle(held with { Callsign = flight.Callsign }, flight with { AwaitingCallsign = null }, airport)
             : Say(new GoAhead(), flight);
+    }
+
+    // The Torre's part of a departure (MCA 100-16, Art. 126): ready at the holding point, line up and wait; ready again or lined up,
+    // cleared for takeoff. The runway is the one the Solo cleared the taxi to.
+    private static AtcDecision Departure(Intent intent, FlightContext flight, AirportContext airport)
+    {
+        if (flight.Phase < FlightPhase.Taxiing || intent is ReportTakingOff)
+        {
+            return Say(new SayAgainRequest(), flight);
+        }
+
+        var runway = flight.AssignedRunway ?? airport.RunwayInUse;
+
+        if (runway is null)
+        {
+            return Say(new NoRunwayAvailable(), flight);
+        }
+
+        // Lined up (said so, or was told to and is ready again): the takeoff. Otherwise: the line-up.
+        if (intent is ReportLinedUp || flight.Phase >= FlightPhase.LineUpCleared)
+        {
+            var clearance = new TakeoffClearance(runway, airport.Wind);
+
+            return new AtcDecision(
+                clearance,
+                flight with { Phase = FlightPhase.TakeoffCleared, PendingReadback = clearance, LastInstruction = clearance, AssignedRunway = runway });
+        }
+
+        var lineUp = new LineUpAndWait(runway);
+
+        return new AtcDecision(
+            lineUp,
+            flight with { Phase = FlightPhase.LineUpCleared, PendingReadback = lineUp, LastInstruction = lineUp, AssignedRunway = runway });
     }
 
     // The pilot is at the holding point: the Solo passes the flight to the Torre. Reporting it before any taxi was cleared makes no sense.
@@ -86,7 +126,7 @@ public sealed class AtcEngine : IAtcEngine
         var clearance = new TaxiClearance(airport.RunwayInUse);
 
         // The taxi clearance is what the manual requires to be read back (Art. 12); startup and pushback are read back too, as in practice.
-        return new AtcDecision(clearance, flight with { Phase = FlightPhase.Taxiing, PendingReadback = clearance, LastInstruction = clearance });
+        return new AtcDecision(clearance, flight with { Phase = FlightPhase.Taxiing, PendingReadback = clearance, LastInstruction = clearance, AssignedRunway = airport.RunwayInUse });
     }
 
     private static AtcDecision Repeat(FlightContext flight)
@@ -128,8 +168,13 @@ public sealed class AtcEngine : IAtcEngine
         TaxiClearance taxi => RuleBasedNlu.FindRunwayInReadback(heard) is { } runway && RunwayDesignator.AreSame(runway, taxi.Runway),
         StartupApproved => RuleBasedNlu.MentionsStartup(heard),
         PushbackApproved pushback => RuleBasedNlu.MentionsPushback(heard) && (!pushback.WithStartup || RuleBasedNlu.MentionsStartup(heard)),
+        LineUpAndWait lineUp => RuleBasedNlu.MentionsLineUp(heard) && SaysRunway(heard, lineUp.Runway),
+        TakeoffClearance takeoff => RuleBasedNlu.MentionsTakeoff(heard) && SaysRunway(heard, takeoff.Runway),
         _ => true,
     };
+
+    private static bool SaysRunway(IReadOnlyList<string> heard, string runway) =>
+        RuleBasedNlu.FindRunwayInReadback(heard) is { } said && RunwayDesignator.AreSame(said, runway);
 
     // Answers without moving the flight on. A "REPITA" is not remembered: if the pilot asks to say it again, what is
     // repeated is the last instruction.

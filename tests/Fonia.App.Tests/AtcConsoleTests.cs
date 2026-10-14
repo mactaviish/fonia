@@ -114,7 +114,7 @@ public class AtcConsoleTests
             "solicito pushback e acionamento, PRABC",
             "autorizado pushback e acionamento, PRABC",
             "PRABC, pronto para o táxi",
-            "autorizado táxi pista um um, PRABC",
+            "autorizado táxi pista uno uno, PRABC",
             "sair",
             string.Empty);
 

@@ -72,7 +72,7 @@ Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entr
 
 ## M4: Voo completo em um aeroporto
 
-- [ ] Posição Torre: alinhar, autorização de decolagem, autorização de pouso. A fraseologia está catalogada em `docs/phraseology/torre-pt-br.md` (MCA 100-16/2025, Art. 126 a 134); falta implementar (motor, NLU, templates) em tarefas pequenas: alinhar e decolar, circuito e pouso, depois do pouso
+- [ ] Posição Torre: alinhar, autorização de decolagem, autorização de pouso. A fraseologia está catalogada em `docs/phraseology/torre-pt-br.md` (MCA 100-16/2025, Art. 126 a 134). **Feito:** alinhar e decolar, com cotejamento exigido (`LineUpAndWait`, `TakeoffClearance`, `SpokenText.Wind`). **Falta:** fala proativa pela telemetria ("decolado aos 26, chame o Controle", "no solo aos 02"), circuito e pouso, depois do pouso
 - [x] Transferência de frequência entre posições (Solo → Torre) conforme o COM1 do simulador: quem responde vem da frequência do rádio (`FrequencyResolver`, `--com1`, `/com1`, COM1 ao vivo com `--sim`); o relato "no ponto de espera" faz o Solo mandar chamar a Torre. A Torre ainda não fala (avisos), vem nas próximas tarefas
 - [ ] ATIS com METAR real (cache + fallback)
 - [ ] Seleção de pista em uso pelo vento

@@ -122,7 +122,7 @@ public class PortuguesePhraseologyTests
         string[] said =
         [
             "Solo, PRABC, solicito acionamento", "Solo, PRABC, pushback e acionamento", "Solo, PRABC, pushback", "PRABC, táxi",
-            "solicito acionamento", "PRABC", "repita", "blá", "autorizado táxi pista um um, PRABC", "ciente, PRABC",
+            "solicito acionamento", "PRABC", "repita", "blá", "autorizado táxi pista uno uno, PRABC", "ciente, PRABC",
         ];
         var airports = new[]
         {

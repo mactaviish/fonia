@@ -8,11 +8,12 @@ namespace Fonia.Core.Atc;
 /// the session; the engine itself keeps no state.
 /// </summary>
 /// <param name="RunwayInUse">The runway end in use ("15"), or null when the airport data has no usable runway.</param>
+/// <param name="Wind">The surface wind when the app knows it (a METAR, the simulator); null when not, and then it is not said.</param>
 /// <param name="Tuned">
 /// The frequency the pilot's radio is on, when it is known (a simulator reading or the user's choice); null otherwise.
 /// <see cref="Unit"/> is then who answers on it, see <see cref="FrequencyResolver"/>.
 /// </param>
-public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null)
+public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null)
 {
     /// <summary>
     /// The unit that answers is what the airport really has: Solo, otherwise Torre, otherwise AFIS, otherwise nobody.

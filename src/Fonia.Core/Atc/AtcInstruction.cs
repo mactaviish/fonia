@@ -51,11 +51,19 @@ public sealed record NoTowerAvailable : AtcInstruction;
 public sealed record NoOneOnFrequency(Frequency Frequency) : AtcInstruction;
 
 /// <summary>
-/// The pilot is on the Torre's frequency and the app has no Torre phraseology yet (it comes with the Torre tasks of M4):
-/// a message of the app, not radio, so that nothing is invented.
+/// The pilot asked the Torre for something the Solo does (engine start, pushback, taxi) at an airport that has a Solo. A message
+/// of the app, not radio: the manual has no phrase for it.
 /// </summary>
-// TODO(fraseologia): replaced by the Torre's own phrases once docs/phraseology has them.
-public sealed record TowerPhraseologyPending : AtcInstruction;
+public sealed record CallTheSolo(Frequency Frequency) : AtcInstruction;
+
+/// <summary>"Alinhe e mantenha": enter the runway and wait there for the takeoff clearance (MCA 100-16, Art. 126, II).</summary>
+// TODO(fraseologia): the manual shows "alinhe e mantenha" only inside examples (Art. 126, negative; Art. 49, conditional), never as a
+// plain instruction; the runway first follows the order of Art. 126, II. To be confirmed with the maintainer.
+public sealed record LineUpAndWait(string Runway) : AtcInstruction;
+
+/// <summary>Takeoff clearance: the runway, the clearance and, when the wind is known, the wind (Art. 126, II).</summary>
+// TODO(fraseologia): said without the wind while the app has no source of it.
+public sealed record TakeoffClearance(string Runway, Wind? Wind = null) : AtcInstruction;
 
 /// <summary>A correct readback needs no answer (MCA 100-16 Art. 12): the controller stays silent.</summary>
 public sealed record NoResponse : AtcInstruction;
