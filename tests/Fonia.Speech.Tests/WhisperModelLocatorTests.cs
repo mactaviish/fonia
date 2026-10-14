@@ -28,7 +28,7 @@ public sealed class WhisperModelLocatorTests : IDisposable
     public void It_finds_the_model_in_the_folder_given()
     {
         var model = Path.Combine(_directory, "ggml-small.bin");
-        File.WriteAllText(model, "x");
+        FakeModelFiles.Create(model);
 
         WhisperModelLocator.Resolve(_directory, null).ShouldBe(model);
     }
@@ -37,7 +37,7 @@ public sealed class WhisperModelLocatorTests : IDisposable
     public void It_finds_another_model_by_file_name()
     {
         var model = Path.Combine(_directory, "ggml-base.bin");
-        File.WriteAllText(model, "x");
+        FakeModelFiles.Create(model);
 
         WhisperModelLocator.Resolve(_directory, "ggml-base.bin").ShouldBe(model);
     }
@@ -56,5 +56,69 @@ public sealed class WhisperModelLocatorTests : IDisposable
     public void A_file_name_with_a_path_is_refused_so_that_the_folder_stays_the_only_place_looked_in()
     {
         Should.Throw<ArgumentException>(() => WhisperModelLocator.Resolve(_directory, Path.Combine("..", "ggml-small.bin")));
+    }
+
+    [Fact]
+    public void Without_a_folder_the_one_next_to_the_program_comes_first()
+    {
+        var bundled = Path.Combine(_directory, "bundled");
+        var downloaded = Path.Combine(_directory, "downloaded");
+        FakeModelFiles.Create(Path.Combine(bundled, "ggml-small.bin"));
+        FakeModelFiles.Create(Path.Combine(downloaded, "ggml-small.bin"));
+
+        WhisperModelLocator.Resolve(null, null, [bundled, downloaded]).ShouldBe(Path.Combine(bundled, "ggml-small.bin"));
+    }
+
+    [Fact]
+    public void Without_a_folder_it_falls_back_to_the_next_one_that_has_the_model()
+    {
+        var bundled = Path.Combine(_directory, "bundled");
+        var downloaded = Path.Combine(_directory, "downloaded");
+        FakeModelFiles.Create(Path.Combine(downloaded, "ggml-small.bin"));
+
+        WhisperModelLocator.Resolve(null, null, [bundled, downloaded]).ShouldBe(Path.Combine(downloaded, "ggml-small.bin"));
+    }
+
+    [Fact]
+    public void A_folder_given_by_the_user_is_the_only_one_looked_in()
+    {
+        var bundled = Path.Combine(_directory, "bundled");
+        var mine = Path.Combine(_directory, "mine");
+        FakeModelFiles.Create(Path.Combine(bundled, "ggml-small.bin"));
+        Directory.CreateDirectory(mine);
+
+        Should.Throw<FileNotFoundException>(() => WhisperModelLocator.Resolve(mine, null, [bundled]));
+    }
+
+    [Fact]
+    public void A_model_of_the_catalog_that_was_cut_short_is_not_taken_for_the_model()
+    {
+        var path = Path.Combine(_directory, "ggml-small.bin");
+        File.WriteAllBytes(path, new byte[1000]);
+
+        Should.Throw<FileNotFoundException>(() => WhisperModelLocator.Resolve(_directory, null));
+    }
+
+    [Fact]
+    public void A_model_the_user_brought_only_has_to_exist()
+    {
+        var path = Path.Combine(_directory, "ggml-base.bin");
+        File.WriteAllBytes(path, new byte[1000]);
+
+        WhisperModelLocator.Resolve(_directory, "ggml-base.bin").ShouldBe(path);
+    }
+
+    [Fact]
+    public void The_message_offers_the_download_command()
+    {
+        var error = Should.Throw<FileNotFoundException>(() => WhisperModelLocator.Resolve(_directory, null));
+
+        error.Message.ShouldContain("--download-models");
+    }
+
+    [Fact]
+    public void The_folders_searched_are_the_one_next_to_the_program_and_the_one_of_the_user()
+    {
+        ModelDirectories.Search.ShouldBe([Path.Combine(AppContext.BaseDirectory, "models"), ModelDirectories.Default]);
     }
 }

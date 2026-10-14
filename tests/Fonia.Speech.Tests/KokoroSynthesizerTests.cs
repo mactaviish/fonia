@@ -28,8 +28,8 @@ public sealed class KokoroSynthesizerTests : IDisposable
     [Fact]
     public void It_finds_the_model_and_the_voices_in_the_folder_given()
     {
-        File.WriteAllText(Path.Combine(_directory, "kokoro-v1.0.onnx"), "x");
-        File.WriteAllText(Path.Combine(_directory, "voices-v1.0.bin"), "x");
+        FakeModelFiles.Create(Path.Combine(_directory, "kokoro-v1.0.onnx"));
+        FakeModelFiles.Create(Path.Combine(_directory, "voices-v1.0.bin"));
 
         var (model, voices) = KokoroModelLocator.Resolve(_directory);
 
@@ -51,7 +51,7 @@ public sealed class KokoroSynthesizerTests : IDisposable
     [Fact]
     public void Only_the_missing_file_is_named()
     {
-        File.WriteAllText(Path.Combine(_directory, "voices-v1.0.bin"), "x");
+        FakeModelFiles.Create(Path.Combine(_directory, "voices-v1.0.bin"));
 
         var error = Should.Throw<FileNotFoundException>(() => KokoroModelLocator.Resolve(_directory));
 
@@ -121,5 +121,26 @@ public sealed class KokoroSynthesizerTests : IDisposable
         var error = await Should.ThrowAsync<FileNotFoundException>(() => synthesizer.WarmUpAsync(TranscriptionContext.Empty, Ct));
 
         error.Message.ShouldContain("m.onnx");
+    }
+
+    [Fact]
+    public void The_model_and_the_voices_are_looked_for_together_in_each_folder_in_order()
+    {
+        var bundled = Path.Combine(_directory, "bundled");
+        var downloaded = Path.Combine(_directory, "downloaded");
+        FakeModelFiles.Create(Path.Combine(bundled, "kokoro-v1.0.onnx")); // the voices are missing here
+        FakeModelFiles.Create(Path.Combine(downloaded, "kokoro-v1.0.onnx"));
+        FakeModelFiles.Create(Path.Combine(downloaded, "voices-v1.0.bin"));
+
+        var (model, voices) = KokoroModelLocator.Resolve(null, [bundled, downloaded]);
+
+        model.ShouldBe(Path.Combine(downloaded, "kokoro-v1.0.onnx"));
+        voices.ShouldBe(Path.Combine(downloaded, "voices-v1.0.bin"));
+    }
+
+    [Fact]
+    public void The_message_offers_the_download_command()
+    {
+        Should.Throw<FileNotFoundException>(() => KokoroModelLocator.Resolve(_directory)).Message.ShouldContain("--download-models");
     }
 }
