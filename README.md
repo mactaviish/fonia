@@ -109,6 +109,14 @@ dotnet run --project src/Fonia.App -- --atc SBCT --runway 15                # in
 
 Por exemplo: `Solo Curitiba, PRABC, box 3, solicito pushback e acionamento`, depois o readback `autorizado pushback e acionamento, PRABC`, depois `PRABC, pronto para o táxi`. `sair` encerra.
 
+Para testar o microfone e o push-to-talk (Windows; o texto ainda não é reconhecido, só gravado): segure a tecla (padrão: Ctrl direito), fale, solte, e a fala é salva em um WAV para você ouvir.
+
+```bash
+dotnet run --project src/Fonia.App -- --mic-list                                  # microfones e seus números
+dotnet run --project src/Fonia.App -- --mic-test fala.wav                         # microfone padrão, tecla RControl
+dotnet run --project src/Fonia.App -- --mic-test fala.wav --mic-device 1 --ptt-key F8
+```
+
 O arquivo [CLAUDE.md](CLAUDE.md) descreve as convenções do projeto e orienta o trabalho com o Claude Code.
 
 ## Aviso
