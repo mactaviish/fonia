@@ -35,6 +35,10 @@ public sealed class RuleBasedNlu : INlu
     private static readonly string[] LinedUpStems = ["alinhad", "alinhei"];
     private static readonly string[] LineUpStems = ["alinh"];
 
+    // The arrival (MCA 100-16, Art. 128 to 132, 136).
+    private static readonly string[] LandingStems = ["pouso", "pousar", "circuito", "aproxim"];
+    private static readonly string[] GoAroundStems = ["arremet", "perdida"];
+
     // A pilot who only says "pronto" is ready for the taxi: it is what the controller asks for after startup and pushback.
     private static readonly string[] ReadyStems = ["pronto", "pronta"];
     private static readonly string[] StandWords = ["box", "pos", "posicao", "stand", "patio", "vaga", "gate"];
@@ -67,6 +71,13 @@ public sealed class RuleBasedNlu : INlu
         if (departure is not null)
         {
             return departure;
+        }
+
+        var arrival = ArrivalIntent(rest, flight, repeating, callsign);
+
+        if (arrival is not null)
+        {
+            return arrival;
         }
 
         // "no ponto de espera da 15" is the pilot reporting where the aircraft is, which is not a request ("pronto" in it
@@ -140,6 +151,46 @@ public sealed class RuleBasedNlu : INlu
         return wantsDeparture && ready ? new RequestDeparture(callsign, FindRunwayInReadback(rest)) : null;
     }
 
+    // What the pilot says in the circuit: asking to land, the legs, a go-around. Repeating an instruction (which has "reporte", "autorizado")
+    // is none of these, and neither are the words of the readback of a clearance that is waiting for it.
+    private static Intent? ArrivalIntent(List<string> rest, FlightContext flight, bool repeating, string? callsign)
+    {
+        if (repeating)
+        {
+            return null;
+        }
+
+        if (HasAny(rest, GoAroundStems))
+        {
+            return new ReportGoingAround(callsign);
+        }
+
+        if (rest.Contains("downwind") || (rest.Contains("perna") && rest.Contains("vento")))
+        {
+            return new ReportDownwind(callsign);
+        }
+
+        if (rest.Contains("base"))
+        {
+            return new ReportBaseLeg(callsign);
+        }
+
+        if (rest.Contains("final"))
+        {
+            return new ReportFinal(callsign);
+        }
+
+        if (!HasAny(rest, LandingStems))
+        {
+            return null;
+        }
+
+        // "pouso pista uno cinco, PRABC" after "pista uno cinco, pouso autorizado" is the pilot reading it back, wrongly perhaps.
+        var answering = flight.PendingReadback is CircuitClearance or LandingClearance && !HasAny(rest, RequestStems);
+
+        return answering ? null : new RequestLanding(callsign);
+    }
+
     // "no ponto de espera", "em ponto de espera", "holding": the aircraft is there. The "no"/"em" before "ponto" is what tells
     // the report from "para o ponto de espera", the way a readback repeats the instruction.
     private static bool IsHoldingShortReport(List<string> tokens)
@@ -178,6 +229,12 @@ public sealed class RuleBasedNlu : INlu
 
     /// <summary>True when the words mention the takeoff ("autorizado decolagem", "decolar").</summary>
     internal static bool MentionsTakeoff(IReadOnlyList<string> tokens) => HasAny(tokens, DepartureStems);
+
+    /// <summary>True when the words mention the circuit ("autorizado circuito de tráfego").</summary>
+    internal static bool MentionsCircuit(IReadOnlyList<string> tokens) => HasAny(tokens, ["circuito"]);
+
+    /// <summary>True when the words mention landing ("pouso autorizado", "autorizado pousar").</summary>
+    internal static bool MentionsLanding(IReadOnlyList<string> tokens) => HasAny(tokens, ["pous"]);
 
     /// <summary>True when the words mention pushback.</summary>
     internal static bool MentionsPushback(IReadOnlyList<string> tokens) => HasAny(tokens, PushbackStems);
