@@ -24,4 +24,4 @@ Regra do projeto: o que o controlador **fala** segue o MCA 100-16 vigente. Onde 
 
 ## O que o NLU não deve herdar daqui
 
-Este material descreve o que o **controlador** diz. O **piloto** fala como quiser: "bom dia", "ok", "solicito táxi", "pronto pra taxiar", fora de ordem, com palavras a mais. O NLU interpreta a intenção e os dados (indicativo, pista, posição, destino) em vez de comparar frases inteiras, e só cai em "não entendi" quando de fato não consegue (o controlador então diz "REPITA").
+Este material descreve o que o **controlador** diz. O **piloto** fala como quiser: "bom dia", "ok", "solicito táxi", "pronto pra taxiar", fora de ordem, com palavras a mais. O NLU interpreta a intenção e os dados (indicativo, pista, posição, destino) em vez de comparar frases inteiras, e só cai em "não entendi" quando de fato não consegue (o controlador então diz "PRABC, repita").

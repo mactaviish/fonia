@@ -90,9 +90,9 @@ public class VoiceExchangeTests
 
         var result = await exchange.RunAsync(Speech, Parked, Solo, null, Ct);
 
-        result.Reply.ShouldNotBeNull().Text.ShouldBe("Repita.");
+        result.Reply.ShouldNotBeNull().Text.ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, repita.");
         result.Decision.NextContext.ShouldBe(Parked);
-        synthesizer.Calls.ShouldHaveSingleItem().Text.ShouldBe("Repita.");
+        synthesizer.Calls.ShouldHaveSingleItem().Text.ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, repita.");
     }
 
     [Fact]

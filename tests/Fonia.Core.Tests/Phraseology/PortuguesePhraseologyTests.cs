@@ -55,9 +55,11 @@ public class PortuguesePhraseologyTests
     }
 
     [Fact]
-    public void What_was_not_understood_is_answered_with_repita()
+    public void What_was_not_understood_is_answered_with_the_callsign_and_repita()
     {
-        Say(new SayAgainRequest()).ShouldBe("Repita.");
+        // The manual has only "REPITA"; the callsign in front is how an aircraft is addressed, and the short word alone came out
+        // badly in the voice model (live test, 2026-10-14).
+        Say(new SayAgainRequest()).ShouldBe($"{Callsign}, repita.");
     }
 
     [Fact]

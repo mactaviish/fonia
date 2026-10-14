@@ -35,13 +35,21 @@ public static class Pronunciation
         ["qnh"] = "quê ene agá",
     };
 
-    /// <summary>The text with each word that needs it replaced by its Brazilian spelling. Case and punctuation are kept apart from the word.</summary>
+    // Words after which the voice should stop for longer than a comma makes it: the comma is spoken as three dots. Chosen by
+    // ear on the live test ("negativo, autorizado" had almost no gap, and then it is the correction that matters most).
+    private static readonly HashSet<string> LongPauseAfter = new(StringComparer.Ordinal) { "negativo" };
+
+    /// <summary>
+    /// The text with each word that needs it replaced by its Brazilian spelling, and the pauses the voice needs written in.
+    /// Case and punctuation are kept apart from the word.
+    /// </summary>
     public static string Respell(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
 
         var result = new StringBuilder(text.Length);
         var word = new StringBuilder();
+        var lastWord = string.Empty;
 
         void Flush()
         {
@@ -52,6 +60,7 @@ public static class Pronunciation
 
             var key = word.ToString().ToLowerInvariant();
             result.Append(Respellings.TryGetValue(key, out var spoken) ? spoken : word.ToString());
+            lastWord = key;
             word.Clear();
         }
 
@@ -64,7 +73,11 @@ public static class Pronunciation
             else
             {
                 Flush();
-                result.Append(c);
+
+                // Only a comma that comes right after the word.
+                var pause = c == ',' && result.Length > 0 && char.IsLetter(result[^1]) && LongPauseAfter.Contains(lastWord);
+                result.Append(pause ? "..." : c);
+                lastWord = string.Empty;
             }
         }
 

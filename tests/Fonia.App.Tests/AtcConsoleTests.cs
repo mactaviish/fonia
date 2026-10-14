@@ -141,7 +141,7 @@ public class AtcConsoleTests
     {
         var result = await RunAsync(Atc(), "\n   \nblá blá\nsair\n");
 
-        result.Output.ShouldContain("SOLO Curitiba: Repita.");
+        result.Output.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, repita.");
         result.Output.Split('\n').Count(l => l.StartsWith("SOLO", StringComparison.Ordinal)).ShouldBe(1);
     }
 
