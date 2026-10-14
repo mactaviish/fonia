@@ -203,6 +203,17 @@ public class AtcEngineTests
     }
 
     [Theory]
+    [InlineData("autorizado taxi pista 1,1")]
+    [InlineData("autorizado taxi pista 1-1")]
+    [InlineData("autorizado taxi para o ponto de espera da 1,1")]
+    public void A_runway_readback_the_recognizer_wrote_with_a_comma_or_a_dash_is_correct(string said)
+    {
+        var cleared = _engine.Handle(new RequestTaxi(Own, null), Parked, Solo).NextContext;
+
+        _engine.Handle(new Readback(Own, said), cleared, Solo).Instruction.ShouldBe(new NoResponse());
+    }
+
+    [Theory]
     [InlineData("autorizado taxi para o ponto de espera da um cinco")]
     [InlineData("autorizado taxi para o ponto de espera da um um esquerda")]
     public void A_wrong_runway_without_the_word_pista_is_still_corrected(string said)

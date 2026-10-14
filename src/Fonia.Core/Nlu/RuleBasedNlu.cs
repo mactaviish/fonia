@@ -13,6 +13,7 @@ namespace Fonia.Core.Nlu;
 public sealed class RuleBasedNlu : INlu
 {
     private const int LongestCallsignInTokens = 12;
+    private const int GluedStemLength = 5;
 
     private static readonly string[] SayAgainWords =
         ["repita", "repete", "repetir", "repeti", "novamente", "denovo", "copiei", "entendi", "confirme", "como"];
@@ -130,7 +131,7 @@ public sealed class RuleBasedNlu : INlu
             }
 
             var start = includeStart ? i : i + 1;
-            var run = SpokenCode.ReadRun(tokens, start, out var end);
+            var run = RunwayFromDecimal(SpokenCode.ReadRun(tokens, start, out var end));
             var digits = new string([.. run.TakeWhile(char.IsAsciiDigit)]);
 
             if (digits.Length == 0)
@@ -231,6 +232,14 @@ public sealed class RuleBasedNlu : INlu
         return false;
     }
 
+    // "1,5" and "3,3 L": the recognizer writes a runway read digit by digit as a decimal number. After "pista" or in a
+    // readback, a single digit, a decimal separator and more digits is the runway ("15", "33L"), never a frequency.
+    private static string RunwayFromDecimal(string run) =>
+        run.Length >= 3 && run[1] == '.' && char.IsAsciiDigit(run[0]) && char.IsAsciiDigit(run[2]) ? run.Remove(1, 1) : run;
+
+    // A stem of five letters or more is also looked for inside a word, because the recognizer glues words together when
+    // the pilot speaks fast ("solicituacionamento"). Shorter stems ("tax", "push") would match too many other words.
     private static bool HasAny(IReadOnlyList<string> tokens, params string[][] stemLists) =>
-        tokens.Any(t => stemLists.Any(stems => stems.Any(stem => t.StartsWith(stem, StringComparison.Ordinal))));
+        tokens.Any(t => stemLists.Any(stems => stems.Any(stem =>
+            t.StartsWith(stem, StringComparison.Ordinal) || (stem.Length >= GluedStemLength && t.Contains(stem, StringComparison.Ordinal)))));
 }

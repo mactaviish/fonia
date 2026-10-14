@@ -97,4 +97,32 @@ public class SpokenTextTests
     {
         SpokenText.IsSameCallsign(heard, own).ShouldBe(expected);
     }
+
+    // What the speech recognizer writes for "papa romeo alfa bravo charlie" when it is not sure of a word.
+    [Theory]
+    [InlineData("Papá Romeo, Alfa, Bravo Charly", true)]
+    [InlineData("papa romeu alfa bravo charli", true)]
+    [InlineData("papa romeo alfa bravo chalie", true)]
+    [InlineData("papa romeo alfa bravo charllie", true)]
+    [InlineData("papa romeo alpha bravo xarli", true)]
+    [InlineData("papa romeoalfa bravocharlie", true)]
+    [InlineData("alfa bravo charly", true)]
+    [InlineData("papa romeo alfa bravo delta", false)]
+    [InlineData("papa romeo alfa bravo", false)]
+    [InlineData("papa romeo alfa tango charlie", false)]
+    public void Phonetic_words_the_recognizer_misspells_by_a_letter_or_glues_together_are_still_read(string heard, bool expected)
+    {
+        SpokenText.IsSameCallsign(heard, "PRABC").ShouldBe(expected);
+    }
+
+    // Short phonetic words are read only when exact: "tanto" is one letter from "tango", "motel" from "hotel".
+    [Theory]
+    [InlineData("tanto", "PRATC")]
+    [InlineData("motel", "PRAHC")]
+    [InlineData("banco", "PRABC")]
+    [InlineData("brava", "PRABC")]
+    public void Ordinary_words_close_to_a_short_phonetic_word_are_not_taken_for_a_letter(string word, string own)
+    {
+        SpokenText.IsSameCallsign($"papa romeo alfa {word} charlie", own).ShouldBeFalse();
+    }
 }

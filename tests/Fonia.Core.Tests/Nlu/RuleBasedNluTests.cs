@@ -277,4 +277,40 @@ public class RuleBasedNluTests
     {
         _nlu.Interpret(null, Parked).ShouldBe(new Unknown(string.Empty));
     }
+
+    // The recognizer glues words together when the pilot speaks fast ("solicito acionamento" is "solicituacionamento").
+    [Theory]
+    [InlineData("Solo Curitiba, PRABC, solicituacionamento")]
+    [InlineData("PRABC solicitoacionamento")]
+    [InlineData("PRABC, solicito, acionamentodosmotores")]
+    public void Glued_words_are_still_found_by_their_roots(string said)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new RequestStartup(Own, null));
+    }
+
+    [Theory]
+    [InlineData("PRABC solicitopushbackeacionamento")]
+    [InlineData("PRABC pushbackeacionamento")]
+    public void Glued_pushback_and_startup_are_both_found(string said)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new RequestPushback(Own, true, null));
+    }
+
+    [Theory]
+    [InlineData("Papá Romeo, Alfa, Bravo Charly, solicito acionamento")]
+    [InlineData("Papa Romeu Alfa Bravo Chalie, solicito acionamento")]
+    public void A_callsign_the_recognizer_misspelled_is_still_this_aircraft(string said)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new RequestStartup(Own, null));
+    }
+
+    [Theory]
+    [InlineData("Táxi, pista 1,5, PRABC", "15")]
+    [InlineData("Táxi, pista 3,3 esquerda, PRABC", "33L")]
+    [InlineData("PRABC pronto para o táxi pista 1-5", "15")]
+    [InlineData("PRABC pronto para o táxi pista um cinco", "15")]
+    public void A_runway_written_with_a_comma_or_a_dash_is_a_runway_not_a_decimal_number(string said, string runway)
+    {
+        _nlu.Interpret(said, Parked).ShouldBe(new RequestTaxi(Own, runway));
+    }
 }
