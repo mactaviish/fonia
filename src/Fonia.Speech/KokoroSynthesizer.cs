@@ -9,7 +9,7 @@ namespace Fonia.Speech;
 /// phonemizer of the Core, then the model turns the phonemes into a voice at 24 kHz. The model loads on the first call
 /// and stays loaded; the silence the model leaves around the sentence is trimmed, because the pilot waits for it.
 /// </summary>
-public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer
+public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWarmUp
 {
     /// <summary>The sample rate the model speaks at.</summary>
     public const int SampleRate = 24_000;
@@ -57,6 +57,10 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer
             _gate.Release();
         }
     }
+
+    /// <summary>Loads the model and the first voice and says one word, so that the first real call pays for nothing.</summary>
+    public async Task WarmUpAsync(TranscriptionContext context, CancellationToken ct) =>
+        _ = await SynthesizeAsync("Teste.", VoiceCatalog.Default[0], ct);
 
     public async ValueTask DisposeAsync()
     {

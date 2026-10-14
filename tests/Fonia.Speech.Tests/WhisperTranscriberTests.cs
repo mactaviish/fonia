@@ -74,4 +74,23 @@ public class WhisperTranscriberTests
         options.EffectiveThreads.ShouldBe(Math.Clamp(Environment.ProcessorCount / 2, 1, 8));
         new WhisperOptions("x.bin", Threads: 3).EffectiveThreads.ShouldBe(3);
     }
+
+    [Fact]
+    public async Task Warming_up_without_the_model_fails_the_way_the_first_real_call_would()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "fonia-no-model", "ggml-small.bin");
+        await using var transcriber = new WhisperTranscriber(new WhisperOptions(path));
+
+        var error = await Should.ThrowAsync<FileNotFoundException>(() => transcriber.WarmUpAsync(TranscriptionContext.Empty, Ct));
+
+        error.Message.ShouldContain(path);
+    }
+
+    [Fact]
+    public void The_recognizer_can_be_warmed_up_ahead_of_time()
+    {
+        IWarmUp warmUp = new WhisperTranscriber(new WhisperOptions("x.bin"));
+
+        warmUp.ShouldNotBeNull();
+    }
 }

@@ -112,4 +112,14 @@ public sealed class KokoroSynthesizerTests : IDisposable
         new KokoroOptions("m", "v").EffectiveThreads.ShouldBe(Math.Clamp(Environment.ProcessorCount / 2, 1, 8));
         new KokoroOptions("m", "v", Threads: 2).EffectiveThreads.ShouldBe(2);
     }
+
+    [Fact]
+    public async Task Warming_up_without_the_model_fails_the_way_the_first_real_call_would()
+    {
+        await using var synthesizer = new KokoroSynthesizer(new KokoroOptions(Path.Combine(_directory, "m.onnx"), Path.Combine(_directory, "v.bin")));
+
+        var error = await Should.ThrowAsync<FileNotFoundException>(() => synthesizer.WarmUpAsync(TranscriptionContext.Empty, Ct));
+
+        error.Message.ShouldContain("m.onnx");
+    }
 }

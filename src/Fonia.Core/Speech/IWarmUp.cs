@@ -7,5 +7,6 @@ namespace Fonia.Core.Speech;
 public interface IWarmUp
 {
     /// <summary>Loads what is needed and runs it once. Throws what the first real use would throw (a missing model, for instance).</summary>
-    Task WarmUpAsync(CancellationToken ct);
+    /// <param name="context">What the first real use will be like (the callsign and the station), so that nothing has to be redone for it.</param>
+    Task WarmUpAsync(TranscriptionContext context, CancellationToken ct);
 }
