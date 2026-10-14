@@ -9,6 +9,7 @@
 #:package Whisper.net.Runtime.Cuda12@1.9.1
 #:package NAudio@2.2.1
 #:project ../src/Fonia.Core/Fonia.Core.csproj
+#:project ../src/Fonia.Data/Fonia.Data.csproj
 
 // Spike do M3: mede as opções de voz (STT e TTS) na máquina onde roda. Não faz parte da solução nem do app.
 //
@@ -17,12 +18,19 @@
 //   dotnet run tools/speech-spike.cs -- stt --model small       transcreve as gravações e mede acerto e tempo
 //   dotnet run tools/speech-spike.cs -- tts                     mede as vozes do Windows falando frases do controlador
 //
+// Voo (cotejamentos reais, SBCT, PR-FRA): --phrases phrases-voo.txt grava e mede as frases de tools/speech-spike/phrases-voo.txt, em
+// tools/speech-spike/recordings-voo, e o resultado é o que o controlador faria (o motor ATC), não só a intenção. Com --prompt o recognizer
+// recebe o prompt do app; com --ctx, também a última fala do controlador:
+//   dotnet run tools/speech-spike.cs -- record --phrases phrases-voo.txt
+//   dotnet run tools/speech-spike.cs -- stt --phrases phrases-voo.txt --model small --prompt --ctx --runtime vulkan
+//
 // Os modelos vão para %TEMP%\fonia-speech-spike\models e as gravações para tools/speech-spike/recordings (fora do git).
 
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using Fonia.Core.Atc;
+using Fonia.Core.Speech;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
 using NAudio.Wave;
@@ -41,8 +49,8 @@ var options = ParseOptions(args.Skip(1).ToArray());
 
 return command switch
 {
-    "record" => Record(options.Get("dir", Path.Combine(kit, "recordings"))),
-    "synth" => await SynthPhrasesAsync(options.Get("dir", Path.Combine(work, "synthetic")), options.Get("voice", "Maria")),
+    "record" => Record(options.Get("dir", DefaultRecordings(options)), options.Get("phrases", "phrases.txt")),
+    "synth" => await SynthPhrasesAsync(options.Get("dir", Path.Combine(work, "synthetic")), options.Get("voice", "Maria"), options.Get("phrases", "phrases.txt")),
     "stt" => await SttAsync(options),
     "tts" => await TtsAsync(Path.Combine(work, "tts")),
     _ => Help(),
@@ -50,15 +58,18 @@ return command switch
 
 int Help()
 {
-    Console.WriteLine("Comandos: record | synth | stt --model tiny|base|small [--quant none|q5_1|q8_0] [--dir pasta] [--prompt] [--threads n] [--runtime cpu|vulkan|cuda] | tts");
+    Console.WriteLine("Comandos: record | synth | stt --model tiny|base|small|medium|large-v3-turbo [--quant none|q5_0|q5_1|q8_0] [--phrases arquivo] [--ctx] [--callsign PRFRA] [--dir pasta] [--prompt] [--threads n] [--runtime cpu|vulkan|cuda] | tts");
     return 0;
 }
 
-List<Phrase> LoadPhrases()
+string DefaultRecordings(Options o) =>
+    Path.Combine(kit, o.Get("phrases", "phrases.txt") == "phrases.txt" ? "recordings" : "recordings-voo");
+
+List<Phrase> LoadPhrases(string file)
 {
     var phrases = new List<Phrase>();
 
-    foreach (var line in File.ReadAllLines(Path.Combine(kit, "phrases.txt")))
+    foreach (var line in File.ReadAllLines(Path.Combine(kit, file)))
     {
         if (line.TrimStart().StartsWith('#') || string.IsNullOrWhiteSpace(line))
         {
@@ -72,12 +83,12 @@ List<Phrase> LoadPhrases()
     return phrases;
 }
 
-int Record(string dir)
+int Record(string dir, string file)
 {
     Directory.CreateDirectory(dir);
     Console.WriteLine($"Gravando em {dir}. Para cada frase: Enter para começar, Enter para parar. 'r' + Enter repete a anterior, 'p' + Enter pula, 'q' + Enter sai.");
 
-    var phrases = LoadPhrases();
+    var phrases = LoadPhrases(file);
 
     for (var i = 0; i < phrases.Count; i++)
     {
@@ -85,7 +96,7 @@ int Record(string dir)
         var path = Path.Combine(dir, $"{phrase.Id}.wav");
 
         Console.WriteLine();
-        Console.WriteLine($"[{i + 1}/{phrases.Count}] {phrase.Text}");
+        Console.WriteLine($"[{i + 1}/{phrases.Count}] ({phrase.Context}) {phrase.Text}");
         Console.Write("Enter para gravar (p pula, q sai): ");
         var answer = (Console.ReadLine() ?? "q").Trim().ToLowerInvariant();
 
@@ -119,12 +130,12 @@ int Record(string dir)
     return 0;
 }
 
-async Task<int> SynthPhrasesAsync(string dir, string voiceName)
+async Task<int> SynthPhrasesAsync(string dir, string voiceName, string file)
 {
     Directory.CreateDirectory(dir);
     using var synthesizer = new SpeechSynthesizer { Voice = FindVoice(voiceName) };
 
-    foreach (var phrase in LoadPhrases())
+    foreach (var phrase in LoadPhrases(file))
     {
         await SaveSpeechAsync(synthesizer, phrase.Text, Path.Combine(dir, $"{phrase.Id}.wav"), 16000);
     }
@@ -137,7 +148,11 @@ async Task<int> SttAsync(Options o)
 {
     var model = o.Get("model", "small");
     var quant = o.Get("quant", "none");
-    var dir = o.Get("dir", Path.Combine(kit, "recordings"));
+    var dir = o.Get("dir", DefaultRecordings(o));
+    var phrasesFile = o.Get("phrases", "phrases.txt");
+    var flightSet = phrasesFile != "phrases.txt";
+    var callsign = o.Get("callsign", flightSet ? "PRFRA" : "PRABC");
+    var useContext = o.Has("ctx");
     var threads = int.Parse(o.Get("threads", Math.Max(1, Environment.ProcessorCount / 2).ToString(CultureInfo.InvariantCulture)), CultureInfo.InvariantCulture);
     var usePrompt = o.Has("prompt");
     var runtime = o.Get("runtime", "cpu");
@@ -155,10 +170,12 @@ async Task<int> SttAsync(Options o)
         "base" => GgmlType.Base,
         "small" => GgmlType.Small,
         "medium" => GgmlType.Medium,
+        "large-v3-turbo" => GgmlType.LargeV3Turbo,
         _ => throw new ArgumentException($"modelo desconhecido: {model}"),
     };
     var quantization = quant switch
     {
+        "q5_0" => QuantizationType.Q5_0,
         "q5_1" => QuantizationType.Q5_1,
         "q8_0" => QuantizationType.Q8_0,
         _ => QuantizationType.NoQuantization,
@@ -176,22 +193,22 @@ async Task<int> SttAsync(Options o)
     }
 
     var sizeMb = new FileInfo(modelPath).Length / 1024.0 / 1024.0;
-    Console.WriteLine($"Modelo {model} {quant}: {sizeMb:F0} MB | runtime {runtime} | {threads} threads | prompt {(usePrompt ? "sim" : "não")}");
+    Console.WriteLine($"Modelo {model} {quant}: {sizeMb:F0} MB | runtime {runtime} | {threads} threads | prompt {(usePrompt ? "sim" : "não")} | contexto da última fala {(useContext ? "sim" : "não")}");
 
     var loadWatch = Stopwatch.StartNew();
     using var factory = WhisperFactory.FromPath(modelPath);
-    var builder = factory.CreateBuilder().WithLanguage("pt").WithThreads(threads).WithGreedySamplingStrategy(g => g.WithBestOf(1)).WithTemperature(0f);
-
-    if (usePrompt)
+    WhisperProcessor Build(string? prompt)
     {
-        builder = builder.WithPrompt("Comunicação de rádio aeronáutica em português. Solo, Torre, pushback, acionamento, táxi, pista, ponto de espera, QNH. Papa Romeo Alfa Bravo Charlie. Pista uno cinco.");
+        var builder = factory.CreateBuilder().WithLanguage("pt").WithThreads(threads).WithGreedySamplingStrategy(g => g.WithBestOf(1)).WithTemperature(0f);
+
+        return (prompt is null ? builder : builder.WithPrompt(prompt)).Build();
     }
 
-    await using var processor = builder.Build();
+    await using var processor = Build(null);
     loadWatch.Stop();
     Console.WriteLine($"Carregou em {loadWatch.ElapsedMilliseconds} ms.");
 
-    var phrases = LoadPhrases().Where(p => File.Exists(Path.Combine(dir, $"{p.Id}.wav"))).ToList();
+    var phrases = LoadPhrases(phrasesFile).Where(p => File.Exists(Path.Combine(dir, $"{p.Id}.wav"))).ToList();
 
     if (phrases.Count == 0)
     {
@@ -200,7 +217,11 @@ async Task<int> SttAsync(Options o)
     }
 
     var nlu = new RuleBasedNlu();
+    var engine = new AtcEngine();
+    var phraseology = new PortuguesePhraseology();
+    var catalog = Fonia.Data.AirportCatalog.Load();
     var times = new List<double>();
+    var callsignHits = 0;
     var audioSeconds = new List<double>();
     var wers = new List<double>();
     var intentHits = 0;
@@ -213,12 +234,24 @@ async Task<int> SttAsync(Options o)
         var path = Path.Combine(dir, $"{phrase.Id}.wav");
         var duration = AudioDuration(path);
 
+        var (flight, airport) = Situation(phrase.Context, callsign, catalog);
+        var last = useContext && flight.LastInstruction is { } instruction ? phraseology.Speak(instruction, new PhraseContext(callsign, airport)) : null;
+        var prompt = usePrompt ? WhisperPromptBuilder.Build(new TranscriptionContext(callsign, phraseology.UnitName(airport), last?.Kind == UtteranceKind.Radio ? last.Text : null)) : null;
+
+        // A new prompt is a new processor; it is built before the clock starts, because the app pays less than 100 ms for it (measured).
+        await using var own = prompt is not null ? Build(prompt) : null;
+        var active = own ?? processor;
+
         var watch = Stopwatch.StartNew();
-        var text = await TranscribeAsync(processor, path);
+        var text = await TranscribeAsync(active, path);
         watch.Stop();
 
         var wer = WordErrorRate(phrase.Text, text);
-        var understood = Describe(nlu.Interpret(text, FlightFor(phrase.Context)));
+        var intent = nlu.Interpret(text, flight);
+        callsignHits += intent.Callsign is not null ? 1 : 0;
+
+        // The old set judges the intent; the flight set judges what the controller would do with it.
+        var understood = flightSet ? engine.Handle(intent, flight, airport).Instruction.GetType().Name : Describe(intent);
         var hit = understood == phrase.Expected;
 
         times.Add(watch.Elapsed.TotalMilliseconds);
@@ -238,7 +271,8 @@ async Task<int> SttAsync(Options o)
     times.Sort();
     Console.WriteLine();
     Console.WriteLine($"RESUMO {model} {quant} {runtime}: {phrases.Count} frases");
-    Console.WriteLine($"  intenção entendida: {intentHits}/{phrases.Count} ({(double)intentHits / phrases.Count:P0})");
+    Console.WriteLine($"  {(flightSet ? "o controlador faria o certo" : "intenção entendida")}: {intentHits}/{phrases.Count} ({(double)intentHits / phrases.Count:P0})");
+    Console.WriteLine($"  indicativo reconhecido: {callsignHits}/{phrases.Count} ({(double)callsignHits / phrases.Count:P0})");
     Console.WriteLine($"  WER médio: {wers.Average():P1}");
     Console.WriteLine($"  tempo por frase: média {times.Average():F0} ms | mediana {times[times.Count / 2]:F0} ms | pior {times[^1]:F0} ms");
     Console.WriteLine($"  duração média do áudio: {audioSeconds.Average():F1} s | tempo/áudio {times.Average() / 1000 / audioSeconds.Average():F2}x");
@@ -332,13 +366,41 @@ double AudioDuration(string path)
     return reader.TotalTime.TotalSeconds;
 }
 
-FlightContext FlightFor(string context) => context switch
+// The flight and the radio for a context of the phrase files: who is on the frequency, what the controller last said, what waits for a readback.
+(FlightContext Flight, AirportContext Airport) Situation(string context, string callsign, Fonia.Core.Airports.IAirportCatalog catalog)
 {
-    "startup" => new FlightContext("PRABC", FlightPhase.StartupApproved, "SBCT", new StartupApproved()),
-    "pushback" => new FlightContext("PRABC", FlightPhase.StartupApproved, "SBCT", new PushbackApproved(true)),
-    "taxi" => new FlightContext("PRABC", FlightPhase.Taxiing, "SBCT", new TaxiClearance("15")),
-    _ => new FlightContext("PRABC", FlightPhase.Parked, "SBCT", null),
-};
+    catalog.TryGet("SBCT", out var curitiba);
+    var airport = AirportContext.Create(curitiba!);
+    var solo = curitiba!.FrequencyOf(Fonia.Core.Airports.AirportFrequencyType.Ground)!.Frequency;
+    var tower = curitiba.FrequencyOf(Fonia.Core.Airports.AirportFrequencyType.Tower)!.Frequency;
+    var onSolo = FrequencyResolver.Apply(airport, solo);
+    var onTower = FrequencyResolver.Apply(airport, tower);
+
+    FlightContext Fl(FlightPhase phase, AtcInstruction? pending, string? runway = "15") =>
+        new(callsign, phase, "SBCT", pending, pending, null, runway);
+
+    return context switch
+    {
+        "startup" => (Fl(FlightPhase.StartupApproved, new StartupApproved(), null), onSolo),
+        "pushback" => (Fl(FlightPhase.StartupApproved, new PushbackApproved(true), null), onSolo),
+        "taxi" => (Fl(FlightPhase.Taxiing, new TaxiClearance("15")), onSolo),
+        "taxi-done" => (Fl(FlightPhase.Taxiing, null), onSolo),
+        "handed" => (Fl(FlightPhase.HandedToTower, new HandoffToTower(tower)), onTower),
+        "departure" => (Fl(FlightPhase.HandedToTower, null), onTower),
+        "lineup" => (Fl(FlightPhase.LineUpCleared, new LineUpAndWait("15")), onTower),
+        "takeoff" => (Fl(FlightPhase.TakeoffCleared, new TakeoffClearance("15")), onTower),
+        "airborne" => (Fl(FlightPhase.Airborne, new AirborneNotice(0)), onTower),
+        "inbound" => (Fl(FlightPhase.Airborne, null), onTower),
+        "circuit" => (Fl(FlightPhase.InCircuit, new CircuitClearance("15")), onTower),
+        "downwind" => (Fl(FlightPhase.OnDownwind, new ReportBase()), onTower),
+        "base" => (Fl(FlightPhase.OnBase, new ReportOnFinal()), onTower),
+        "landing" => (Fl(FlightPhase.LandingCleared, new LandingClearance("15")), onTower),
+        "landed" => (Fl(FlightPhase.Landed, new LandedNotice(2, solo)), onTower),
+        "vacated" => (Fl(FlightPhase.Landed, null), onSolo),
+        "apron" => (Fl(FlightPhase.Parked, new TaxiToApron(), null), onSolo),
+        _ => (Fl(FlightPhase.Parked, null, null), onSolo),
+    };
+}
 
 string Describe(Intent intent)
 {

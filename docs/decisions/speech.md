@@ -191,3 +191,24 @@ dotnet run tools/speech-spike.cs -- stt --model small --prompt [--runtime vulkan
 ```
 
 Modelos e áudios ficam em `%TEMP%\fonia-speech-spike`, fora do repositório. O programa de medição não faz parte da solução.
+
+### Conjunto de voo (cotejamentos reais, 2026-10-14)
+
+Depois do primeiro teste de voo no MSFS (muitos erros do STT em cotejamentos), o spike ganhou um segundo conjunto de 36 frases de voo (`tools/speech-spike/phrases-voo.txt`: SBCT, PR-FRA, Solo e Torre, do acionamento ao táxi para o pátio). Aqui o resultado não é só a intenção: é **o que o controlador faria** (o tipo da instrução do motor ATC; `NoResponse` é um cotejamento aceito, `RequestReadbackCorrection` é "negativo"), mais a taxa de indicativo reconhecido.
+
+```
+dotnet run tools/speech-spike.cs -- record --phrases phrases-voo.txt               # grava em tools/speech-spike/recordings-voo (fora do git)
+dotnet run tools/speech-spike.cs -- stt --phrases phrases-voo.txt --model small [--prompt] [--ctx] [--runtime vulkan] [--quant q5_0]
+```
+
+`--prompt` usa o prompt do app (vocabulário, estação e indicativo); `--ctx` acrescenta a última fala do controlador. Modelos: `tiny`, `base`, `small`, `medium`, `large-v3-turbo`.
+
+Teste do roteiro com a voz sintética do Windows (só prova o processo, não vale como medida do app), `small`, CPU:
+
+| Prompt | O controlador faria o certo | Indicativo reconhecido | Tempo/frase |
+|---|---|---|---|
+| nenhum | 7/36 (19%) | 0/36 | 2,3 s |
+| do app | 31/36 (86%) | 34/36 | 2,5 s |
+| do app + última fala | 31/36 (86%) | 35/36 | 2,5 s |
+
+O prompt é o que mais pesa; o da última fala não mudou o acerto na voz sintética, e três cotejamentos saíram só com o indicativo (o Whisper tende a omitir o que repete o prompt). Quem decide é a medição com a voz do mantenedor.

@@ -24,16 +24,17 @@ public sealed class RuleBasedNlu : INlu
 
     // The pilot is repeating what the controller said, or acknowledging it.
     private static readonly string[] ReadbackStems =
-        ["autorizad", "aprovad", "ciente", "cient", "sient", "copiad", "coteja", "chame", "chamo", "chamar", "report", "portar", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
+        ["autorizad", "aprovad", "ciente", "cient", "sient", "copiad", "coteja", "chame", "chamo", "chamar", "chamand", "report", "portar", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
 
     private static readonly string[] PushbackStems = ["pushback", "push", "empurr", "recu"];
-    private static readonly string[] StartupStems = ["acion", "partida", "start", "ligar", "ligand", "motor"];
+    // "cionament" because the recognizer glues "solicito acionamento" into "solicitocionamento".
+    private static readonly string[] StartupStems = ["acion", "cionament", "partida", "start", "ligar", "ligand", "motor"];
     private static readonly string[] TaxiStems = ["tax"];
 
     // The departure (MCA 100-16, Art. 126). "partida" is also the engine start of the Solo, so it counts only after the taxi.
     // "colag" because the recognizer often writes "de colagem" in two words.
     private static readonly string[] DepartureStems = ["decol", "colag"];
-    private static readonly string[] LinedUpStems = ["alinhad", "alinhei"];
+    private static readonly string[] LinedUpStems = ["alinhad", "alinhei", "alinad"];
     private static readonly string[] LineUpStems = ["alinh"];
 
     // The arrival (MCA 100-16, Art. 128 to 132, 136).
@@ -226,6 +227,7 @@ public sealed class RuleBasedNlu : INlu
         TaxiClearance => taxi,
         StartupApproved => startup,
         PushbackApproved => pushback || startup,
+        TaxiToApron => taxi,
         _ => false,
     };
 

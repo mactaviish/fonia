@@ -136,4 +136,36 @@ public class RecognitionToleranceTests
     {
         Say("Sente.", Flight(FlightPhase.Parked, null), OnSolo).Instruction.ShouldBeOfType<SayAgainRequest>();
     }
+
+    [Theory]
+    [InlineData("Solo Curitiba. Papa Romeo Foxtroot Romeo Alfa. Solicitocionamento.")]
+    [InlineData("SOLO Curitiba Papa Romeo Foxtrot Romeo Alfa solicitacionamento")]
+    public void Solicito_and_acionamento_glued_together_are_still_a_request_for_startup(string said)
+    {
+        _nlu.Interpret(said, Flight(FlightPhase.Parked, null)).ShouldBe(new RequestStartup(Own, null));
+    }
+
+    [Fact]
+    public void Chamando_torre_is_the_readback_of_the_handoff_and_takes_no_answer()
+    {
+        var handed = Flight(FlightPhase.HandedToTower, new HandoffToTower(new Frequency(118550)));
+
+        Say("Chamando Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa.", handed, OnSolo).Instruction.ShouldBeOfType<NoResponse>();
+    }
+
+    [Theory]
+    [InlineData("Torre Curitiba. Papa Romeo Foxtroot Romeo Alfa, aliñado.")]
+    [InlineData("Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, alinado")]
+    public void Alinhado_without_its_h_is_still_lined_up(string said)
+    {
+        Say(said, Flight(FlightPhase.LineUpCleared, new LineUpAndWait(Runway)), OnTower).Instruction.ShouldBeOfType<TakeoffClearance>();
+    }
+
+    [Fact]
+    public void The_readback_of_the_taxi_to_the_apron_is_not_a_new_taxi_request()
+    {
+        var decision = Say("Táxi para o pátio, Papa Romeo Foxtroot Romeo Alfa.", Flight(FlightPhase.Parked, new TaxiToApron()), OnSolo);
+
+        decision.Instruction.ShouldBeOfType<NoResponse>();
+    }
 }
