@@ -189,7 +189,7 @@ Interface `ISynthesizer` (`SynthesizeAsync(string text, Voice voice) -> AudioCli
 
 O texto da fraseologia **não é alterado** para a voz: antes do modelo, ele passa por duas etapas puras do Core (`Fonia.Core.Speech`):
 
-1. `Pronunciation.Respell`: dá uma grafia brasileira às palavras que a ortografia leria errado ("Romeo" vira "romeu", "Charlie" vira "chárli", "pushback" vira "púchibéqui").
+1. `Pronunciation.Respell`: dá uma grafia brasileira às palavras que a ortografia leria errado ("Romeo" vira "romeu", "Charlie" vira "tchárli", "pushback" vira "púchibéqui").
 2. `PortuguesePhonemizer`: transforma o texto em fonemas, pelas regras do português do Brasil, no alfabeto do Kokoro. Sem espeak-ng (GPL): as regras são do projeto. Detalhes e validação em `docs/decisions/speech.md`.
 
 ### 8. Dados (`Fonia.Data`)

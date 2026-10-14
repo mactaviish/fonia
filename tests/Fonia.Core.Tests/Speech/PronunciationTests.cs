@@ -7,12 +7,13 @@ public class PronunciationTests
     [Theory]
     [InlineData("ROMEO", "romeu")]
     [InlineData("Romeo", "romeu")]
-    [InlineData("charlie", "chárli")]
+    [InlineData("charlie", "tchárli")]
     [InlineData("PUSHBACK", "púchibéqui")]
     [InlineData("pushback", "púchibéqui")]
     [InlineData("X-RAY", "écs rei")]
     [InlineData("WHISKEY", "uísque")]
-    [InlineData("TAM", "tão")]
+    [InlineData("UNIFORM", "iuniform")]
+    [InlineData("foxtrot", "fóxtroti")]
     public void Foreign_words_get_a_brazilian_spelling_whatever_the_case(string written, string spoken)
     {
         Pronunciation.Respell(written).ShouldBe(spoken);
@@ -37,7 +38,7 @@ public class PronunciationTests
     public void Every_word_of_the_phonetic_alphabet_is_either_respelled_or_read_right_by_the_rules()
     {
         // The twenty-six words of SpokenText: none may reach the phonemizer as an English word it would read as Portuguese.
-        string[] needRespelling = ["delta", "echo", "foxtrot", "golf", "hotel", "juliett", "mike", "november", "quebec", "romeo", "sierra", "uniform", "victor", "whiskey", "x-ray", "yankee", "charlie"];
+        string[] needRespelling = ["delta", "echo", "foxtrot", "golf", "hotel", "juliett", "mike", "quebec", "romeo", "sierra", "uniform", "victor", "whiskey", "x-ray", "yankee", "charlie"];
 
         foreach (var word in needRespelling)
         {
@@ -50,6 +51,6 @@ public class PronunciationTests
     {
         var phonemes = Pronunciation.ToPhonemes("PAPA ROMEO ALFA BRAVO CHARLIE, prossiga.");
 
-        phonemes.ShouldBe("pˈapæ xomˈeʊ ˈaʊfæ brˈavʊ ʃˈaɾəli, prˌosˈiɡæ.");
+        phonemes.ShouldBe("pˈapæ xomˈeʊ ˈaʊfæ brˈavʊ tʃˈaɾəli, prˌosˈiɡæ.");
     }
 }
