@@ -1,0 +1,80 @@
+using Fonia.Core.Atc;
+using Fonia.Core.Audio;
+using Fonia.Core.Nlu;
+using Fonia.Core.Phraseology;
+using Fonia.Core.Pipeline;
+using Fonia.Core.Speech;
+
+namespace Fonia.App;
+
+/// <summary>How the ATC console talks to the pilot by voice instead of by text.</summary>
+internal interface IVoiceMode
+{
+    /// <returns>The exit code: 0 normal, 1 when the voice could not be started.</returns>
+    Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct);
+}
+
+/// <summary>
+/// The voice mode of <c>--atc --voice</c>: loads the models ahead of time, so that the first transmission is not the one
+/// that pays for it, then runs the radio until the user stops it. Everything comes in through the constructor, so tests
+/// drive it with a fake microphone, key and loudspeaker and no model.
+/// </summary>
+internal sealed class VoiceMode(
+    IAudioCapture capture,
+    IPushToTalk pushToTalk,
+    ITranscriber transcriber,
+    ISynthesizer synthesizer,
+    IAudioPlayer player,
+    INlu nlu,
+    IAtcEngine engine,
+    IPhraseology phraseology,
+    VoiceSelector voices,
+    RadioIntensity radio,
+    string keyName,
+    TextWriter output,
+    TextWriter error,
+    Random random) : IVoiceMode
+{
+    public async Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(airport);
+        ArgumentNullException.ThrowIfNull(flight);
+
+        var station = phraseology.UnitName(airport);
+
+        output.WriteLine("Carregando os modelos de voz (alguns segundos)...");
+
+        try
+        {
+            var context = new TranscriptionContext(flight.Callsign, station);
+
+            await Task.WhenAll(WarmUp(transcriber, context, ct), WarmUp(synthesizer, context, ct));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return 0;
+        }
+        catch (FileNotFoundException ex)
+        {
+            error.WriteLine($"fonia: {ex.Message}");
+            return 1;
+        }
+#pragma warning disable CA1031 // Loading a model can fail in many ways (a native library, a corrupt file); all end the same way.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            error.WriteLine($"fonia: não foi possível carregar os modelos de voz: {ex.Message}");
+            return 1;
+        }
+
+        var exchange = new VoiceExchange(transcriber, nlu, engine, phraseology, synthesizer, voices, radio, random);
+        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, new ConsoleVoiceObserver(output, error, station));
+
+        // Said only once the microphone and the key are open: whoever reads it may press the key at once.
+        await loop.RunAsync(ct, () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta. Ctrl+C encerra."));
+        return 0;
+    }
+
+    private static Task WarmUp(object model, TranscriptionContext context, CancellationToken ct) =>
+        model is IWarmUp warmable ? warmable.WarmUpAsync(context, ct) : Task.CompletedTask;
+}

@@ -43,11 +43,11 @@ public class VoiceExchangeTests
     public async Task A_request_goes_through_every_stage_and_comes_out_as_the_controllers_voice()
     {
         var synthesizer = new FakeSynthesizer(_time);
-        var exchange = Create(new FakeTranscriber(_time, _ => "Solo Curitiba, PRABC, solicito acionamento"), synthesizer);
+        var exchange = Create(new FakeTranscriber(_time, _ => "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento"), synthesizer);
 
         var result = await exchange.RunAsync(Speech, Parked, Solo, null, Ct);
 
-        result.Heard.ShouldBe("Solo Curitiba, PRABC, solicito acionamento");
+        result.Heard.ShouldBe("Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento");
         result.Intent.ShouldBe(new RequestStartup(Own, null));
         result.Decision.Instruction.ShouldBe(new StartupApproved());
         result.Decision.NextContext.PendingReadback.ShouldBe(new StartupApproved());
@@ -99,7 +99,7 @@ public class VoiceExchangeTests
     public async Task A_correct_readback_gets_no_answer_so_nothing_is_said()
     {
         var synthesizer = new FakeSynthesizer(_time);
-        var exchange = Create(new FakeTranscriber(_time, _ => "acionamento aprovado, PRABC"), synthesizer);
+        var exchange = Create(new FakeTranscriber(_time, _ => "acionamento aprovado, Papa Romeo Alfa Bravo Charlie"), synthesizer);
         var waiting = Parked with { PendingReadback = new StartupApproved(), Phase = FlightPhase.StartupApproved };
 
         var result = await exchange.RunAsync(Speech, waiting, Solo, null, Ct);
@@ -115,7 +115,7 @@ public class VoiceExchangeTests
     {
         var noService = AirportContext.Create(TestAirports.Airport("SBZZ", [TestAirports.Runway("15", "33", 6000)]));
         var synthesizer = new FakeSynthesizer(_time);
-        var exchange = Create(new FakeTranscriber(_time, _ => "solicito acionamento PRABC"), synthesizer);
+        var exchange = Create(new FakeTranscriber(_time, _ => "solicito acionamento, Papa Romeo Alfa Bravo Charlie"), synthesizer);
 
         var result = await exchange.RunAsync(Speech, Parked, noService, null, Ct);
 

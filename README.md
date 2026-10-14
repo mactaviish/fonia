@@ -124,6 +124,13 @@ dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC   
 dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC --stt-gpu  # GPU (Vulkan), opcional
 ```
 
+**Conversa por voz** (Windows; precisa dos dois modelos abaixo e de microfone e alto-falante): segure o push-to-talk (Ctrl direito), fale como um piloto ("Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento"), solte, e o controlador responde em voz alta. A tela mostra o que ele entendeu, a resposta em texto e o tempo de cada etapa. Enquanto ele fala, o PTT é ignorado, como num canal ocupado. Ctrl+C encerra.
+
+```bash
+dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC --voice
+dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC --voice --stt-gpu --ptt-key F8 --audio-out 1   # GPU no reconhecimento, outra tecla e outro alto-falante
+```
+
 Para ouvir como o controlador soa (voz local, sem internet), baixe [`kokoro-v1.0.onnx`](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx) (325 MB) e [`voices-v1.0.bin`](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin) (28 MB) para a mesma pasta `%LOCALAPPDATA%\Fonia\models` (ou use `--tts-dir`). O modelo Kokoro-82M é Apache-2.0. A fala sai em um WAV:
 
 ```bash

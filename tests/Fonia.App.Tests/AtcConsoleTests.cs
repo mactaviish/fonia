@@ -288,4 +288,61 @@ public class AtcConsoleTests
             return null;
         }
     }
+
+    private sealed class FakeVoiceMode(int exitCode = 0) : IVoiceMode
+    {
+        public List<(AirportContext Airport, FlightContext Flight)> Calls { get; } = [];
+
+        public Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct)
+        {
+            Calls.Add((airport, flight));
+            return Task.FromResult(exitCode);
+        }
+    }
+
+    [Fact]
+    public async Task In_voice_mode_the_console_hands_over_to_the_voice_with_the_airport_and_the_flight()
+    {
+        var voice = new FakeVoiceMode();
+        var output = new StringWriter { NewLine = "\n" };
+        var console = new AtcConsole(
+            new FakeCatalog(Solo),
+            new RuleBasedNlu(),
+            new AtcEngine(),
+            new PortuguesePhraseology(),
+            new StringReader("isto nunca deve ser lido"),
+            output,
+            new StringWriter(),
+            (_, _) => Task.FromResult<string?>(null),
+            interactive: false,
+            voiceMode: voice);
+
+        var code = await console.RunAsync(Atc(), Ct);
+
+        code.ShouldBe(0);
+        var call = voice.Calls.ShouldHaveSingleItem();
+        call.Airport.Airport.Ident.ShouldBe("SBXX");
+        call.Flight.Callsign.ShouldBe("PRABC");
+        call.Flight.Phase.ShouldBe(FlightPhase.Parked);
+        output.ToString().ShouldContain("Responde: SOLO Curitiba");
+        output.ToString().ShouldNotContain("Digite a fala do piloto");
+    }
+
+    [Fact]
+    public async Task The_exit_code_of_the_voice_mode_is_the_exit_code_of_the_console()
+    {
+        var console = new AtcConsole(
+            new FakeCatalog(Solo),
+            new RuleBasedNlu(),
+            new AtcEngine(),
+            new PortuguesePhraseology(),
+            new StringReader(string.Empty),
+            new StringWriter(),
+            new StringWriter(),
+            (_, _) => Task.FromResult<string?>(null),
+            interactive: false,
+            voiceMode: new FakeVoiceMode(exitCode: 1));
+
+        (await console.RunAsync(Atc(), Ct)).ShouldBe(1);
+    }
 }

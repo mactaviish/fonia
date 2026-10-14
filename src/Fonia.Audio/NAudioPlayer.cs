@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Fonia.Core.Audio;
 using Fonia.Core.Speech;
 using NAudio.Wave;
@@ -22,7 +23,7 @@ public sealed class NAudioPlayer : IAudioPlayer
             throw new PlatformNotSupportedException("The loudspeaker works only on Windows.");
         }
 
-        if (deviceNumber < -1 || deviceNumber >= WaveOutEvent.DeviceCount)
+        if (deviceNumber < -1 || deviceNumber >= WaveInterop.waveOutGetNumDevs())
         {
             throw new ArgumentOutOfRangeException(nameof(deviceNumber), deviceNumber, $"There is no loudspeaker {deviceNumber}. Use --mic-list to see them.");
         }
@@ -38,9 +39,17 @@ public sealed class NAudioPlayer : IAudioPlayer
             return [];
         }
 
-        return Enumerable.Range(0, WaveOutEvent.DeviceCount)
-            .Select(i => WaveOutEvent.GetCapabilities(i).ProductName)
+        return Enumerable.Range(0, WaveInterop.waveOutGetNumDevs())
+            .Select(DeviceName)
             .ToList();
+    }
+
+    private static string DeviceName(int device)
+    {
+        var capabilities = default(WaveOutCapabilities);
+        var result = (int)WaveInterop.waveOutGetDevCaps((IntPtr)device, out capabilities, Marshal.SizeOf(capabilities));
+
+        return result == 0 ? capabilities.ProductName : $"Dispositivo {device}";
     }
 
     public async Task PlayAsync(SynthesizedSpeech speech, CancellationToken ct)

@@ -44,7 +44,8 @@ public sealed class VoiceLoop(
     public bool IsBusy => Volatile.Read(ref _busy) != 0;
 
     /// <summary>Listens until <paramref name="ct"/> is cancelled, then cuts what is being said and closes the microphone and the key.</summary>
-    public async Task RunAsync(CancellationToken ct)
+    /// <param name="onListening">Called once the microphone and the key are open, so that the user is told to speak only when it works.</param>
+    public async Task RunAsync(CancellationToken ct, Action? onListening = null)
     {
         _stop = ct;
         recorder.SpeechRecorded += OnSpeech;
@@ -53,6 +54,7 @@ public sealed class VoiceLoop(
         try
         {
             recorder.Start();
+            onListening?.Invoke();
             await Task.Delay(Timeout.Infinite, ct);
         }
         catch (OperationCanceledException)

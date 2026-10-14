@@ -202,6 +202,18 @@ O modelo (`kokoro-v1.0.onnx`, 325 MB) e as vozes (`voices-v1.0.bin`, 28 MB) não
 - METAR/TAF: aviationweather.gov, com cache e fallback para clima do simulador.
 - Plano de voo (futuro): API do SimBrief.
 
+### 9. Laço de voz (`Fonia.Core.Pipeline`)
+
+Junta as etapas anteriores, sem regra nova: a decisão é do motor e as palavras são dos templates.
+
+- `VoiceExchange`: **uma fala** do piloto por todas as etapas. Reconhece (`ITranscriber`, com o indicativo e a posição no prompt), interpreta (`INlu`), decide (`IAtcEngine`), escreve (`IPhraseology`), fala (`ISynthesizer`, com a voz da posição escolhida pelo `VoiceSelector`) e aplica o `RadioEffect`. Devolve o texto ouvido, a decisão, a resposta e o áudio, com o **tempo de cada etapa** (`StageTimings`); o que é `Notice` (aviso do app) só é mostrado, não falado, e o readback certo não gera fala. Chama `onHeard` assim que o texto sai do reconhecedor, para a tela mostrá-lo antes de a resposta ficar pronta.
+- `VoiceLoop`: o rádio do piloto. Escuta o PTT (`SpeechRecorder`), faz uma troca por vez e leva o estado do voo de uma troca para a outra. Como num rádio de verdade, o **canal fica ocupado** enquanto o controlador responde: o PTT apertado nessa hora é ignorado (`OnChannelBusy`). Uma falha em uma troca (um modelo que sumiu, um dispositivo) é avisada e o laço continua; parar (Ctrl+C) corta a fala e fecha o microfone e a tecla.
+- `IVoiceLoopObserver`: o que a interface precisa saber (o que foi ouvido, a resposta, canal ocupado, fala curta, falha). O console mostra tudo em texto, além da voz.
+- `IAudioPlayer` (`NAudioPlayer`, `WaveOutEvent`): toca a resposta e só termina quando ela acaba; cancelar corta o som.
+- `IWarmUp`: o reconhecedor e a voz carregam os modelos **ao abrir o app** (com o indicativo e a posição reais), para a primeira fala não pagar a carga (~1 a 10 s, mais com GPU). Se um modelo faltar, o app avisa de onde baixar antes de abrir o microfone.
+
+No app, `fonia --atc <ICAO> --voice` usa tudo isso (`VoiceMode`), com as opções `--ptt-key`, `--mic-device`, `--audio-out`, `--stt-*`, `--tts-*` e `--radio-effect`.
+
 ## Fluxo de uma interação (exemplo)
 
 1. Piloto aperta PTT e diz: "Solo Curitiba, PR-ABC, pátio 1, posição 3, solicita instruções de táxi".

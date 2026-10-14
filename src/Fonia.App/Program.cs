@@ -66,6 +66,19 @@ var sourceFactory = new SimSourceFactory(loggerFactory, TimeProvider.System);
 
 if (options.AtcAirport is not null)
 {
+    VoiceModeHandle? voice = null;
+
+    if (options.Voice)
+    {
+        voice = VoiceCommands.TryCreate(options, Console.Out, Console.Error);
+
+        if (voice is null)
+        {
+            return 1;
+        }
+    }
+
+    await using var voiceResources = voice;
     var callsignReader = new SimCallsignReader(sourceFactory, TimeProvider.System, TimeSpan.FromSeconds(10), Console.Error.WriteLine);
     var atc = new AtcConsole(
         AirportCatalog.Load(),
@@ -76,7 +89,8 @@ if (options.AtcAirport is not null)
         Console.Out,
         Console.Error,
         callsignReader.ReadAsync,
-        interactive: !Console.IsInputRedirected && interactive);
+        interactive: !Console.IsInputRedirected && interactive,
+        voiceMode: voice?.Mode);
 
     return await atc.RunAsync(options, cancellation.Token);
 }

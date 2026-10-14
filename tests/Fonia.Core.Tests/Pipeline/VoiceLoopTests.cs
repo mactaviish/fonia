@@ -75,12 +75,12 @@ public sealed class VoiceLoopTests : IAsyncDisposable
     [Fact]
     public async Task Pressing_speaking_and_releasing_gets_the_answer_in_the_loudspeaker()
     {
-        Start("Solo Curitiba, PRABC, solicito acionamento");
+        Start("Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento");
 
         Transmit();
         await _observer.WaitForAsync(() => _player.Played.Count == 1 && _observer.Replies.Count == 1, Ct);
 
-        _observer.Heard.ShouldBe(["Solo Curitiba, PRABC, solicito acionamento"]);
+        _observer.Heard.ShouldBe(["Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento"]);
         _observer.Replies.Single().Reply!.Text.ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, acionamento aprovado, chame pronto para o táxi.");
         _synthesizer.Calls.Single().Voice.Id.ShouldBe("pf_dora");
     }
@@ -88,18 +88,18 @@ public sealed class VoiceLoopTests : IAsyncDisposable
     [Fact]
     public async Task What_was_heard_is_shown_before_the_answer()
     {
-        Start("Solo Curitiba, PRABC, solicito acionamento");
+        Start("Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento");
 
         Transmit();
         await _observer.WaitForAsync(() => _observer.Replies.Count == 1, Ct);
 
-        _observer.Events.ShouldBe(["heard:Solo Curitiba, PRABC, solicito acionamento", "replied"]);
+        _observer.Events.ShouldBe(["heard:Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento", "replied"]);
     }
 
     [Fact]
     public async Task The_flight_goes_on_from_one_exchange_to_the_next()
     {
-        Start("Solo Curitiba, PRABC, solicito acionamento", "acionamento aprovado, PRABC");
+        Start("Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento", "acionamento aprovado, Papa Romeo Alfa Bravo Charlie");
 
         Transmit();
         await _observer.WaitForAsync(() => _observer.Replies.Count == 1, Ct);
@@ -116,7 +116,7 @@ public sealed class VoiceLoopTests : IAsyncDisposable
     public async Task While_the_controller_speaks_the_key_is_ignored_like_a_busy_channel()
     {
         _player.Hold = true;
-        Start("solicito acionamento PRABC");
+        Start("solicito acionamento, Papa Romeo Alfa Bravo Charlie");
 
         Transmit();
         await _observer.WaitForAsync(() => _player.Played.Count == 1, Ct);
@@ -148,7 +148,7 @@ public sealed class VoiceLoopTests : IAsyncDisposable
     public async Task A_failure_is_reported_and_the_loop_goes_on()
     {
         _synthesizer.Answer = (_, _) => throw new InvalidOperationException("the voice broke");
-        Start("solicito acionamento PRABC", "solicito acionamento PRABC");
+        Start("solicito acionamento, Papa Romeo Alfa Bravo Charlie", "solicito acionamento, Papa Romeo Alfa Bravo Charlie");
 
         Transmit();
         await _observer.WaitForAsync(() => _observer.Failures.Count == 1, Ct);
@@ -164,7 +164,7 @@ public sealed class VoiceLoopTests : IAsyncDisposable
     public async Task A_failure_does_not_lose_the_state_of_the_flight()
     {
         _synthesizer.Answer = (_, _) => throw new InvalidOperationException("the voice broke");
-        Start("PRABC solicito acionamento", "acionamento aprovado PRABC");
+        Start("Papa Romeo Alfa Bravo Charlie solicito acionamento", "acionamento aprovado Papa Romeo Alfa Bravo Charlie");
 
         Transmit();
         await _observer.WaitForAsync(() => _observer.Failures.Count == 1, Ct);
@@ -174,6 +174,26 @@ public sealed class VoiceLoopTests : IAsyncDisposable
 
         // The first never got an answer to the pilot, so the second is not a readback: the controller still has to answer it.
         _observer.Replies.Single().Intent.ShouldBeOfType<Readback>();
+    }
+
+    [Fact]
+    public async Task The_user_is_told_it_is_listening_only_when_the_microphone_and_the_key_are_open()
+    {
+        var wasOpen = false;
+        var told = new TaskCompletionSource();
+        var exchange = new VoiceExchange(
+            new FakeTranscriber(_time, _ => "x"), new RuleBasedNlu(), new AtcEngine(), new PortuguesePhraseology(), _synthesizer,
+            new VoiceSelector(VoiceCatalog.Default, "pf_dora", new Random(1)), RadioIntensity.Off, new Random(1), _time);
+        _loop = new VoiceLoop(new SpeechRecorder(_capture, _ptt, Quick), exchange, _player, Solo, Parked, _observer);
+
+        _running = _loop.RunAsync(_stop.Token, () =>
+        {
+            wasOpen = _capture.Started && _ptt.Started;
+            told.SetResult();
+        });
+        await told.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        wasOpen.ShouldBeTrue();
     }
 
     [Fact]
@@ -193,7 +213,7 @@ public sealed class VoiceLoopTests : IAsyncDisposable
     public async Task Stopping_in_the_middle_of_the_controllers_speech_cuts_it()
     {
         _player.Hold = true;
-        Start("solicito acionamento PRABC");
+        Start("solicito acionamento, Papa Romeo Alfa Bravo Charlie");
 
         Transmit();
         await _observer.WaitForAsync(() => _player.Played.Count == 1, Ct);

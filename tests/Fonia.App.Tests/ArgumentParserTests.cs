@@ -199,7 +199,7 @@ public class ArgumentParserTests
     [Fact]
     public void The_help_text_describes_every_option()
     {
-        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--speak", "--speak-out", "--tts-voice", "--tts-dir", "--radio-effect", "--help" })
+        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--speak", "--speak-out", "--tts-voice", "--tts-dir", "--radio-effect", "--voice", "--audio-out", "--help" })
         {
             ArgumentParser.HelpText.ShouldContain(option);
         }
@@ -479,5 +479,84 @@ public class ArgumentParserTests
     public void Speaking_needs_a_text()
     {
         Error("--speak").ShouldContain("precisa de um valor");
+    }
+
+    [Fact]
+    public void The_voice_mode_is_the_atc_mode_with_the_microphone_and_the_loudspeaker()
+    {
+        var options = Ok("--atc", "SBCT", "--callsign", "PR-ABC", "--voice");
+
+        options.Voice.ShouldBeTrue();
+        options.AtcAirport.ShouldBe("SBCT");
+        options.Callsign.ShouldBe("PR-ABC");
+        options.PttKey.ShouldBe("RControl");
+        options.MicDevice.ShouldBe(-1);
+        options.AudioOut.ShouldBe(-1);
+        options.RadioEffect.ShouldBe(RadioIntensity.Medium);
+        options.TtsVoice.ShouldBeNull();
+    }
+
+    [Fact]
+    public void The_voice_mode_takes_the_options_of_the_microphone_the_recognizer_and_the_voice()
+    {
+        var options = Ok(
+            "--atc", "SBCT", "--callsign", "PRABC", "--voice", "--ptt-key", "F8", "--mic-device", "1", "--audio-out", "2",
+            "--stt-dir", "C:/m", "--stt-model", "ggml-base.bin", "--stt-gpu", "--tts-dir", "C:/t", "--tts-voice", "pm_alex", "--radio-effect", "leve");
+
+        options.PttKey.ShouldBe("F8");
+        options.MicDevice.ShouldBe(1);
+        options.AudioOut.ShouldBe(2);
+        options.SttDirectory.ShouldBe("C:/m");
+        options.SttModel.ShouldBe("ggml-base.bin");
+        options.SttGpu.ShouldBeTrue();
+        options.TtsDirectory.ShouldBe("C:/t");
+        options.TtsVoice.ShouldBe("pm_alex");
+        options.RadioEffect.ShouldBe(RadioIntensity.Light);
+    }
+
+    [Fact]
+    public void The_voice_mode_still_reads_the_callsign_from_the_simulator_when_none_is_given()
+    {
+        var options = Ok("--atc", "SBCT", "--voice", "--sim", "mock");
+
+        options.Voice.ShouldBeTrue();
+        options.Source.ShouldBe(SimSourceKind.Mock);
+    }
+
+    [Fact]
+    public void The_voice_mode_only_makes_sense_in_the_atc_mode()
+    {
+        Error("--voice").ShouldContain("--atc");
+    }
+
+    [Fact]
+    public void The_loudspeaker_only_makes_sense_in_the_voice_mode()
+    {
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--audio-out", "1").ShouldContain("--voice");
+    }
+
+    [Theory]
+    [InlineData("--mic-test", "x.wav")]
+    [InlineData("--transcribe", "x.wav")]
+    [InlineData("--speak", "x")]
+    [InlineData("--speak-out", "x.wav")]
+    [InlineData("--replay", "x.jsonl")]
+    [InlineData("--record", "x.jsonl")]
+    [InlineData("--duration", "5")]
+    public void The_voice_mode_does_not_mix_with_the_other_modes(string option, string value)
+    {
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--voice", option, value).ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Without_the_voice_mode_the_options_of_the_microphone_stay_for_the_microphone_test()
+    {
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--ptt-key", "F8").ShouldContain("--mic-test");
+    }
+
+    [Fact]
+    public void The_audio_device_must_be_a_number()
+    {
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--voice", "--audio-out", "x").ShouldContain("--audio-out");
     }
 }
