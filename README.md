@@ -117,6 +117,13 @@ dotnet run --project src/Fonia.App -- --mic-test fala.wav                       
 dotnet run --project src/Fonia.App -- --mic-test fala.wav --mic-device 1 --ptt-key F8
 ```
 
+Para transcrever a gravação, localmente e sem internet, e ver o que o NLU entendeu, baixe o modelo [`ggml-small.bin`](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin) (466 MB, licença MIT) para `%LOCALAPPDATA%\Fonia\models` (ou use `--stt-dir`):
+
+```bash
+dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC          # CPU, ~2 s por frase
+dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC --stt-gpu  # GPU (Vulkan), opcional
+```
+
 O arquivo [CLAUDE.md](CLAUDE.md) descreve as convenções do projeto e orienta o trabalho com o Claude Code.
 
 ## Aviso

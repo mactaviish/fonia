@@ -198,7 +198,7 @@ public class ArgumentParserTests
     [Fact]
     public void The_help_text_describes_every_option()
     {
-        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--help" })
+        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--help" })
         {
             ArgumentParser.HelpText.ShouldContain(option);
         }
@@ -342,5 +342,62 @@ public class ArgumentParserTests
     public void The_microphone_test_needs_a_file()
     {
         Error("--mic-test").ShouldContain("precisa de um valor");
+    }
+
+    [Fact]
+    public void Transcribing_takes_the_file_and_has_defaults_for_the_rest()
+    {
+        var options = Ok("--transcribe", "fala.wav");
+
+        options.TranscribePath.ShouldBe("fala.wav");
+        options.SttDirectory.ShouldBeNull();
+        options.SttModel.ShouldBeNull();
+        options.SttGpu.ShouldBeFalse();
+        options.Callsign.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Transcribing_accepts_the_callsign_the_model_the_folder_and_the_gpu()
+    {
+        var options = Ok("--transcribe", "fala.wav", "--callsign", "PR-ABC", "--stt-dir", "C:/modelos", "--stt-model", "ggml-base.bin", "--stt-gpu", "--log-level", "error");
+
+        options.Callsign.ShouldBe("PR-ABC");
+        options.SttDirectory.ShouldBe("C:/modelos");
+        options.SttModel.ShouldBe("ggml-base.bin");
+        options.SttGpu.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("--stt-dir", "x")]
+    [InlineData("--stt-model", "x.bin")]
+    public void The_speech_model_options_only_make_sense_when_transcribing(string option, string value)
+    {
+        Error(option, value).ShouldContain("--transcribe");
+    }
+
+    [Fact]
+    public void The_gpu_flag_only_makes_sense_when_transcribing()
+    {
+        Error("--stt-gpu").ShouldContain("--transcribe");
+    }
+
+    [Theory]
+    [InlineData("--atc", "SBCT")]
+    [InlineData("--sim", "mock")]
+    [InlineData("--replay", "x.jsonl")]
+    [InlineData("--record", "x.jsonl")]
+    [InlineData("--speed", "2")]
+    [InlineData("--duration", "5")]
+    [InlineData("--runway", "15")]
+    [InlineData("--mic-test", "x.wav")]
+    public void Transcribing_does_not_mix_with_the_other_modes(string option, string value)
+    {
+        Error("--transcribe", "fala.wav", option, value).ShouldContain("--transcribe não combina");
+    }
+
+    [Fact]
+    public void Transcribing_needs_a_file()
+    {
+        Error("--transcribe").ShouldContain("precisa de um valor");
     }
 }

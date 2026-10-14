@@ -26,7 +26,11 @@ internal sealed record AppOptions(
     string? MicTestPath = null,
     string PttKey = PushToTalkKey.DefaultName,
     int MicDevice = -1,
-    bool ListMics = false);
+    bool ListMics = false,
+    string? TranscribePath = null,
+    string? SttDirectory = null,
+    string? SttModel = null,
+    bool SttGpu = false);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -41,6 +45,7 @@ internal static class ArgumentParser
              fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>]
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
+             fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
 
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
                                  aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
@@ -54,6 +59,15 @@ internal static class ArgumentParser
           --ptt-key <tecla>      Tecla do push-to-talk. Padrão: RControl. Exemplos: RControl, LControl, RShift,
                                  RAlt, CapsLock, Space, ScrollLock, Insert, F8, Mouse4, Mouse5, letras, números e F1 a F24.
           --mic-list             Lista os microfones e seus números.
+
+          --transcribe <arquivo.wav>  Transcreve uma fala gravada (WAV de 16 kHz, mono, 16 bits, como o do
+                                 --mic-test), localmente e sem internet, e mostra o que o NLU entendeu.
+                                 O indicativo (--callsign) ajuda o reconhecimento.
+          --stt-dir <pasta>      Pasta do modelo de voz. Padrão: %LOCALAPPDATA%\Fonia\models. O modelo
+                                 (ggml-small.bin, 466 MB) é baixado por você; a mensagem de erro diz de onde.
+          --stt-model <arquivo>  Nome do arquivo do modelo. Padrão: ggml-small.bin.
+          --stt-gpu              Usa a GPU (Vulkan) no reconhecimento: ~0,25 s por frase em vez de ~2 s,
+                                 em troca de usar a placa do simulador por instantes. Padrão: só CPU.
 
           --sim msfs|mock        Fonte dos dados. msfs (padrão) lê o Microsoft Flight Simulator 2020;
                                  mock mostra um taxi simulado, para testar sem simulador.
@@ -87,6 +101,10 @@ internal static class ArgumentParser
         string? pttKey = null;
         int? micDevice = null;
         var listMics = false;
+        string? transcribe = null;
+        string? sttDir = null;
+        string? sttModel = null;
+        var sttGpu = false;
         double? speed = null;
         TimeSpan? duration = null;
         var logLevel = LogLevel.Warning;
@@ -106,12 +124,18 @@ internal static class ArgumentParser
                 continue;
             }
 
+            if (name == "--stt-gpu")
+            {
+                sttGpu = true;
+                continue;
+            }
+
             if (!name.StartsWith("--", StringComparison.Ordinal))
             {
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -154,6 +178,15 @@ internal static class ArgumentParser
                 case "--ptt-key":
                     pttKey = ParsePttKey(value, out problem);
                     break;
+                case "--transcribe":
+                    transcribe = value;
+                    break;
+                case "--stt-dir":
+                    sttDir = value;
+                    break;
+                case "--stt-model":
+                    sttModel = value;
+                    break;
                 case "--speed":
                     speed = ParseSpeed(value, out problem);
                     break;
@@ -171,22 +204,46 @@ internal static class ArgumentParser
             }
         }
 
-        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics));
+        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu));
     }
 
     private sealed record MicRaw(string? TestPath, int? Device, string? Key, bool List);
 
+    private sealed record SttRaw(string? TranscribePath, string? Directory, string? Model, bool Gpu)
+    {
+        public bool Any => TranscribePath is not null || Directory is not null || Model is not null || Gpu;
+    }
+
     private static ParsedArguments Validate(
-        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic)
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt)
     {
         var others = source is not null || replay is not null || record is not null || speed is not null || duration is not null
             || atc is not null || runway is not null || callsign is not null;
 
         if (mic.List)
         {
-            return others || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
+            return others || stt.Any || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
                 ? Failure("--mic-list não combina com outras opções: use só --mic-list.")
                 : new ParsedArguments(new AppOptions(LogLevel: logLevel, ListMics: true), null, ShowHelp: false);
+        }
+
+        if (stt.TranscribePath is not null)
+        {
+            var mixed = source is not null || replay is not null || record is not null || speed is not null || duration is not null
+                || atc is not null || runway is not null
+                || mic.TestPath is not null || mic.Device is not null || mic.Key is not null;
+
+            return mixed
+                ? Failure("--transcribe não combina com --sim, --replay, --record, --speed, --duration, --atc, --runway nem as opções do microfone.")
+                : new ParsedArguments(
+                    new AppOptions(LogLevel: logLevel, Callsign: callsign, TranscribePath: stt.TranscribePath, SttDirectory: stt.Directory, SttModel: stt.Model, SttGpu: stt.Gpu),
+                    null,
+                    ShowHelp: false);
+        }
+
+        if (stt.Any)
+        {
+            return Failure("--stt-dir, --stt-model e --stt-gpu só valem ao transcrever: use também --transcribe <arquivo.wav>.");
         }
 
         if (mic.TestPath is null && (mic.Device is not null || mic.Key is not null))
