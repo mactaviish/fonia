@@ -107,7 +107,10 @@ Depois de estabelecido o contato, a matrícula pode ser abreviada para **pelo me
 
 ## Lacunas e pontos a decidir (`TODO(fraseologia)`)
 
-- Tráfego (autorização de plano) e a transferência para a Torre ("chame a Torre … em …") ficam para depois do M2.
+- Tráfego (autorização de plano) fica para depois do M2.
+- **Transferência para a Torre (M4, implementada):** o piloto **relata** o ponto de espera ("no ponto de espera da pista 15"; o "no/em" antes de "ponto" o distingue do cotejamento, que diz "para o ponto de espera") e o Solo responde **"PRABC, chame Torre Curitiba UNO UNO OITO DECIMAL CINCO CINCO."** (Art. 125, II, "chame Torre 118,1", com o nome da Torre como na prática VATSIM-BR, P-TXI-HAND). `TODO(fraseologia)`: o manual não lista a troca de frequência entre o que deve ser cotejado (Art. 12), então o app **não exige** o cotejamento dela; mas o piloto costuma repetir a frequência ("chamando Torre em 118,55, PRABC"), e o Solo **recebe em silêncio**, com ou sem indicativo e sem corrigir como foi dito (achado no teste ao vivo: antes o Solo respondia "Repita." a quem cotejava). Confirmar com o mantenedor.
+- Em um aeroporto sem Torre o Solo não tem para onde passar o voo: o app mostra um aviso (`NoTowerAvailable`), não fala.
+- Quem responde vem da **frequência do rádio** (COM1): o Solo na dele, a Torre na dela, ninguém em outra (aviso com as frequências do aeroporto). Enquanto a Torre não tem fraseologia no app (M4, próximas tarefas), na frequência dela o app mostra um aviso e não inventa frases.
 - AFIS: o MCA tem uma seção própria (Serviço de Informação de Voo de Aeródromo); no M2 o app diz que não há serviço de controle ali.
 - Vento e altitude/nível ditos em voz: o Solo do M2 não precisa deles (só pista, frequência e ajuste de altímetro); `SpokenText` ainda não os fala. `TODO(fraseologia)` quando a Torre entrar.
 - Convidar a falar (`GoAhead`, quando o piloto só chama o Solo): **"PRABC, prossiga"** (indicativo + "prossiga"), como informou o mantenedor; o MCA não traz frase para o Solo. Falta a fonte oficial, se houver.

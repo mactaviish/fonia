@@ -40,7 +40,8 @@ internal sealed record AppOptions(
     bool Voice = false,
     int AudioOut = -1,
     bool DownloadModels = false,
-    string? ModelsDir = null);
+    string? ModelsDir = null,
+    Fonia.Core.Sim.Frequency? Com1 = null);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -52,7 +53,7 @@ internal static class ArgumentParser
         Fonia: estado da aeronave em tempo real, vindo do simulador, e ATC por texto.
 
         Uso: fonia [opções]
-             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>]
+             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>]
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
@@ -63,6 +64,10 @@ internal static class ArgumentParser
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
                                  aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
           --runway <pista>       Pista em uso (ex.: 15, 33L). Padrão: a mais longa do aeroporto.
+          --com1 <MHz>           Frequência do rádio (COM1), por exemplo 118.55: quem responde é a unidade do aeroporto
+                                 que usa essa frequência (Solo, Torre ou Rádio), e em outra ninguém responde. Com o
+                                 simulador (--sim) a frequência vem do COM1 dele, ao vivo. No modo texto, "/com1 118.55"
+                                 muda durante a sessão. Sem rádio, responde a unidade padrão do aeroporto.
           --callsign <indicativo>  Indicativo da aeronave (ex.: PR-ABC). Sem ele, vem da matrícula
                                  da aeronave no simulador (--sim). Com ele, não usa simulador.
 
@@ -132,6 +137,7 @@ internal static class ArgumentParser
         string? atc = null;
         string? runway = null;
         string? callsign = null;
+        Fonia.Core.Sim.Frequency? com1 = null;
         string? micTest = null;
         string? pttKey = null;
         int? micDevice = null;
@@ -191,7 +197,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -258,6 +264,9 @@ internal static class ArgumentParser
                 case "--radio-effect":
                     radioEffect = ParseRadioEffect(value, out problem);
                     break;
+                case "--com1":
+                    com1 = ArgumentParserFrequency(value, out problem);
+                    break;
                 case "--models-dir":
                     modelsDir = value;
                     break;
@@ -281,7 +290,7 @@ internal static class ArgumentParser
             }
         }
 
-        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect), new VoiceRaw(voice, audioOut), new DownloadRaw(downloadModels, modelsDir));
+        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect), new VoiceRaw(voice, audioOut), new DownloadRaw(downloadModels, modelsDir), com1);
     }
 
     private sealed record MicRaw(string? TestPath, int? Device, string? Key, bool List);
@@ -302,10 +311,10 @@ internal static class ArgumentParser
     }
 
     private static ParsedArguments Validate(
-        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt, TtsRaw tts, VoiceRaw voice, DownloadRaw download)
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt, TtsRaw tts, VoiceRaw voice, DownloadRaw download, Fonia.Core.Sim.Frequency? com1)
     {
         var others = source is not null || replay is not null || record is not null || speed is not null || duration is not null
-            || atc is not null || runway is not null || callsign is not null;
+            || atc is not null || runway is not null || callsign is not null || com1 is not null;
 
         if (download.On || download.Dir is not null)
         {
@@ -331,7 +340,7 @@ internal static class ArgumentParser
 
         if (voice.On)
         {
-            return ValidateVoice(source, replay, record, speed, duration, logLevel, atc, runway, callsign, mic, stt, tts, voice);
+            return ValidateVoice(source, replay, record, speed, duration, logLevel, atc, runway, callsign, com1, mic, stt, tts, voice);
         }
 
         if (voice.AudioOut is not null)
@@ -398,14 +407,14 @@ internal static class ArgumentParser
                     ShowHelp: false);
         }
 
-        if (atc is null && (runway is not null || callsign is not null))
+        if (atc is null && (runway is not null || callsign is not null || com1 is not null))
         {
-            return Failure("--runway e --callsign só valem no modo ATC: use também --atc <ICAO>.");
+            return Failure("--runway, --callsign e --com1 só valem no modo ATC: use também --atc <ICAO>.");
         }
 
         if (atc is not null)
         {
-            return ValidateAtc(source, replay, record, speed, duration, logLevel, atc, runway, callsign);
+            return ValidateAtc(source, replay, record, speed, duration, logLevel, atc, runway, callsign, com1);
         }
 
         if (replay is not null && source is SimSourceKind.Msfs or SimSourceKind.Mock)
@@ -431,7 +440,7 @@ internal static class ArgumentParser
     // The voice mode is the ATC mode plus a microphone, a recognizer, a voice and a loudspeaker: it takes the options of those
     // and none of the modes that use only one of them.
     private static ParsedArguments ValidateVoice(
-        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt, TtsRaw tts, VoiceRaw voice)
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, Fonia.Core.Sim.Frequency? com1, MicRaw mic, SttRaw stt, TtsRaw tts, VoiceRaw voice)
     {
         if (atc is null)
         {
@@ -443,7 +452,7 @@ internal static class ArgumentParser
             return Failure("--voice não combina com --mic-test, --transcribe, --speak nem --speak-out.");
         }
 
-        var parsed = ValidateAtc(source, replay, record, speed, duration, logLevel, atc, runway, callsign);
+        var parsed = ValidateAtc(source, replay, record, speed, duration, logLevel, atc, runway, callsign, com1);
 
         return parsed.Options is null
             ? parsed
@@ -466,7 +475,7 @@ internal static class ArgumentParser
     }
 
     private static ParsedArguments ValidateAtc(
-        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string atc, string? runway, string? callsign)
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string atc, string? runway, string? callsign, Fonia.Core.Sim.Frequency? com1)
     {
         if (replay is not null || record is not null || speed is not null || duration is not null || source == SimSourceKind.Replay)
         {
@@ -478,7 +487,7 @@ internal static class ArgumentParser
             return Failure("--callsign dispensa o simulador: remova --sim, ou remova --callsign para usar a matrícula do simulador.");
         }
 
-        return new ParsedArguments(new AppOptions(source ?? SimSourceKind.Msfs, LogLevel: logLevel, AtcAirport: atc, Runway: runway, Callsign: callsign), null, ShowHelp: false);
+        return new ParsedArguments(new AppOptions(source ?? SimSourceKind.Msfs, LogLevel: logLevel, AtcAirport: atc, Runway: runway, Callsign: callsign, Com1: com1), null, ShowHelp: false);
     }
 
     private static (string Name, string? Value) Split(string argument)
@@ -568,6 +577,19 @@ internal static class ArgumentParser
         }
 
         problem = $"--radio-effect '{value}' não existe. Use: desligado, leve, média ou forte.";
+        return null;
+    }
+
+    private static Fonia.Core.Sim.Frequency? ArgumentParserFrequency(string value, out string? problem)
+    {
+        problem = null;
+
+        if (AtcConsole.TryParseFrequency(value, out var frequency))
+        {
+            return frequency;
+        }
+
+        problem = $"--com1 '{value}' é inválido: use uma frequência em MHz entre 118 e 137 (por exemplo 118.55).";
         return null;
     }
 

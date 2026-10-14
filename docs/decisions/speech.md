@@ -119,6 +119,19 @@ Medido no i7-12700 com os arquivos do Kokoro (modelo fp32), voz `pm_alex`, CPU:
 
 Com 4 threads fica ~25% mais lento; com 8, igual ao padrão (6 neste processador). O efeito de rádio acrescenta menos de 10 ms.
 
+### Latência medida ao vivo (2026-10-14)
+
+Primeira sessão real com `--atc SBCT --voice`, **CPU** (sem `--stt-gpu`), i7-12700 com o MSFS fora do ar. Do PTT solto até o áudio pronto para tocar, por etapa (linha `tempos:` do app):
+
+| Fala do controlador | Reconhecimento | Entendimento | Voz | Rádio | **Até o áudio** |
+|---|---|---|---|---|---|
+| "...chame Torre Curitiba UNO UNO OITO DECIMAL CINCO CINCO." (frase longa) | 2,2 s | 2 ms | 891 ms | 15 ms | **3,2 s** |
+| "Repita." (3 trocas) | 2,1 a 2,2 s | 0 a 1 ms | 170 a 178 ms | 3 ms | **2,3 a 2,4 s** |
+
+- O **reconhecimento é o gargalo**: ~2,1 a 2,2 s por fala de ~4 s, igual ao medido no spike (1,97 s). A síntese, que era a dúvida, ficou em 0,17 s a 0,9 s, e o efeito de rádio e as regras (NLU, motor, fraseologia) somam menos de 20 ms.
+- Total **2,3 a 3,2 s**, dentro do alvo "abaixo de ~3 s" para respostas curtas e no limite para as longas. Com `--stt-gpu` o reconhecimento cai para ~0,25 s e o total para ~1 a 1,5 s (a medir ao vivo, com o simulador aberto, que é onde a GPU é disputada).
+- Medido sem o MSFS aberto: com o simulador consumindo CPU o reconhecimento deve subir; é o número a repetir no teste de voo completo.
+
 ### Obtenção dos modelos (2026-10-14)
 
 Primeiro teste ao vivo do `--voice` bateu em "modelo não encontrado", e a regra "o usuário baixa na mão" caiu: o app baixa os modelos dos donos, **com confirmação**, e confere o SHA-256. Os arquivos não vão para o repositório (o GitHub recusa mais de 100 MB e o Git LFS gratuito não comporta) nem são redistribuídos pelo projeto, o que também dispensa a pergunta sobre os dados de treino do Kokoro (o dono do modelo é quem distribui).

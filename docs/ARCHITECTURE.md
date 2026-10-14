@@ -221,6 +221,15 @@ Junta as etapas anteriores, sem regra nova: a decisão é do motor e as palavras
 
 No app, `fonia --atc <ICAO> --voice` usa tudo isso (`VoiceMode`), com as opções `--ptt-key`, `--mic-device`, `--audio-out`, `--stt-*`, `--tts-*` e `--radio-effect`.
 
+### 10. Quem responde: a frequência do rádio (`Fonia.Core.Atc`)
+
+Como num rádio de verdade, **quem responde é quem está na frequência sintonizada**, não o que o aeroporto tem de padrão:
+
+- `FrequencyResolver.Apply(airport, com1)` devolve o `AirportContext` daquela fala: `Unit` = Solo, Torre ou AFIS se a frequência é a dele (do `Airport.Frequencies`), ou **ninguém** em qualquer outra (inclusive ATIS e Aproximação, que não atendem quem está no solo); `Tuned` guarda a frequência. Sem leitura do rádio (nulo), vale a unidade padrão do aeroporto, que é como o modo texto sem simulador sempre funcionou.
+- De onde vem o rádio: `--com1 <MHz>` ou `/com1 <MHz>` na sessão de texto (o que o usuário digitou vence), ou o **COM1 do simulador, lido a cada fala** (`SimSession` mantém a conexão aberta durante a sessão; o indicativo vem da mesma conexão). O laço de voz lê o rádio a cada transmissão, então trocar de frequência no meio do voo muda quem responde na fala seguinte, e a posição (Solo ou Torre) tem voz própria.
+- O motor continua **determinístico e sem estado**: recebe o contexto já resolvido. Em frequência de ninguém, qualquer fala recebe o aviso `NoOneOnFrequency` (com as frequências do aeroporto); a Torre de um aeroporto **com Solo** não faz o trabalho do Solo (`TowerPhraseologyPending`, aviso, até a fraseologia da Torre entrar).
+- **Passagem Solo → Torre:** o piloto relata o ponto de espera (`ReportHoldingShort`; o NLU o separa do cotejamento do táxi pelo "no/em ponto de espera") e o Solo responde `HandoffToTower` com a frequência da Torre ("chame Torre Curitiba UNO UNO OITO DECIMAL CINCO CINCO"); a fase vira `HandedToTower`. O cotejamento da troca é **opcional**: fica "pendente" só para o NLU ler o que o piloto disser em seguida como resposta, e o Solo a recebe em silêncio, sem checar a frequência dita (o reconhecedor erra números, e o manual não a exige). Não é detectado pela posição porque o modelo de pista ainda não tem coordenadas das cabeceiras.
+
 ## Fluxo de uma interação (exemplo)
 
 1. Piloto aperta PTT e diz: "Solo Curitiba, PR-ABC, pátio 1, posição 3, solicita instruções de táxi".

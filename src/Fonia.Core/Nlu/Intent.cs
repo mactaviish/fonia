@@ -25,5 +25,12 @@ public sealed record SayAgain(string? Callsign) : Intent(Callsign);
 /// <summary>The pilot only called the controller and said their callsign ("Solo Curitiba, PRABC"), without a request.</summary>
 public sealed record CallsignOnly(string? Callsign) : Intent(Callsign);
 
+/// <summary>
+/// The pilot reports being at the holding point ("no ponto de espera da pista 15"), which is what hands the flight from the Solo
+/// to the Torre. It is not the readback of the taxi clearance, which repeats the instruction ("para o ponto de espera da 15").
+/// </summary>
+/// <param name="Runway">The runway the pilot named, or null when none was said.</param>
+public sealed record ReportHoldingShort(string? Callsign, string? Runway) : Intent(Callsign);
+
 /// <summary>Speech that could not be interpreted.</summary>
 public sealed record Unknown(string RawText) : Intent((string?)null);

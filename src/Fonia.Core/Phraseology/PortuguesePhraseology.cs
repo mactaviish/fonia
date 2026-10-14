@@ -1,3 +1,4 @@
+using Fonia.Core.Airports;
 using Fonia.Core.Atc;
 
 namespace Fonia.Core.Phraseology;
@@ -26,6 +27,14 @@ public sealed class PortuguesePhraseology : IPhraseology
             // TODO(fraseologia): the phrase of the AFIS saying it only informs is a proposal to confirm.
             NoControlService { Unit: ServiceUnit.Afis } => new Utterance($"{callsign}, {UnitName(context.Airport)}, sem serviço de controle neste aeródromo, apenas informações de voo."),
             NoControlService => new Utterance($"Sem serviço de controle em {context.Airport.Airport.Ident}: ninguém responde neste aeródromo.", UtteranceKind.Notice),
+            HandoffToTower handoff => new Utterance($"{callsign}, chame Torre {context.Airport.Airport.SpokenName} {SpokenText.Frequency(handoff.Frequency)}."),
+            NoTowerAvailable => new Utterance($"Sem Torre em {context.Airport.Airport.Ident}: não há para onde passar o voo.", UtteranceKind.Notice),
+            NoOneOnFrequency silent => new Utterance(
+                $"Ninguém responde em {Mhz(silent.Frequency)}. Sintonize uma frequência de {context.Airport.Airport.Ident}: {FrequenciesOf(context.Airport)}.",
+                UtteranceKind.Notice),
+            TowerPhraseologyPending => new Utterance(
+                $"{UnitName(context.Airport)}: a fraseologia da Torre ainda não existe neste app (em desenvolvimento).{BackToSolo(context.Airport)}",
+                UtteranceKind.Notice),
             NoRunwayAvailable => new Utterance($"Os dados de {context.Airport.Airport.Ident} não têm pista utilizável: o controlador não pode autorizar o táxi.", UtteranceKind.Notice),
             RequestReadbackCorrection correction => new Utterance($"{callsign}, negativo, {Body(correction.Expected)}"),
             _ => new Utterance($"{callsign}, {Body(instruction)}"),
@@ -46,6 +55,22 @@ public sealed class PortuguesePhraseology : IPhraseology
         TaxiClearance taxi => $"autorizado táxi para o ponto de espera da {SpokenText.Runway(taxi.Runway)}.",
         _ => throw new ArgumentOutOfRangeException(nameof(instruction), instruction, "There is no phrase for this instruction."),
     };
+
+    // For the messages of the app, which are read on the screen: "118.55", not digit by digit.
+    private static string Mhz(Sim.Frequency frequency) => frequency.MHz.ToString("0.0##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string FrequenciesOf(AirportContext airport)
+    {
+        var listed = new[] { (AirportFrequencyType.Ground, "Solo"), (AirportFrequencyType.Tower, "Torre"), (AirportFrequencyType.Afis, "Rádio") }
+            .Select(unit => airport.Airport.FrequencyOf(unit.Item1) is { } f ? $"{unit.Item2} {Mhz(f.Frequency)}" : null)
+            .OfType<string>()
+            .ToList();
+
+        return listed.Count > 0 ? string.Join(", ", listed) : "o aeroporto não tem frequência nos dados";
+    }
+
+    private static string BackToSolo(AirportContext airport) =>
+        airport.Airport.FrequencyOf(AirportFrequencyType.Ground) is { } ground ? $" Volte para o Solo {Mhz(ground.Frequency)}." : string.Empty;
 
     // "SOLO Curitiba", "TORRE Guarulhos", "RÁDIO Marte" (MCA 100-16 Art. 37).
     public string UnitName(AirportContext airport)

@@ -105,7 +105,10 @@ Para conversar com o controlador por texto (ATC do M2, sem áudio): você digita
 ```bash
 dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC          # sem simulador
 dotnet run --project src/Fonia.App -- --atc SBCT --runway 15                # indicativo da matrícula no MSFS
+dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC --com1 118.55   # rádio na frequência da Torre de Curitiba
 ```
+
+Quem responde depende da **frequência do rádio**: o Solo na dele, a Torre na dela, ninguém em outra. Com o simulador (`--sim msfs`) ela vem do COM1 ao vivo; sem ele, use `--com1 <MHz>` ou digite `/com1 118.55` durante a sessão. No ponto de espera, diga "no ponto de espera da pista 15" e o Solo manda chamar a Torre; a Torre ainda não tem fraseologia neste app (mostra um aviso).
 
 Por exemplo: `Solo Curitiba, PRABC, box 3, solicito pushback e acionamento`, depois o readback `autorizado pushback e acionamento, PRABC`, depois `PRABC, pronto para o táxi`. `sair` encerra.
 

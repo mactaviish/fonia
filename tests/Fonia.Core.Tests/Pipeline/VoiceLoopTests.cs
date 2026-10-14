@@ -65,6 +65,9 @@ public sealed class VoiceLoopTests : IAsyncDisposable
         _running = _loop.RunAsync(_stop.Token);
     }
 
+    // The reply is reported a moment before the channel is free again; a press in that moment is, correctly, ignored as busy.
+    private Task WaitForTheChannelAsync() => _observer.WaitForAsync(() => !_loop!.IsBusy, Ct);
+
     private void Transmit(int milliseconds = 600)
     {
         _ptt.Press();
@@ -103,6 +106,7 @@ public sealed class VoiceLoopTests : IAsyncDisposable
 
         Transmit();
         await _observer.WaitForAsync(() => _observer.Replies.Count == 1, Ct);
+        await WaitForTheChannelAsync();
         Transmit();
         await _observer.WaitForAsync(() => _observer.Replies.Count == 2, Ct);
 
@@ -152,6 +156,7 @@ public sealed class VoiceLoopTests : IAsyncDisposable
 
         Transmit();
         await _observer.WaitForAsync(() => _observer.Failures.Count == 1, Ct);
+        await WaitForTheChannelAsync();
         _synthesizer.Answer = null;
         Transmit();
         await _observer.WaitForAsync(() => _observer.Replies.Count == 1, Ct);
@@ -168,6 +173,7 @@ public sealed class VoiceLoopTests : IAsyncDisposable
 
         Transmit();
         await _observer.WaitForAsync(() => _observer.Failures.Count == 1, Ct);
+        await WaitForTheChannelAsync();
         _synthesizer.Answer = null;
         Transmit();
         await _observer.WaitForAsync(() => _observer.Replies.Count == 1, Ct);

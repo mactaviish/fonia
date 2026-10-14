@@ -1,3 +1,5 @@
+using Fonia.Core.Sim;
+
 namespace Fonia.Core.Atc;
 
 /// <summary>
@@ -34,6 +36,26 @@ public sealed record GoAhead : AtcInstruction;
 
 /// <summary>The controller did not understand: "REPITA".</summary>
 public sealed record SayAgainRequest : AtcInstruction;
+
+/// <summary>
+/// The Solo passes the flight to the Torre at the holding point: "chame Torre ..." with the Torre's frequency
+/// (MCA 100-16, Art. 125, II; the name of the Torre is the practice of VATSIM Brasil).
+/// </summary>
+// TODO(fraseologia): the manual does not list the frequency change among what must be read back (Art. 12); no readback is asked.
+public sealed record HandoffToTower(Frequency Frequency) : AtcInstruction;
+
+/// <summary>The airport has no Torre to pass the flight to. A message of the app, not radio.</summary>
+public sealed record NoTowerAvailable : AtcInstruction;
+
+/// <summary>The radio is tuned to a frequency of no unit of this airport: nobody answers. A message of the app, not radio.</summary>
+public sealed record NoOneOnFrequency(Frequency Frequency) : AtcInstruction;
+
+/// <summary>
+/// The pilot is on the Torre's frequency and the app has no Torre phraseology yet (it comes with the Torre tasks of M4):
+/// a message of the app, not radio, so that nothing is invented.
+/// </summary>
+// TODO(fraseologia): replaced by the Torre's own phrases once docs/phraseology has them.
+public sealed record TowerPhraseologyPending : AtcInstruction;
 
 /// <summary>A correct readback needs no answer (MCA 100-16 Art. 12): the controller stays silent.</summary>
 public sealed record NoResponse : AtcInstruction;

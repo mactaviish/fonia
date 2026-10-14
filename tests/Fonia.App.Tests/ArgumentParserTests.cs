@@ -199,7 +199,7 @@ public class ArgumentParserTests
     [Fact]
     public void The_help_text_describes_every_option()
     {
-        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--speak", "--speak-out", "--tts-voice", "--tts-dir", "--radio-effect", "--voice", "--audio-out", "--download-models", "--models-dir", "--help" })
+        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--speak", "--speak-out", "--tts-voice", "--tts-dir", "--radio-effect", "--voice", "--audio-out", "--download-models", "--models-dir", "--com1", "--help" })
         {
             ArgumentParser.HelpText.ShouldContain(option);
         }
@@ -602,5 +602,46 @@ public class ArgumentParserTests
     public void Downloading_the_models_does_not_mix_with_listing_the_devices()
     {
         Error("--download-models", "--mic-list").ShouldContain("--download-models não combina");
+    }
+
+    [Theory]
+    [InlineData("118.55", 118550)]
+    [InlineData("118,55", 118550)]
+    [InlineData("121.9", 121900)]
+    [InlineData("136.975", 136975)]
+    public void The_radio_frequency_takes_a_dot_or_a_comma(string value, int kHz)
+    {
+        Ok("--atc", "SBCT", "--callsign", "PRABC", "--com1", value).Com1.ShouldBe(new Fonia.Core.Sim.Frequency(kHz));
+    }
+
+    [Fact]
+    public void The_radio_is_unset_by_default_so_the_airports_own_unit_answers()
+    {
+        Ok("--atc", "SBCT", "--callsign", "PRABC").Com1.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("50")]
+    [InlineData("200")]
+    [InlineData("-118")]
+    public void A_frequency_outside_the_aviation_band_is_refused(string value)
+    {
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--com1", value).ShouldContain("--com1");
+    }
+
+    [Fact]
+    public void The_radio_only_makes_sense_in_the_atc_mode()
+    {
+        Error("--com1", "118.55").ShouldContain("--atc");
+    }
+
+    [Fact]
+    public void The_radio_works_with_the_voice_mode_and_with_the_simulator()
+    {
+        var options = Ok("--atc", "SBCT", "--voice", "--sim", "mock", "--com1", "119.5");
+
+        options.Voice.ShouldBeTrue();
+        options.Com1.ShouldBe(new Fonia.Core.Sim.Frequency(119500));
     }
 }

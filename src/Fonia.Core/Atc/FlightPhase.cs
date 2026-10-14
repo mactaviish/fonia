@@ -7,4 +7,7 @@ public enum FlightPhase
     PushbackApproved,
     StartupApproved,
     Taxiing,
+
+    /// <summary>The Solo reported the holding point and passed the flight to the Torre: from here the Torre talks.</summary>
+    HandedToTower,
 }

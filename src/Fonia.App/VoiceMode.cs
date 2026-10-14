@@ -3,6 +3,7 @@ using Fonia.Core.Audio;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
 using Fonia.Core.Pipeline;
+using Fonia.Core.Sim;
 using Fonia.Core.Speech;
 
 namespace Fonia.App;
@@ -33,7 +34,8 @@ internal sealed class VoiceMode(
     string keyName,
     TextWriter output,
     TextWriter error,
-    Random random) : IVoiceMode
+    Random random,
+    Func<Frequency?>? com1 = null) : IVoiceMode
 {
     public async Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct)
     {
@@ -68,7 +70,7 @@ internal sealed class VoiceMode(
         }
 
         var exchange = new VoiceExchange(transcriber, nlu, engine, phraseology, synthesizer, voices, radio, random);
-        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, new ConsoleVoiceObserver(output, error, station));
+        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, new ConsoleVoiceObserver(output, error, station), com1);
 
         // Said only once the microphone and the key are open: whoever reads it may press the key at once.
         await loop.RunAsync(ct, () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta. Ctrl+C encerra."));
