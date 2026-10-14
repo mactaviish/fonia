@@ -102,6 +102,19 @@ O espeak-ng foi usado **só na audição do spike**, num ambiente temporário; n
 - O usuário escolhe a voz nas configurações.
 - **Padrão: aleatória** entre as vozes aprovadas (hoje `pf_dora` e `pm_alex`), para diversificar; cada controlador/serviço pode manter a mesma voz durante a sessão. Mais vozes entram na lista conforme forem avaliadas.
 
+### Efeito de rádio (pedido do mantenedor)
+
+Módulo `RadioEffect`, aplicado depois do TTS: filtro passa-faixa, saturação suave (tanh), chiado limitado à mesma banda, clique de abertura do PTT e "squelch" de fechamento. Só NAudio (`BiQuadFilter`) e amostras geradas no código, sem pacote novo; custo desprezível. Prototipado em Python e **a intensidade ainda precisa ser aprovada na audição**.
+
+| Intensidade | Banda | Saturação (drive) | Chiado | Clique |
+|---|---|---|---|---|
+| desligado | sem filtro | - | - | - |
+| leve | 250-3800 Hz | 1,5 | 0,004 | 0,10 |
+| **média (padrão)** | 350-3200 Hz | 2,5 | 0,010 | 0,18 |
+| forte | 450-2800 Hz | 4,0 | 0,022 | 0,28 |
+
+O usuário escolhe a intensidade nas configurações; os números acima são o ponto de partida e podem ser ajustados depois da audição.
+
 ### Descartados na audição
 
 Vozes do Windows (Maria, Daniel): "horríveis". Piper (faber, cadu): não agradou, e depende do espeak-ng. Supertonic 3: sotaque estrangeiro ("de indiano"), além da licença OpenRAIL-M e do repositório arquivado. Kokoro `pm_santa`: ruim.
