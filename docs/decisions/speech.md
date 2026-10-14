@@ -103,6 +103,22 @@ O Kokoro recebe **fonemas**, e os exemplos prontos obtêm os fonemas com o espea
 
 O espeak-ng foi usado **só no spike e como régua de comparação**, num ambiente temporário; nada dele vai para o repositório.
 
+### Implementação e medições (2026-10-14)
+
+`KokoroSynthesizer` (`Fonia.Speech`) roda o modelo no **ONNX Runtime (MIT)**, na CPU, com metade dos núcleos (no máximo 8). Entradas do modelo: `tokens` (os fonemas numerados, com um zero em cada ponta), `style` (uma linha de 256 números, escolhida pela quantidade de fonemas, do arquivo de vozes) e `speed`; saída: áudio a 24 kHz. O arquivo de vozes é um `.npz` do numpy (zip com uma tabela `510x1x256` por voz), lido sem biblioteca de numpy. O silêncio que o modelo deixa no começo e no fim é cortado (o piloto espera por ele); textos de mais de 510 fonemas são divididos nas pausas.
+
+Medido no i7-12700 com os arquivos do Kokoro (modelo fp32), voz `pm_alex`, CPU:
+
+| | Tempo |
+|---|---|
+| Carga do modelo (primeira chamada) | ~1,2 s |
+| "Repita." (0,9 s de fala) | ~0,17 s |
+| "...prossiga." (2,5 s de fala) | ~0,43 s |
+| Frase de táxi (5,5 s de fala) | ~0,9 s |
+| Memória de pico | ~520 MB |
+
+Com 4 threads fica ~25% mais lento; com 8, igual ao padrão (6 neste processador). O efeito de rádio acrescenta menos de 10 ms.
+
 ### Configuração de voz (pedido do mantenedor)
 
 - O usuário escolhe a voz nas configurações.

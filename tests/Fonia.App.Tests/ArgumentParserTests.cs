@@ -1,3 +1,4 @@
+using Fonia.Core.Speech;
 using Microsoft.Extensions.Logging;
 
 namespace Fonia.App.Tests;
@@ -198,7 +199,7 @@ public class ArgumentParserTests
     [Fact]
     public void The_help_text_describes_every_option()
     {
-        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--help" })
+        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--speak", "--speak-out", "--tts-voice", "--tts-dir", "--radio-effect", "--help" })
         {
             ArgumentParser.HelpText.ShouldContain(option);
         }
@@ -399,5 +400,84 @@ public class ArgumentParserTests
     public void Transcribing_needs_a_file()
     {
         Error("--transcribe").ShouldContain("precisa de um valor");
+    }
+
+    [Fact]
+    public void Speaking_takes_the_text_and_has_defaults_for_the_rest()
+    {
+        var options = Ok("--speak", "Repita.");
+
+        options.SpeakText.ShouldBe("Repita.");
+        options.SpeakOut.ShouldBe("fonia-speak.wav");
+        options.TtsVoice.ShouldBeNull();
+        options.TtsDirectory.ShouldBeNull();
+        options.RadioEffect.ShouldBe(RadioIntensity.Medium);
+    }
+
+    [Fact]
+    public void Speaking_accepts_the_file_the_voice_the_effect_and_the_folder()
+    {
+        var options = Ok("--speak", "Repita.", "--speak-out", "x.wav", "--tts-voice", "pm_alex", "--radio-effect", "forte", "--tts-dir", "C:/modelos", "--log-level", "error");
+
+        options.SpeakOut.ShouldBe("x.wav");
+        options.TtsVoice.ShouldBe("pm_alex");
+        options.RadioEffect.ShouldBe(RadioIntensity.Strong);
+        options.TtsDirectory.ShouldBe("C:/modelos");
+    }
+
+    [Theory]
+    [InlineData("aleatoria")]
+    [InlineData("random")]
+    [InlineData("ALEATÓRIA")]
+    public void The_voice_may_be_left_to_chance_by_name(string name)
+    {
+        Ok("--speak", "x", "--tts-voice", name).TtsVoice.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("--speak-out", "x.wav")]
+    [InlineData("--tts-voice", "pf_dora")]
+    [InlineData("--tts-dir", "x")]
+    [InlineData("--radio-effect", "leve")]
+    public void The_speech_options_only_make_sense_when_speaking(string option, string value)
+    {
+        Error(option, value).ShouldContain("--speak");
+    }
+
+    [Theory]
+    [InlineData("--atc", "SBCT")]
+    [InlineData("--sim", "mock")]
+    [InlineData("--replay", "x.jsonl")]
+    [InlineData("--speed", "2")]
+    [InlineData("--mic-test", "x.wav")]
+    [InlineData("--transcribe", "x.wav")]
+    public void Speaking_does_not_mix_with_the_other_modes(string option, string value)
+    {
+        Error("--speak", "x", option, value).ShouldContain("--speak não combina");
+    }
+
+    [Fact]
+    public void An_unknown_voice_is_refused_with_the_ones_that_exist()
+    {
+        var message = Error("--speak", "x", "--tts-voice", "pm_santa");
+
+        message.ShouldContain("--tts-voice");
+        message.ShouldContain("pf_dora");
+        message.ShouldContain("pm_alex");
+    }
+
+    [Fact]
+    public void An_unknown_effect_is_refused_with_the_ones_that_exist()
+    {
+        var message = Error("--speak", "x", "--radio-effect", "altissimo");
+
+        message.ShouldContain("--radio-effect");
+        message.ShouldContain("média");
+    }
+
+    [Fact]
+    public void Speaking_needs_a_text()
+    {
+        Error("--speak").ShouldContain("precisa de um valor");
     }
 }

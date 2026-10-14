@@ -1,5 +1,6 @@
 using System.Globalization;
 using Fonia.Audio;
+using Fonia.Core.Speech;
 using Microsoft.Extensions.Logging;
 
 namespace Fonia.App;
@@ -30,7 +31,12 @@ internal sealed record AppOptions(
     string? TranscribePath = null,
     string? SttDirectory = null,
     string? SttModel = null,
-    bool SttGpu = false);
+    bool SttGpu = false,
+    string? SpeakText = null,
+    string SpeakOut = "fonia-speak.wav",
+    string? TtsVoice = null,
+    string? TtsDirectory = null,
+    RadioIntensity RadioEffect = Core.Speech.RadioEffect.DefaultIntensity);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -46,6 +52,7 @@ internal static class ArgumentParser
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
+             fonia --speak "<texto>" [--speak-out <arquivo.wav>] [--tts-voice <voz>] [--radio-effect <nível>]
 
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
                                  aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
@@ -68,6 +75,15 @@ internal static class ArgumentParser
           --stt-model <arquivo>  Nome do arquivo do modelo. Padrão: ggml-small.bin.
           --stt-gpu              Usa a GPU (Vulkan) no reconhecimento: ~0,25 s por frase em vez de ~2 s,
                                  em troca de usar a placa do simulador por instantes. Padrão: só CPU.
+
+          --speak "<texto>"      Fala o texto com a voz do controlador (local, sem internet) e salva em um
+                                 WAV: serve para ouvir como o controlador soa. Só o texto, sem o motor ATC.
+          --speak-out <arquivo>  Arquivo de saída. Padrão: fonia-speak.wav.
+          --tts-voice <voz>      pf_dora, pm_alex ou aleatoria (padrão): sorteia uma das vozes aprovadas.
+          --radio-effect <nível> Efeito de rádio: desligado, leve, media (padrão) ou forte.
+          --tts-dir <pasta>      Pasta do modelo de voz. Padrão: %LOCALAPPDATA%\Fonia\models. Precisa de
+                                 kokoro-v1.0.onnx (325 MB) e voices-v1.0.bin (28 MB), baixados por você; a
+                                 mensagem de erro diz de onde.
 
           --sim msfs|mock        Fonte dos dados. msfs (padrão) lê o Microsoft Flight Simulator 2020;
                                  mock mostra um taxi simulado, para testar sem simulador.
@@ -105,6 +121,11 @@ internal static class ArgumentParser
         string? sttDir = null;
         string? sttModel = null;
         var sttGpu = false;
+        string? speak = null;
+        string? speakOut = null;
+        string? ttsVoice = null;
+        string? ttsDir = null;
+        RadioIntensity? radioEffect = null;
         double? speed = null;
         TimeSpan? duration = null;
         var logLevel = LogLevel.Warning;
@@ -135,7 +156,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -187,6 +208,21 @@ internal static class ArgumentParser
                 case "--stt-model":
                     sttModel = value;
                     break;
+                case "--speak":
+                    speak = value;
+                    break;
+                case "--speak-out":
+                    speakOut = value;
+                    break;
+                case "--tts-voice":
+                    ttsVoice = ParseTtsVoice(value, out problem);
+                    break;
+                case "--tts-dir":
+                    ttsDir = value;
+                    break;
+                case "--radio-effect":
+                    radioEffect = ParseRadioEffect(value, out problem);
+                    break;
                 case "--speed":
                     speed = ParseSpeed(value, out problem);
                     break;
@@ -204,10 +240,16 @@ internal static class ArgumentParser
             }
         }
 
-        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu));
+        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect));
     }
 
     private sealed record MicRaw(string? TestPath, int? Device, string? Key, bool List);
+
+    // Voice: "" asked for the random one by name, null not given.
+    private sealed record TtsRaw(string? Text, string? Out, string? Voice, string? Dir, RadioIntensity? Effect)
+    {
+        public bool Any => Text is not null || Out is not null || Voice is not null || Dir is not null || Effect is not null;
+    }
 
     private sealed record SttRaw(string? TranscribePath, string? Directory, string? Model, bool Gpu)
     {
@@ -215,16 +257,41 @@ internal static class ArgumentParser
     }
 
     private static ParsedArguments Validate(
-        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt)
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt, TtsRaw tts)
     {
         var others = source is not null || replay is not null || record is not null || speed is not null || duration is not null
             || atc is not null || runway is not null || callsign is not null;
 
         if (mic.List)
         {
-            return others || stt.Any || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
+            return others || stt.Any || tts.Any || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
                 ? Failure("--mic-list não combina com outras opções: use só --mic-list.")
                 : new ParsedArguments(new AppOptions(LogLevel: logLevel, ListMics: true), null, ShowHelp: false);
+        }
+
+        if (tts.Text is not null)
+        {
+            var mixed = source is not null || replay is not null || record is not null || speed is not null || duration is not null
+                || atc is not null || runway is not null || callsign is not null
+                || mic.TestPath is not null || mic.Device is not null || mic.Key is not null || stt.Any;
+
+            return mixed
+                ? Failure("--speak não combina com os outros modos (--sim, --replay, --record, --speed, --duration, --atc, --callsign, microfone, --transcribe).")
+                : new ParsedArguments(
+                    new AppOptions(
+                        LogLevel: logLevel,
+                        SpeakText: tts.Text,
+                        SpeakOut: tts.Out ?? "fonia-speak.wav",
+                        TtsVoice: string.IsNullOrEmpty(tts.Voice) ? null : tts.Voice,
+                        TtsDirectory: tts.Dir,
+                        RadioEffect: tts.Effect ?? Core.Speech.RadioEffect.DefaultIntensity),
+                    null,
+                    ShowHelp: false);
+        }
+
+        if (tts.Any)
+        {
+            return Failure("--speak-out, --tts-voice, --tts-dir e --radio-effect só valem ao falar: use também --speak \"<texto>\".");
         }
 
         if (stt.TranscribePath is not null)
@@ -362,6 +429,38 @@ internal static class ArgumentParser
         }
 
         problem = $"--duration '{value}' é inválido: use um número de segundos maior que zero.";
+        return null;
+    }
+
+    private static string? ParseTtsVoice(string value, out string? problem)
+    {
+        problem = null;
+        var name = value.Trim().ToLowerInvariant().Replace("ó", "o", StringComparison.Ordinal);
+
+        if (name is "aleatoria" or "random")
+        {
+            return string.Empty;
+        }
+
+        if (VoiceCatalog.Find(value) is { } voice)
+        {
+            return voice.Id;
+        }
+
+        problem = $"--tts-voice '{value}' não existe. Use: {string.Join(", ", VoiceCatalog.Default.Select(v => v.Id))} ou aleatoria.";
+        return null;
+    }
+
+    private static RadioIntensity? ParseRadioEffect(string value, out string? problem)
+    {
+        problem = null;
+
+        if (Core.Speech.RadioEffect.TryParse(value, out var intensity))
+        {
+            return intensity;
+        }
+
+        problem = $"--radio-effect '{value}' não existe. Use: desligado, leve, média ou forte.";
         return null;
     }
 
