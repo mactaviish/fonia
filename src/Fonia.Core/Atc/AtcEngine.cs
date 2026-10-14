@@ -72,7 +72,8 @@ public sealed class AtcEngine : IAtcEngine
 
         var handoff = new HandoffToTower(tower.Frequency);
 
-        return new AtcDecision(handoff, flight with { Phase = FlightPhase.HandedToTower, PendingReadback = null, LastInstruction = handoff });
+        // The readback is waiting only so that the NLU takes what the pilot says next as an answer: it is optional (see CheckReadback).
+        return new AtcDecision(handoff, flight with { Phase = FlightPhase.HandedToTower, PendingReadback = handoff, LastInstruction = handoff });
     }
 
     private static AtcDecision Taxi(FlightContext flight, AirportContext airport)
@@ -100,6 +101,13 @@ public sealed class AtcEngine : IAtcEngine
         if (flight.PendingReadback is not { } expected)
         {
             return new AtcDecision(new NoResponse(), flight);
+        }
+
+        // The manual does not list the frequency change among what must be read back (Art. 12): pilots do it anyway, and the
+        // controller takes it in silence, whatever the words and with or without the callsign, instead of arguing about it.
+        if (expected is HandoffToTower)
+        {
+            return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }
 
         var heard = SpokenTokens.Tokenize(readback.Text);

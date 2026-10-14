@@ -37,6 +37,19 @@ public class HoldingShortNluTests
         _nlu.Interpret(said, Taxiing).ShouldBeOfType<Readback>();
     }
 
+    private static readonly FlightContext Handed = new(Own, FlightPhase.HandedToTower, "SBCT", new HandoffToTower(new Fonia.Core.Sim.Frequency(118550)));
+
+    // What the speech recognizer wrote in the first live test, after "chame Torre Curitiba UNO UNO OITO DECIMAL CINCO CINCO".
+    [Theory]
+    [InlineData("Chamará Torre Curitiba no...")]
+    [InlineData("Uno noito, decimal cinco, cinco, Alfa Bravo Charlie.")]
+    [InlineData("1, 1, 8, decimal cinco para o Alfa Bravo Charlie.")]
+    [InlineData("Chamando Torre Curitiba, um um oito decimal cinco cinco, Papa Romeo Alfa Bravo Charlie")]
+    public void The_pilot_reading_the_handoff_back_is_a_readback_however_the_recognizer_wrote_it(string said)
+    {
+        _nlu.Interpret(said, Handed).ShouldBeOfType<Readback>();
+    }
+
     [Fact]
     public void Asking_for_taxi_to_the_holding_point_is_a_request_not_a_report()
     {

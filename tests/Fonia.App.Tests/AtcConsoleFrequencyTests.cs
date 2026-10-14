@@ -197,6 +197,7 @@ public class AtcConsoleFrequencyTests
             "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
             "autorizado táxi pista um um, Papa Romeo Alfa Bravo Charlie",
             "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista um um",
+            "Uno noito, decimal cinco, cinco, Alfa Bravo Charlie.",
             "sair\n");
 
         var result = await RunAsync(Atc(), typed);
@@ -204,6 +205,7 @@ public class AtcConsoleFrequencyTests
         result.Output.ShouldContain("autorizado táxi para o ponto de espera da PISTA UNO UNO.");
         result.Output.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, chame Torre Curitiba UNO UNO NOVE DECIMAL CINCO.");
         result.Output.ShouldNotContain("Repita");
+        result.Output.ShouldContain("(o controlador não responde)");
     }
 
     // A reader that hands over its lines one at a time and runs an action between them, like a person at a keyboard.

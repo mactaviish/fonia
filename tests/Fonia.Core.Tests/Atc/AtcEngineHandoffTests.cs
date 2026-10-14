@@ -31,11 +31,57 @@ public class AtcEngineHandoffTests
     }
 
     [Fact]
-    public void The_handoff_clears_the_taxi_readback_that_was_still_waiting()
+    public void The_handoff_takes_the_place_of_the_taxi_readback_that_was_still_waiting()
     {
         var decision = _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, SoloAndTower);
 
+        // What the pilot says next is an answer to the handoff, not to the taxi.
+        decision.NextContext.PendingReadback.ShouldBe(new HandoffToTower(Tower));
+    }
+
+    // The whole join, as in the live test: what the engine leaves behind is what the NLU reads the pilot's next words with.
+    [Theory]
+    [InlineData("Chamará Torre Curitiba no...")]
+    [InlineData("Uno noito, decimal cinco, cinco, Alfa Bravo Charlie.")]
+    [InlineData("1, 1, 8, decimal cinco para o Alfa Bravo Charlie.")]
+    [InlineData("um um nove decimal cinco, Papa Romeo Alfa Bravo Charlie")]
+    public void What_the_pilot_says_after_the_handoff_is_taken_in_silence_and_never_asked_to_be_repeated(string said)
+    {
+        var handed = _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, SoloAndTower).NextContext;
+
+        var decision = _engine.Handle(new RuleBasedNlu().Interpret(said, handed), handed, SoloAndTower);
+
+        decision.Instruction.ShouldBe(new NoResponse());
         decision.NextContext.PendingReadback.ShouldBeNull();
+        decision.NextContext.Phase.ShouldBe(FlightPhase.HandedToTower);
+    }
+
+    // The manual does not list the frequency change among what must be read back (Art. 12), but pilots do it: the Solo takes
+    // it in silence, with or without the callsign, and does not argue about how it was said.
+    [Theory]
+    [InlineData("chamarei Torre Curitiba um um oito decimal cinco cinco")]
+    [InlineData("Chamará Torre Curitiba no")]
+    [InlineData("um oito decimal cinco para o Alfa Bravo Charlie")]
+    [InlineData("um um nove decimal cinco")]
+    public void A_readback_of_the_handoff_is_taken_in_silence_whatever_was_said(string said)
+    {
+        var handed = _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, SoloAndTower).NextContext;
+
+        var decision = _engine.Handle(new Readback(null, said), handed, SoloAndTower);
+
+        decision.Instruction.ShouldBe(new NoResponse());
+        decision.NextContext.PendingReadback.ShouldBeNull();
+        decision.NextContext.Phase.ShouldBe(FlightPhase.HandedToTower);
+    }
+
+    [Fact]
+    public void Not_reading_the_handoff_back_is_not_a_problem()
+    {
+        var handed = _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, SoloAndTower).NextContext;
+
+        // The pilot goes on with something else: nothing is demanded.
+        _engine.Handle(new SayAgain(Own), handed, SoloAndTower).Instruction.ShouldBe(new HandoffToTower(Tower));
+        _engine.Handle(new CallsignOnly(Own), handed, SoloAndTower).Instruction.ShouldBe(new GoAhead());
     }
 
     [Fact]
@@ -120,5 +166,14 @@ public class AtcEngineHandoffTests
         var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista um um"), Taxiing, onTower);
 
         decision.Instruction.ShouldBe(new NoResponse());
+    }
+
+    [Fact]
+    public void A_readback_that_is_silently_taken_does_not_stop_a_real_correction_of_the_taxi()
+    {
+        // Only the handoff is optional: the taxi clearance still has to be read back right.
+        var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista um cinco"), Taxiing, SoloAndTower);
+
+        decision.Instruction.ShouldBeOfType<RequestReadbackCorrection>();
     }
 }
