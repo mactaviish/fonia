@@ -13,11 +13,13 @@
          pulls NAudio.Core (MIT). Targets netstandard2.0, so it compiles everywhere and only runs on Windows.
          Whisper.net: MIT, local speech recognition over whisper.cpp; the models (ggml, from whisper.cpp) are MIT too.
          Whisper.net.Runtime: MIT, the CPU build of the native library. Runtime.Vulkan: MIT, the optional GPU build.
+         Microsoft.ML.OnnxRuntime: MIT, runs the Kokoro voice model on the CPU (its native library ships in the package).
          See docs/decisions/speech.md. -->
     <PackageVersion Include="SimConnect.NET" Version="0.2.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
     <PackageVersion Include="NAudio.WinMM" Version="2.2.1" />
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.31.0" />
     <PackageVersion Include="Whisper.net" Version="1.9.1" />
     <PackageVersion Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageVersion Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />

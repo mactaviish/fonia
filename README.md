@@ -124,6 +124,13 @@ dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC   
 dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC --stt-gpu  # GPU (Vulkan), opcional
 ```
 
+Para ouvir como o controlador soa (voz local, sem internet), baixe [`kokoro-v1.0.onnx`](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx) (325 MB) e [`voices-v1.0.bin`](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin) (28 MB) para a mesma pasta `%LOCALAPPDATA%\Fonia\models` (ou use `--tts-dir`). O modelo Kokoro-82M é Apache-2.0. A fala sai em um WAV:
+
+```bash
+dotnet run --project src/Fonia.App -- --speak "PAPA ROMEO ALFA BRAVO CHARLIE, prossiga."                       # voz sorteada, efeito de rádio média
+dotnet run --project src/Fonia.App -- --speak "Repita." --tts-voice pm_alex --radio-effect forte --speak-out fala.wav
+```
+
 O arquivo [CLAUDE.md](CLAUDE.md) descreve as convenções do projeto e orienta o trabalho com o Claude Code.
 
 ## Aviso

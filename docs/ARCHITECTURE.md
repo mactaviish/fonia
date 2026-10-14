@@ -23,7 +23,7 @@ O app é um pipeline de voz com um núcleo determinístico de ATC. A telemetria 
 | `Fonia.Sim.Mock` | `MockSimAdapter`, gravação e replay de telemetria. | `net10.0` |
 | `Fonia.Sim.Msfs` | `MsfsSimAdapter` (SimConnect). Compila em qualquer SO; só executa com o MSFS no Windows. | `net10.0` |
 | `Fonia.Audio` | Microfone (NAudio/waveIn), push-to-talk por tecla, playback. Compila em qualquer SO; só executa no Windows (mesma ideia do `Fonia.Sim.Msfs`). | `net10.0` |
-| `Fonia.Speech` | Implementações de STT (Whisper.net) e, depois, TTS. Compila em qualquer SO. | `net10.0` |
+| `Fonia.Speech` | Implementações de STT (Whisper.net) e de TTS (Kokoro em ONNX Runtime). Compila em qualquer SO. | `net10.0` |
 | `Fonia.App` | Executável e composição de dependências (console primeiro, UI depois). | `net10.0` (reavaliar quando houver UI) |
 
 Dependências sempre apontam para o Core. O Core não referencia nenhum outro projeto.
@@ -191,6 +191,10 @@ O texto da fraseologia **não é alterado** para a voz: antes do modelo, ele pas
 
 1. `Pronunciation.Respell`: dá uma grafia brasileira às palavras que a ortografia leria errado ("Romeo" vira "romeu", "Charlie" vira "tchárli", "pushback" vira "púchibéqui").
 2. `PortuguesePhonemizer`: transforma o texto em fonemas, pelas regras do português do Brasil, no alfabeto do Kokoro. Sem espeak-ng (GPL): as regras são do projeto. Detalhes e validação em `docs/decisions/speech.md`.
+
+Depois disso, no `Fonia.Speech`, o `KokoroSynthesizer` numera os fonemas (`KokoroTokenizer`), escolhe a linha de estilo da voz (`NpzVoiceReader`) e roda o modelo no ONNX Runtime; o Core corta o silêncio (`SilenceTrimmer`) e divide textos longos (`PhonemeChunker`). As vozes aprovadas ficam no `VoiceCatalog` (`pf_dora`, `pm_alex`); o `VoiceSelector` sorteia uma por posição (mantendo-a na sessão) ou usa a que o usuário fixou. O `RadioEffect` (Core, aritmética pura) vem por último: filtro de banda de rádio (`RadioFilter`), saturação, chiado, clique de abertura do PTT e *squelch*, em quatro intensidades (desligado, leve, média por padrão, forte).
+
+O modelo (`kokoro-v1.0.onnx`, 325 MB) e as vozes (`voices-v1.0.bin`, 28 MB) não são baixados pelo app: ficam na mesma pasta do modelo do Whisper (`%LOCALAPPDATA%\Fonia\models`, ou `--tts-dir`), e a mensagem de erro diz de onde baixar.
 
 ### 8. Dados (`Fonia.Data`)
 

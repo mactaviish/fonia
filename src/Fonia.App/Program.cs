@@ -56,6 +56,11 @@ if (options.TranscribePath is not null)
     return await SttCommands.TranscribeAsync(options, Console.Out, Console.Error, cancellation.Token);
 }
 
+if (options.SpeakText is not null)
+{
+    return await TtsCommands.SpeakAsync(options, Console.Out, Console.Error, cancellation.Token);
+}
+
 var interactive = !Console.IsOutputRedirected;
 var sourceFactory = new SimSourceFactory(loggerFactory, TimeProvider.System);
 
