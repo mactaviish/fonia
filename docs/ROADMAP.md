@@ -51,7 +51,7 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 
 ## M3: Voz
 
-- [ ] **Spike:** comparar opções de STT e TTS locais em .NET (precisão em pt-BR, latência, tamanho, licença, facilidade de empacotar) e registrar a decisão em `docs/`
+- [x] **Spike:** comparar opções de STT e TTS locais em .NET (precisão em pt-BR, latência, tamanho, licença, facilidade de empacotar) e registrar a decisão em `docs/` (`docs/decisions/speech.md`). STT decidido (Whisper.net `small` + prompt); **TTS em aberto**: as vozes do Windows foram reprovadas na audição
 - [ ] Captura de áudio + push-to-talk (`Fonia.Audio`)
 - [ ] `ITranscriber` com a opção escolhida (modelo pequeno, prompt de aviação)
 - [ ] `ISynthesizer` com voz pt-BR

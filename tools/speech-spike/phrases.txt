@@ -5,7 +5,8 @@
 # esperado: o que o NLU deve entender, no formato intenção@indicativo ("@-" = sem indicativo na fala)
 #           intenções: pushback, pushback+startup, startup, taxi, readback, sayagain, callsign
 #
-# Fale como num voo de verdade: natural, às vezes curto. O indicativo é PRABC.
+# Fale como num voo de verdade: natural, às vezes curto. O indicativo é PRABC, dito letra por letra
+# (Papa Romeo Alfa Bravo Charlie, ou as letras). Números de pista sempre dígito a dígito: UNO CINCO, nunca "quinze".
 
 01 | parked   | pushback+startup@PRABC | Solo Curitiba, PRABC, box 3, solicito pushback e acionamento
 02 | parked   | startup@PRABC          | Solo Curitiba, PRABC, solicita acionar
@@ -22,8 +23,8 @@
 13 | pushback | readback@PRABC         | Autorizado pushback e acionamento, chamo pronto para o táxi, PRABC
 14 | pushback | readback@PRABC         | Pushback e acionamento autorizados, PRABC
 15 | startup  | readback@PRABC         | Acionamento aprovado, chamo pronto, PRABC
-16 | taxi     | readback@PRABC         | Autorizado táxi para o ponto de espera da pista um cinco, PRABC
-17 | taxi     | readback@PRABC         | Táxi pista um cinco, PRABC
-18 | taxi     | readback@PRABC         | Pista quinze, PRABC
-19 | taxi     | readback@PRABC         | Um cinco, PRABC
-20 | taxi     | readback@PRABC         | Alfa Bravo Charlie, táxi, ponto de espera, pista um cinco
+16 | taxi     | readback@PRABC         | Autorizado táxi para o ponto de espera da pista uno cinco, PRABC
+17 | taxi     | readback@PRABC         | Táxi pista uno cinco, PRABC
+18 | taxi     | readback@PRABC         | Pista uno cinco, PRABC
+19 | taxi     | readback@PRABC         | Uno cinco, PRABC
+20 | taxi     | readback@PRABC         | Alfa Bravo Charlie, táxi, ponto de espera, pista uno cinco

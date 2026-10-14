@@ -184,7 +184,7 @@ async Task<int> SttAsync(Options o)
 
     if (usePrompt)
     {
-        builder = builder.WithPrompt("Comunicação de rádio aeronáutica em português. Solo, Torre, pushback, acionamento, táxi, pista, ponto de espera, QNH, PRABC.");
+        builder = builder.WithPrompt("Comunicação de rádio aeronáutica em português. Solo, Torre, pushback, acionamento, táxi, pista, ponto de espera, QNH. Papa Romeo Alfa Bravo Charlie. Pista uno cinco.");
     }
 
     await using var processor = builder.Build();

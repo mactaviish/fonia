@@ -1,6 +1,6 @@
 # Decisão: voz local (STT e TTS) para o M3
 
-**Status: spike em andamento.** A pesquisa e as medições com voz sintética estão feitas. Faltam as gravações do mantenedor (acerto real) e a audição das vozes. Este documento vira a decisão final depois disso.
+**Status: STT decidido; TTS em aberto.** O STT foi medido com a voz real do mantenedor e está decidido. As vozes do Windows foram **reprovadas na audição** ("horríveis"), então o TTS depende de outra pesquisa e de uma decisão de licença do mantenedor (seção "Decisão").
 
 Medido em 2026-10-13 em um i7-12700 (12 núcleos), 32 GB, RTX 3070 Ti, Windows 11, .NET 10.
 
@@ -61,10 +61,32 @@ Independentemente de qual modelo vencer, o texto que o STT entrega tem erros que
 2. **Palavras emendadas** ("solicituacionamento"): procurar as raízes (`acion`, `pushback`) dentro da palavra, não só no começo.
 3. **Números escritos de vários jeitos** ("1,5", "1-5", "quinze", "um cinco"): já tratados em parte pelo `SpokenCode`, falta "1,5" e "1-5".
 
-## Provisório, a confirmar depois das gravações e da audição
+## Medições com a voz real (20 frases gravadas pelo mantenedor, 2026-10-13)
 
-- **STT:** Whisper.net com modelo `small` (ou `base`) e *prompt* de vocabulário, CPU por padrão, Vulkan opcional.
-- **TTS:** voz do Windows pt-BR por padrão (Maria/Daniel), com um módulo de efeito de rádio (filtro de banda) por cima. Piper só como opção instalada pelo usuário, se o mantenedor aceitar a dependência opcional do espeak-ng.
+O indicativo foi falado por extenso ("Papa Romeo Alfa Bravo Charlie"), como manda a regra do projeto. O WER não vale aqui (as frases de referência traziam "PRABC" e "um cinco", e o mantenedor falou de outro jeito); vale a intenção entendida pelo `RuleBasedNlu`.
+
+| Modelo | Prompt | Intenção | Tempo/frase | Memória |
+|---|---|---|---|---|
+| small, Vulkan | "...PRABC." | 30% | 0,25 s | 621 MB |
+| **small, CPU** | **com "Papa Romeo Alfa Bravo Charlie. Pista uno cinco."** | **100%** | 1,97 s | 849 MB |
+| **small, Vulkan** | idem | **100%** | **0,23 s** | 621 MB |
+| base, CPU | idem | 85% | 0,61 s | 413 MB |
+
+- Com o prompt antigo, o Whisper escrevia "Paparromeu", "Bravucciarli", "Fubra Rutiardi" para o indicativo falado por extenso. **O prompt tem de trazer o indicativo como é falado** (alfabeto fonético), e o ideal é montá-lo com o indicativo do simulador.
+- O Whisper escreve números como dígitos ("pista 15", "1-5", "1,5"). O NLU já lê "15"; falta "1-5" e "1,5" (tarefa do NLU).
+
+## Regras de saída (vale para o TTS e para qualquer voz)
+
+- **Pista sempre dígito a dígito:** "UNO CINCO", nunca "quinze" nem "um cinco". `SpokenText` já faz isso (também para frequência e QNH).
+- **Indicativo sempre letra por letra**, no alfabeto fonético ("PAPA ROMEO ALFA BRAVO CHARLIE"), nunca como palavra.
+- Qualquer TTS recebe o texto já escrito por extenso pela fraseologia; nenhum motor pode reinterpretar números ou siglas.
+
+## Decisão
+
+- **STT: Whisper.net (MIT) com o modelo `small` e prompt de vocabulário** montado com o indicativo falado. **CPU é o padrão** (~2 s por frase). **Vulkan opcional**, ligado em configuração: o mantenedor aceita uso leve de GPU, e o `small` cai para ~0,25 s em rajadas curtas. Se a GPU falhar, volta para a CPU. O `base` (0,6 s, 85%) fica como alternativa para máquinas fracas.
+- **TTS: em aberto.** As vozes do Windows (Maria, Daniel) não servem. As vozes do Piper (`faber`, `cadu`, CC0) são o caminho de qualidade conhecido, mas dependem do espeak-ng (GPL-3). Opções para o mantenedor decidir:
+  1. **Piper como componente opcional**, instalado pelo usuário e chamado como processo separado (nada GPL entra no repositório nem no instalador); voz do Windows como reserva.
+  2. **Pesquisar mais** (Kokoro, VITS via sherpa-onnx sem espeak-ng, outras vozes pt-BR) antes de aceitar a opção 1. Como a fala do controlador sai de templates fixos, outra via é pré-gerar e embutir trechos de áudio, o que exige voz com licença que permita redistribuir.
 
 ## Como reproduzir
 
