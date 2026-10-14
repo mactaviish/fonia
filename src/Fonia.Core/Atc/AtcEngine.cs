@@ -20,13 +20,20 @@ public sealed class AtcEngine : IAtcEngine
 
         return intent switch
         {
+            // The radio is on a frequency of no unit of this airport: nobody hears, whatever was said.
+            _ when airport.Unit == ServiceUnit.None && airport.Tuned is { } tuned => Say(new NoOneOnFrequency(tuned), flight with { AwaitingCallsign = null }),
             Unknown => Say(new SayAgainRequest(), flight),
             CallsignOnly called => Called(called, flight, airport),
             SayAgain => Repeat(flight),
             Readback readback => CheckReadback(readback, flight),
             _ when intent.Callsign is null => new AtcDecision(new RequestCallsign(), flight with { AwaitingCallsign = intent }),
             _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight with { AwaitingCallsign = null }),
-            RequestStartup => Issue(new StartupApproved(), Released(flight), FlightPhase.StartupApproved),
+
+            // On the Torre's frequency: the Torre does not do the Solo's job when the airport has a Solo, and its own phrases
+            // (line up, take off) are not written yet.
+            _ when airport.Unit == ServiceUnit.Tower && (intent is ReportHoldingShort || airport.Airport.HasFrequency(AirportFrequencyType.Ground))
+                => Say(new TowerPhraseologyPending(), flight with { AwaitingCallsign = null }),
+            ReportHoldingShort => HoldingShort(Released(flight), airport),            RequestStartup => Issue(new StartupApproved(), Released(flight), FlightPhase.StartupApproved),
             RequestPushback pushback => Issue(new PushbackApproved(pushback.WithStartup), Released(flight), pushback.WithStartup ? FlightPhase.StartupApproved : FlightPhase.PushbackApproved),
             RequestTaxi => Taxi(Released(flight), airport),
             _ => Say(new SayAgainRequest(), flight),
@@ -47,6 +54,24 @@ public sealed class AtcEngine : IAtcEngine
         return flight.AwaitingCallsign is { } held
             ? Handle(held with { Callsign = flight.Callsign }, flight with { AwaitingCallsign = null }, airport)
             : Say(new GoAhead(), flight);
+    }
+
+    // The pilot is at the holding point: the Solo passes the flight to the Torre. Reporting it before any taxi was cleared makes no sense.
+    private static AtcDecision HoldingShort(FlightContext flight, AirportContext airport)
+    {
+        if (flight.Phase < FlightPhase.Taxiing)
+        {
+            return Say(new SayAgainRequest(), flight);
+        }
+
+        if (airport.Airport.FrequencyOf(AirportFrequencyType.Tower) is not { } tower)
+        {
+            return Say(new NoTowerAvailable(), flight);
+        }
+
+        var handoff = new HandoffToTower(tower.Frequency);
+
+        return new AtcDecision(handoff, flight with { Phase = FlightPhase.HandedToTower, PendingReadback = null, LastInstruction = handoff });
     }
 
     private static AtcDecision Taxi(FlightContext flight, AirportContext airport)

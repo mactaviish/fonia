@@ -56,6 +56,14 @@ public sealed class RuleBasedNlu : INlu
         var pushback = HasAny(rest, PushbackStems);
         var startup = HasAny(rest, StartupStems);
         var repeating = HasAny(rest, ReadbackStems);
+
+        // "no ponto de espera da 15" is the pilot reporting where the aircraft is, which is not a request ("pronto" in it
+        // is not "pronto para o taxi") and not the readback of the taxi clearance (which says "para o ponto de espera").
+        if (!repeating && !HasAny(rest, RequestStems) && IsHoldingShortReport(rest))
+        {
+            return new ReportHoldingShort(callsign, FindRunwayInReadback(rest));
+        }
+
         var taxi = HasAny(rest, TaxiStems) || (HasAny(rest, ReadyStems) && !pushback && !startup && !repeating);
         var asking = HasAny(rest, RequestStems) || (HasAny(rest, ReadyStems) && !repeating);
 
@@ -92,6 +100,26 @@ public sealed class RuleBasedNlu : INlu
         }
 
         return new RequestTaxi(callsign, FindRunway(rest));
+    }
+
+    // "no ponto de espera", "em ponto de espera", "holding": the aircraft is there. The "no"/"em" before "ponto" is what tells
+    // the report from "para o ponto de espera", the way a readback repeats the instruction.
+    private static bool IsHoldingShortReport(List<string> tokens)
+    {
+        if (tokens.Contains("holding"))
+        {
+            return true;
+        }
+
+        for (var i = 1; i < tokens.Count - 1; i++)
+        {
+            if (tokens[i] == "ponto" && tokens[i - 1] is "no" or "em" or "na" && (tokens[i + 1] == "espera" || (tokens[i + 1] == "de" && i + 2 < tokens.Count && tokens[i + 2] == "espera")))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Without a request word, a pilot who names what the controller just instructed is answering it; one who names
