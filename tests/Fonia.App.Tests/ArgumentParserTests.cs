@@ -199,7 +199,7 @@ public class ArgumentParserTests
     [Fact]
     public void The_help_text_describes_every_option()
     {
-        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--speak", "--speak-out", "--tts-voice", "--tts-dir", "--radio-effect", "--voice", "--audio-out", "--help" })
+        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--transcribe", "--stt-dir", "--stt-model", "--stt-gpu", "--speak", "--speak-out", "--tts-voice", "--tts-dir", "--radio-effect", "--voice", "--audio-out", "--download-models", "--models-dir", "--help" })
         {
             ArgumentParser.HelpText.ShouldContain(option);
         }
@@ -558,5 +558,49 @@ public class ArgumentParserTests
     public void The_audio_device_must_be_a_number()
     {
         Error("--atc", "SBCT", "--callsign", "PRABC", "--voice", "--audio-out", "x").ShouldContain("--audio-out");
+    }
+
+    [Fact]
+    public void Downloading_the_models_takes_no_value_and_uses_the_usual_folder()
+    {
+        var options = Ok("--download-models");
+
+        options.DownloadModels.ShouldBeTrue();
+        options.ModelsDir.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Downloading_the_models_can_be_sent_to_another_folder()
+    {
+        var options = Ok("--download-models", "--models-dir", "D:/modelos", "--log-level", "error");
+
+        options.DownloadModels.ShouldBeTrue();
+        options.ModelsDir.ShouldBe("D:/modelos");
+    }
+
+    [Fact]
+    public void The_models_folder_only_makes_sense_when_downloading()
+    {
+        Error("--models-dir", "D:/modelos").ShouldContain("--download-models");
+    }
+
+    [Theory]
+    [InlineData("--atc", "SBCT")]
+    [InlineData("--sim", "mock")]
+    [InlineData("--replay", "x.jsonl")]
+    [InlineData("--mic-test", "x.wav")]
+    [InlineData("--transcribe", "x.wav")]
+    [InlineData("--speak", "x")]
+    [InlineData("--stt-dir", "x")]
+    [InlineData("--tts-dir", "x")]
+    public void Downloading_the_models_does_not_mix_with_the_other_modes(string option, string value)
+    {
+        Error("--download-models", option, value).ShouldContain("--download-models não combina");
+    }
+
+    [Fact]
+    public void Downloading_the_models_does_not_mix_with_listing_the_devices()
+    {
+        Error("--download-models", "--mic-list").ShouldContain("--download-models não combina");
     }
 }

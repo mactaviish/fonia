@@ -150,7 +150,14 @@ Decidido no spike do M3 (`docs/decisions/speech.md`): **Whisper.net** (MIT) com 
 - **Prompt de vocabulário** (`WhisperPromptBuilder`): vocabulário de aviação, a estação e o **indicativo falado em alfabeto fonético** ("Papa Romeo Alfa Bravo Charlie"). Sem ele o Whisper escreve "Paparromeu"; com ele o NLU entendeu 20 de 20 frases gravadas (30% com o indicativo escrito "PRABC").
 - **`Fonia.Speech`**: `WhisperTranscriber` carrega o modelo na primeira chamada e o mantém; recria o processador só quando o prompt muda. Atende uma fala por vez. Descarta anotações que não são fala ("[BLANK_AUDIO]", "[Música]").
 - **CPU por padrão**, com metade dos núcleos (no máximo 8), porque o simulador precisa do resto: ~2 s por frase. **`--stt-gpu` (Vulkan)** é opcional e cai para a CPU se falhar: ~0,25 s por frase com o modelo já carregado, mas a carga inicial na GPU leva ~7 a 10 s, então a integração deve carregar o modelo na abertura do app.
-- **O app não baixa o modelo.** `WhisperModelLocator` procura `ggml-small.bin` em `%LOCALAPPDATA%\Fonia\models` (ou `--stt-dir`) e, se faltar, a mensagem de erro diz de onde baixar. Download assistido fica para uma tarefa própria.
+- **Onde ficam os modelos e como chegam:** `ModelDirectories` define a ordem de busca: `models` ao lado do executável (onde uma distribuição que traga os modelos os põe), depois `%LOCALAPPDATA%\Fonia\models`, ou só a pasta de `--stt-dir`/`--tts-dir` quando o usuário a indica. Se faltar modelo, o app diz o que falta, quanto pesa e **pergunta antes de baixar** (só em terminal; sem terminal, apenas diz como). `fonia --download-models` baixa sem perguntar. Ver "Obtenção dos modelos" abaixo.
+
+#### Obtenção dos modelos (`Fonia.Speech`)
+
+- `ModelCatalog` lista os três arquivos (`ggml-small.bin`, `kokoro-v1.0.onnx`, `voices-v1.0.bin`) com URL do dono, tamanho e **SHA-256 fixados no código**. O hash do Whisper é o que o próprio Hugging Face publica para o arquivo; os do Kokoro (o GitHub não publica hash dos arquivos de release) foram calculados em dois downloads separados. Mudar de versão de modelo é mudar esta lista, e é uma decisão registrada.
+- `ModelDownloader`: baixa para um arquivo `.part` e só o renomeia depois de conferir o SHA-256 (um arquivo errado nunca vira modelo e um `.part` corrompido não é retomado); **retoma** de onde parou (`Range`); confere o **espaço em disco** antes de pedir qualquer byte; desiste de uma conexão que fica **60 s sem enviar dados** (guardando o que veio); relata o progresso. Só usa `HttpClient`, sem pacote novo.
+- No app (`ModelProvisioner`): lista o que falta, pergunta `[S/n]` em terminal, mostra uma linha de progresso reescrita (ou uma linha por décimo quando a saída não é um terminal) e explica cada falha (servidor, hash, disco, rede).
+- Os modelos **não são redistribuídos** pelo projeto: vêm dos donos. `THIRD-PARTY-NOTICES.txt` dá o crédito e as licenças de tudo o que o app usa e baixa. O instalador do M4 vai chamar `fonia --download-models` no fim da instalação, reaproveitando este código, e uma versão "completa" com os modelos dentro cabe na mesma ordem de busca.
 
 ### 4. NLU (`Fonia.Core`)
 
@@ -194,7 +201,7 @@ O texto da fraseologia **não é alterado** para a voz: antes do modelo, ele pas
 
 Depois disso, no `Fonia.Speech`, o `KokoroSynthesizer` numera os fonemas (`KokoroTokenizer`), escolhe a linha de estilo da voz (`NpzVoiceReader`) e roda o modelo no ONNX Runtime; o Core corta o silêncio (`SilenceTrimmer`) e divide textos longos (`PhonemeChunker`). As vozes aprovadas ficam no `VoiceCatalog` (`pf_dora`, `pm_alex`); o `VoiceSelector` sorteia uma por posição (mantendo-a na sessão) ou usa a que o usuário fixou. O `RadioEffect` (Core, aritmética pura) vem por último: filtro de banda de rádio (`RadioFilter`), saturação, chiado, clique de abertura do PTT e *squelch*, em quatro intensidades (desligado, leve, média por padrão, forte).
 
-O modelo (`kokoro-v1.0.onnx`, 325 MB) e as vozes (`voices-v1.0.bin`, 28 MB) não são baixados pelo app: ficam na mesma pasta do modelo do Whisper (`%LOCALAPPDATA%\Fonia\models`, ou `--tts-dir`), e a mensagem de erro diz de onde baixar.
+O modelo (`kokoro-v1.0.onnx`, 325 MB) e as vozes (`voices-v1.0.bin`, 28 MB) seguem a mesma regra do Whisper: procurados nas mesmas pastas e baixados do mesmo jeito (`--download-models`, ou a pergunta quando faltam).
 
 ### 8. Dados (`Fonia.Data`)
 

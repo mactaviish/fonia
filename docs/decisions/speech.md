@@ -119,6 +119,20 @@ Medido no i7-12700 com os arquivos do Kokoro (modelo fp32), voz `pm_alex`, CPU:
 
 Com 4 threads fica ~25% mais lento; com 8, igual ao padrão (6 neste processador). O efeito de rádio acrescenta menos de 10 ms.
 
+### Obtenção dos modelos (2026-10-14)
+
+Primeiro teste ao vivo do `--voice` bateu em "modelo não encontrado", e a regra "o usuário baixa na mão" caiu: o app baixa os modelos dos donos, **com confirmação**, e confere o SHA-256. Os arquivos não vão para o repositório (o GitHub recusa mais de 100 MB e o Git LFS gratuito não comporta) nem são redistribuídos pelo projeto, o que também dispensa a pergunta sobre os dados de treino do Kokoro (o dono do modelo é quem distribui).
+
+| Arquivo | Tamanho | SHA-256 | Origem do hash |
+|---|---|---|---|
+| `ggml-small.bin` | 487.601.967 | `1be3a9b2...fea987b` | o `X-Linked-ETag` que o Hugging Face publica |
+| `kokoro-v1.0.onnx` | 325.532.387 | `7d5df8ec...3636a6c5` | calculado em dois downloads do release `model-files-v1.0` |
+| `voices-v1.0.bin` | 28.214.398 | `bca610b8...1fbf7d` | idem |
+
+Lido na época: o cartão do Kokoro diz Apache-2.0 para os pesos, "treinado exclusivamente" com áudio de domínio público ou sob licenças como Apache e MIT, mais áudio sintético de provedores de TTS fechados, com atribuição CC BY para Koniwa (CC BY 3.0) e SIWIS (CC BY 4.0). Não diz nada sobre restrição de redistribuição ou de uso comercial. Fica em `THIRD-PARTY-NOTICES.txt`. O README do `kokoro-onnx` cita `model-files-v1.1` e o app baixa de `v1.0`, que é o que foi medido e conferido.
+
+Testado contra os servidores de verdade: ~50 a 75 MB/s, interrupção no meio do Kokoro e retomada, hash conferido ao final.
+
 ### Configuração de voz (pedido do mantenedor)
 
 - O usuário escolhe a voz nas configurações.

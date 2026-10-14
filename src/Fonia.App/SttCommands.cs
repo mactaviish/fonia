@@ -6,8 +6,13 @@ namespace Fonia.App;
 /// <summary>The speech-to-text command, wired to the real recognizer. Only the composition root calls it.</summary>
 internal static class SttCommands
 {
-    public static async Task<int> TranscribeAsync(AppOptions options, TextWriter output, TextWriter error, CancellationToken ct)
+    public static async Task<int> TranscribeAsync(AppOptions options, TextReader input, TextWriter output, TextWriter error, bool interactive, CancellationToken ct)
     {
+        if (!await ModelCommands.EnsureAsync(ModelNeeds.ForTranscribe(options), input, output, error, interactive, ct))
+        {
+            return 1;
+        }
+
         string modelPath;
 
         try

@@ -11,7 +11,7 @@ namespace Fonia.App;
 internal static class VoiceCommands
 {
     /// <summary>The voice mode and the devices it must close, or null (with the reason on <paramref name="error"/>) when it cannot be built.</summary>
-    public static VoiceModeHandle? TryCreate(AppOptions options, TextWriter output, TextWriter error)
+    public static async Task<VoiceModeHandle?> TryCreateAsync(AppOptions options, TextReader input, TextWriter output, TextWriter error, bool interactive, CancellationToken ct)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -22,6 +22,12 @@ internal static class VoiceCommands
         if (!PushToTalkKey.TryParse(options.PttKey, out var virtualKey))
         {
             error.WriteLine($"fonia: tecla '{options.PttKey}' desconhecida.");
+            return null;
+        }
+
+        // Before anything is opened or loaded: if a model is missing, this is the moment to offer to download it.
+        if (!await ModelCommands.EnsureAsync(ModelNeeds.ForVoice(options), input, output, error, interactive, ct))
+        {
             return null;
         }
 
@@ -89,7 +95,7 @@ internal static class VoiceCommands
             error.WriteLine($"fonia: não foi possível abrir o microfone ou o alto-falante: {ex.Message}");
         }
 
-        new VoiceModeHandle(null, resources, asyncResources).DisposeAsync().AsTask().GetAwaiter().GetResult();
+        await new VoiceModeHandle(null, resources, asyncResources).DisposeAsync();
         return null;
     }
 }

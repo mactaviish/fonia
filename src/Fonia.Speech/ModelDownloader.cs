@@ -143,7 +143,8 @@ public sealed class ModelDownloader(HttpClient http, ModelDownloaderOptions? opt
         }
 
         await output.FlushAsync(ct);
-        progress?.Report(new DownloadProgress(file.FileName, received, file.Size, 0));
+        var elapsed = Math.Max(_time.GetElapsedTime(started).TotalSeconds, 0.001);
+        progress?.Report(new DownloadProgress(file.FileName, received, file.Size, (received - (resumed ? have : 0)) / elapsed));
         return received;
     }
 

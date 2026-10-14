@@ -57,7 +57,7 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 - [x] Camada de pronúncia e fonetizador pt-BR próprio (`Pronunciation`, `PortuguesePhonemizer`), sem espeak-ng
 - [x] `ISynthesizer` com voz pt-BR (Kokoro, voz configurável, padrão aleatória) e efeito de rádio configurável (desligado, leve, **média** por padrão, forte): `fonia --speak "<texto>"`
 - [x] Integrar ao pipeline do M2: `fonia --atc <ICAO> --voice` (PTT, reconhecimento, NLU, motor, fraseologia, voz do controlador e alto-falante)
-- [ ] Download assistido dos modelos de voz (`fonia --download-models`, pergunta ao faltar modelo, SHA-256 fixado, retomada) e `THIRD-PARTY-NOTICES.txt`; tarefa adicionada em 2026-10-14 depois do primeiro teste ao vivo, que bateu no modelo ausente. O instalador do M4 vai usar o mesmo downloader
+- [x] Download assistido dos modelos de voz (`fonia --download-models`, pergunta ao faltar modelo, SHA-256 fixado, retomada) e `THIRD-PARTY-NOTICES.txt`; tarefa adicionada em 2026-10-14 depois do primeiro teste ao vivo, que bateu no modelo ausente. O instalador do M4 vai usar o mesmo downloader
 - [ ] Medir e registrar latência por etapa: o app já mostra o tempo de cada etapa a cada troca (`tempos: reconhecimento ... | voz ... | até o áudio ...`); falta registrar em `docs/decisions/speech.md` os números de uma sessão real
 
 **Pronto quando:** você aperta PTT, fala "solicito táxi" e ouve a resposta do Solo, sem digitar nada.
