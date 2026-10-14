@@ -22,7 +22,7 @@ O app é um pipeline de voz com um núcleo determinístico de ATC. A telemetria 
 | `Fonia.Data` | Aeroportos (OurAirports), METAR/TAF, cache. | `net10.0` |
 | `Fonia.Sim.Mock` | `MockSimAdapter`, gravação e replay de telemetria. | `net10.0` |
 | `Fonia.Sim.Msfs` | `MsfsSimAdapter` (SimConnect). Compila em qualquer SO; só executa com o MSFS no Windows. | `net10.0` |
-| `Fonia.Audio` | Captura de microfone, push-to-talk, playback. | `net10.0-windows` |
+| `Fonia.Audio` | Microfone (NAudio/waveIn), push-to-talk por tecla, playback. Compila em qualquer SO; só executa no Windows (mesma ideia do `Fonia.Sim.Msfs`). | `net10.0` |
 | `Fonia.Speech` | Implementações de STT e TTS. | a definir (M3) |
 | `Fonia.App` | Executável e composição de dependências (console primeiro, UI depois). | `net10.0` (reavaliar quando houver UI) |
 
@@ -133,7 +133,14 @@ Em um terminal, o estado é **um bloco que é reescrito sempre no mesmo lugar**,
 
 ### 2. Áudio (`Fonia.Audio`)
 
-Captura de microfone com push-to-talk (tecla global configurável, depois botão do joystick) e reprodução, via NAudio. Sem lógica de ATC aqui. Efeito de rádio (filtro passa-banda, ruído leve) fica como etapa opcional de pós-processamento do áudio do TTS.
+Captura de microfone com push-to-talk e reprodução, via NAudio (`NAudio.WinMM`, MIT). Sem lógica de ATC aqui. O efeito de rádio (filtro passa-banda, saturação, chiado, clique de PTT, com intensidade configurável) é um módulo `RadioEffect` aplicado ao áudio do TTS; ver `docs/decisions/speech.md`.
+
+A lógica que não depende do Windows fica no **Core** (`Fonia.Core.Audio`), testada no Linux, e o que fala com o sistema fica em `Fonia.Audio`:
+
+- `IAudioCapture` (microfone, PCM 16 kHz mono 16 bits, o formato do reconhecedor, já entregue pelo Windows) e `IPushToTalk` (`Pressed`/`Released`). `NAudioCapture` e `KeyboardPushToTalk` são as implementações reais.
+- **Push-to-talk por polling** (`PolledPushToTalk`): pergunta ao Windows a cada ~15 ms se a tecla (ou botão lateral do mouse) está apertada, via `GetAsyncKeyState`. Não usa hook, não precisa de administrador e enxerga a tecla com o simulador em foco. Tecla padrão: `RControl`. Botão de joystick fica para depois.
+- `SpeechRecorder`: junta o áudio entre apertar e soltar o PTT e entrega uma `RecordedSpeech`. O microfone fica aberto o tempo todo (sem atraso de abertura do dispositivo) e guarda um *pre-roll* de 200 ms para não cortar a primeira sílaba. Descarta apertos de menos de 0,3 s e encerra falas de mais de 30 s.
+- `WavEncoder` salva uma fala como WAV (usado pelo `--mic-test`).
 
 ### 3. STT (`Fonia.Speech`)
 

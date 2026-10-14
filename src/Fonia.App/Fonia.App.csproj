@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Fonia.Audio\Fonia.Audio.csproj" />
     <ProjectReference Include="..\Fonia.Core\Fonia.Core.csproj" />
     <ProjectReference Include="..\Fonia.Data\Fonia.Data.csproj" />
     <ProjectReference Include="..\Fonia.Sim.Mock\Fonia.Sim.Mock.csproj" />

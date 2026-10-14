@@ -198,7 +198,7 @@ public class ArgumentParserTests
     [Fact]
     public void The_help_text_describes_every_option()
     {
-        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--help" })
+        foreach (var option in new[] { "--sim", "--replay", "--speed", "--record", "--duration", "--log-level", "--atc", "--runway", "--callsign", "--mic-test", "--mic-list", "--mic-device", "--ptt-key", "--help" })
         {
             ArgumentParser.HelpText.ShouldContain(option);
         }
@@ -266,5 +266,81 @@ public class ArgumentParserTests
     public void The_atc_option_needs_a_value()
     {
         Error("--atc").ShouldContain("precisa de um valor");
+    }
+
+    [Fact]
+    public void The_microphone_test_takes_the_file_and_has_defaults_for_the_rest()
+    {
+        var options = Ok("--mic-test", "fala.wav");
+
+        options.MicTestPath.ShouldBe("fala.wav");
+        options.PttKey.ShouldBe("RControl");
+        options.MicDevice.ShouldBe(-1);
+        options.ListMics.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void The_microphone_test_accepts_the_device_and_the_key()
+    {
+        var options = Ok("--mic-test", "fala.wav", "--mic-device", "2", "--ptt-key", "mouse4", "--log-level", "error");
+
+        options.MicDevice.ShouldBe(2);
+        options.PttKey.ShouldBe("mouse4");
+    }
+
+    [Fact]
+    public void Listing_the_microphones_takes_no_value()
+    {
+        Ok("--mic-list").ListMics.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("--mic-device", "1")]
+    [InlineData("--ptt-key", "F8")]
+    public void The_device_and_the_key_only_make_sense_with_the_microphone_test(string option, string value)
+    {
+        Error(option, value).ShouldContain("--mic-test");
+    }
+
+    [Theory]
+    [InlineData("--atc", "SBCT")]
+    [InlineData("--sim", "mock")]
+    [InlineData("--replay", "x.jsonl")]
+    [InlineData("--record", "x.jsonl")]
+    [InlineData("--speed", "2")]
+    [InlineData("--duration", "5")]
+    public void The_microphone_test_does_not_mix_with_the_other_modes(string option, string value)
+    {
+        Error("--mic-test", "fala.wav", option, value).ShouldContain("--mic-test não combina");
+    }
+
+    [Fact]
+    public void Listing_the_microphones_does_not_mix_with_anything_else()
+    {
+        Error("--mic-list", "--atc", "SBCT").ShouldContain("--mic-list");
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("-2")]
+    [InlineData("1.5")]
+    public void A_bad_device_number_is_refused(string value)
+    {
+        Error("--mic-test", "f.wav", "--mic-device", value).ShouldContain("--mic-device");
+    }
+
+    [Fact]
+    public void An_unknown_key_name_is_refused_with_examples()
+    {
+        var message = Error("--mic-test", "f.wav", "--ptt-key", "banana");
+
+        message.ShouldContain("--ptt-key");
+        message.ShouldContain("RControl");
+    }
+
+    [Fact]
+    public void The_microphone_test_needs_a_file()
+    {
+        Error("--mic-test").ShouldContain("precisa de um valor");
     }
 }

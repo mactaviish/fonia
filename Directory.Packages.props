@@ -8,10 +8,13 @@
   <ItemGroup Label="Runtime">
     <!-- SimConnect.NET: MIT (beta; pinned on purpose, see docs/decisions/simconnect.md).
          Logging.Abstractions: MIT, only the ILogger abstraction.
-         Logging.Console: MIT, console logger of the app. -->
+         Logging.Console: MIT, console logger of the app.
+         NAudio.WinMM: MIT, microphone capture (and later playback) through the Windows waveIn/waveOut API;
+         pulls NAudio.Core (MIT). Targets netstandard2.0, so it compiles everywhere and only runs on Windows. -->
     <PackageVersion Include="SimConnect.NET" Version="0.2.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
+    <PackageVersion Include="NAudio.WinMM" Version="2.2.1" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

@@ -41,6 +41,16 @@ Console.CancelKeyPress += (_, e) =>
     cancellation.Cancel();
 };
 
+if (options.ListMics)
+{
+    return MicCommands.List(Console.Out, Console.Error);
+}
+
+if (options.MicTestPath is not null)
+{
+    return await MicCommands.TestAsync(options, Console.Out, Console.Error, cancellation.Token);
+}
+
 var interactive = !Console.IsOutputRedirected;
 var sourceFactory = new SimSourceFactory(loggerFactory, TimeProvider.System);
 

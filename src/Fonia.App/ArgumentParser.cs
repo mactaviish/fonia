@@ -1,4 +1,5 @@
 using System.Globalization;
+using Fonia.Audio;
 using Microsoft.Extensions.Logging;
 
 namespace Fonia.App;
@@ -21,7 +22,11 @@ internal sealed record AppOptions(
     LogLevel LogLevel = LogLevel.Warning,
     string? AtcAirport = null,
     string? Runway = null,
-    string? Callsign = null);
+    string? Callsign = null,
+    string? MicTestPath = null,
+    string PttKey = PushToTalkKey.DefaultName,
+    int MicDevice = -1,
+    bool ListMics = false);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -34,12 +39,21 @@ internal static class ArgumentParser
 
         Uso: fonia [opções]
              fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>]
+             fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
+             fonia --mic-list
 
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
                                  aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
           --runway <pista>       Pista em uso (ex.: 15, 33L). Padrão: a mais longa do aeroporto.
           --callsign <indicativo>  Indicativo da aeronave (ex.: PR-ABC). Sem ele, vem da matrícula
                                  da aeronave no simulador (--sim). Com ele, não usa simulador.
+
+          --mic-test <arquivo.wav>  Testa o microfone e o push-to-talk: segure a tecla, fale, solte, e a
+                                 fala é salva no arquivo. Só no Windows.
+          --mic-device <n>       Microfone do teste (número de --mic-list). Padrão: o do Windows.
+          --ptt-key <tecla>      Tecla do push-to-talk. Padrão: RControl. Exemplos: RControl, LControl, RShift,
+                                 RAlt, CapsLock, Space, ScrollLock, Insert, F8, Mouse4, Mouse5, letras, números e F1 a F24.
+          --mic-list             Lista os microfones e seus números.
 
           --sim msfs|mock        Fonte dos dados. msfs (padrão) lê o Microsoft Flight Simulator 2020;
                                  mock mostra um taxi simulado, para testar sem simulador.
@@ -69,6 +83,10 @@ internal static class ArgumentParser
         string? atc = null;
         string? runway = null;
         string? callsign = null;
+        string? micTest = null;
+        string? pttKey = null;
+        int? micDevice = null;
+        var listMics = false;
         double? speed = null;
         TimeSpan? duration = null;
         var logLevel = LogLevel.Warning;
@@ -82,12 +100,18 @@ internal static class ArgumentParser
                 return new ParsedArguments(null, null, ShowHelp: true);
             }
 
+            if (name == "--mic-list")
+            {
+                listMics = true;
+                continue;
+            }
+
             if (!name.StartsWith("--", StringComparison.Ordinal))
             {
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -121,6 +145,15 @@ internal static class ArgumentParser
                 case "--callsign":
                     callsign = value;
                     break;
+                case "--mic-test":
+                    micTest = value;
+                    break;
+                case "--mic-device":
+                    micDevice = ParseMicDevice(value, out problem);
+                    break;
+                case "--ptt-key":
+                    pttKey = ParsePttKey(value, out problem);
+                    break;
                 case "--speed":
                     speed = ParseSpeed(value, out problem);
                     break;
@@ -138,12 +171,39 @@ internal static class ArgumentParser
             }
         }
 
-        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign);
+        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics));
     }
 
+    private sealed record MicRaw(string? TestPath, int? Device, string? Key, bool List);
+
     private static ParsedArguments Validate(
-        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign)
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic)
     {
+        var others = source is not null || replay is not null || record is not null || speed is not null || duration is not null
+            || atc is not null || runway is not null || callsign is not null;
+
+        if (mic.List)
+        {
+            return others || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
+                ? Failure("--mic-list não combina com outras opções: use só --mic-list.")
+                : new ParsedArguments(new AppOptions(LogLevel: logLevel, ListMics: true), null, ShowHelp: false);
+        }
+
+        if (mic.TestPath is null && (mic.Device is not null || mic.Key is not null))
+        {
+            return Failure("--mic-device e --ptt-key só valem no teste do microfone: use também --mic-test <arquivo.wav>.");
+        }
+
+        if (mic.TestPath is not null)
+        {
+            return others
+                ? Failure("--mic-test não combina com --sim, --replay, --record, --speed, --duration, --atc, --runway nem --callsign.")
+                : new ParsedArguments(
+                    new AppOptions(LogLevel: logLevel, MicTestPath: mic.TestPath, PttKey: mic.Key ?? PushToTalkKey.DefaultName, MicDevice: mic.Device ?? -1),
+                    null,
+                    ShowHelp: false);
+        }
+
         if (atc is null && (runway is not null || callsign is not null))
         {
             return Failure("--runway e --callsign só valem no modo ATC: use também --atc <ICAO>.");
@@ -245,6 +305,32 @@ internal static class ArgumentParser
         }
 
         problem = $"--duration '{value}' é inválido: use um número de segundos maior que zero.";
+        return null;
+    }
+
+    private static int? ParseMicDevice(string value, out string? problem)
+    {
+        problem = null;
+
+        if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var device))
+        {
+            return device;
+        }
+
+        problem = $"--mic-device '{value}' é inválido: use o número mostrado por --mic-list (0, 1, 2...).";
+        return null;
+    }
+
+    private static string? ParsePttKey(string value, out string? problem)
+    {
+        problem = null;
+
+        if (PushToTalkKey.TryParse(value, out _))
+        {
+            return value;
+        }
+
+        problem = $"--ptt-key '{value}' não existe. Exemplos: {string.Join(", ", PushToTalkKey.ExampleNames)} (também letras, números e F1 a F24).";
         return null;
     }
 
