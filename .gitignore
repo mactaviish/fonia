@@ -57,3 +57,6 @@ spike-*.log
 
 # Telemetry recordings made by running the app from the repository root
 /*.jsonl
+
+# Spike de voz: gravações com a voz do mantenedor (dado pessoal, fora do git)
+/tools/speech-spike/recordings/
