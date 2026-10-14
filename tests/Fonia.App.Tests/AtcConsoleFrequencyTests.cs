@@ -62,7 +62,8 @@ public class AtcConsoleFrequencyTests
             error,
             (_, _) => Task.FromResult<string?>(null),
             interactive: false,
-            liveCom1: live);
+            liveCom1: live,
+            timeProvider: new Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 10, 14, 12, 26, 31, TimeSpan.Zero)));
 
         var code = await console.RunAsync(options, Ct);
 
@@ -255,6 +256,40 @@ public class AtcConsoleFrequencyTests
         var result = await RunAsync(Atc(), typed);
 
         result.Output.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, negativo, PISTA UNO UNO, alinhe e mantenha.");
+    }
+
+    private const string ToTheTakeoffClearance =
+        "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento\n" +
+        "Papa Romeo Alfa Bravo Charlie, pronto para o táxi\n" +
+        "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno\n" +
+        "/com1 119.5\n" +
+        "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, pronto para decolagem\n" +
+        "Papa Romeo Alfa Bravo Charlie, alinhado\n";
+
+    [Fact]
+    public async Task The_aircraft_leaving_the_ground_after_the_clearance_is_told_by_the_torre_with_the_minute()
+    {
+        var result = await RunAsync(Atc(), ToTheTakeoffClearance + "/evento decolou\nsair\n");
+
+        result.Output.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, decolado aos DOIS MEIA.");
+        result.Error.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_takeoff_nobody_cleared_gets_no_word_from_the_controller()
+    {
+        var result = await RunAsync(Atc(), "/evento decolou\nsair\n");
+
+        result.Output.ShouldContain("(o controlador não diz nada sobre isso)");
+        result.Output.ShouldNotContain("decolado aos");
+    }
+
+    [Fact]
+    public async Task An_unknown_event_is_refused_with_the_one_that_exists()
+    {
+        var result = await RunAsync(Atc(), "/evento pousou\nsair\n");
+
+        result.Error.ShouldContain("/evento decolou");
     }
 
     // A reader that hands over its lines one at a time and runs an action between them, like a person at a keyboard.

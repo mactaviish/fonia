@@ -96,6 +96,8 @@ internal sealed class RecordingObserver : IVoiceLoopObserver
 
     public List<ExchangeResult> Replies { get; } = [];
 
+    public List<AnnouncementResult> Announcements { get; } = [];
+
     public List<Exception> Failures { get; } = [];
 
     public int Busies { get; private set; }
@@ -105,6 +107,8 @@ internal sealed class RecordingObserver : IVoiceLoopObserver
     public void OnHeard(string text) => Add($"heard:{text}", () => Heard.Add(text));
 
     public void OnReplied(ExchangeResult result) => Add("replied", () => Replies.Add(result));
+
+    public void OnAnnounced(AnnouncementResult result) => Add("announced", () => Announcements.Add(result));
 
     public void OnChannelBusy() => Add("busy", () => Busies++);
 

@@ -25,6 +25,13 @@ public sealed record StageTimings(TimeSpan Transcription, TimeSpan Understanding
 /// <param name="Station">Who answered, as called on the radio ("SOLO Curitiba"): it depends on the frequency the pilot was on.</param>
 public sealed record ExchangeResult(string Heard, Intent Intent, AtcDecision Decision, Utterance? Reply, SynthesizedSpeech? Speech, StageTimings Timings, string Station = "");
 
+/// <summary>What came out of an event of the flight that the controller speaks about on their own.</summary>
+/// <param name="Decision">What the ATC engine decided, with the flight afterwards.</param>
+/// <param name="Reply">What the controller says, or null when the event is none of their business.</param>
+/// <param name="Speech">The controller's voice, or null when there is nothing to say aloud.</param>
+/// <param name="Station">Who spoke, as called on the radio ("TORRE Curitiba").</param>
+public sealed record AnnouncementResult(FlightEvent Event, AtcDecision Decision, Utterance? Reply, SynthesizedSpeech? Speech, string Station);
+
 /// <summary>
 /// One transmission of the pilot through the whole pipeline: speech to text, the NLU, the ATC engine, the phraseology, text
 /// to speech and the radio effect. It adds nothing of its own: the decision is the engine's and the words are the templates';
@@ -42,6 +49,28 @@ public sealed class VoiceExchange(
     TimeProvider? timeProvider = null)
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
+
+    /// <summary>The controller speaks first, about something the telemetry showed: no recognizer, the rest as in an exchange.</summary>
+    public async Task<AnnouncementResult> AnnounceAsync(FlightEvent flightEvent, FlightContext flight, AirportContext airport, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(flightEvent);
+        ArgumentNullException.ThrowIfNull(flight);
+        ArgumentNullException.ThrowIfNull(airport);
+
+        var station = phraseology.UnitName(airport);
+        var decision = engine.Handle(flightEvent, flight, airport);
+        var reply = phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, airport));
+
+        if (reply is not { Kind: UtteranceKind.Radio })
+        {
+            return new AnnouncementResult(flightEvent, decision, reply, null, station);
+        }
+
+        var voice = await synthesizer.SynthesizeAsync(reply.Text, voices.For(station), ct);
+        var onTheRadio = new SynthesizedSpeech(RadioEffect.Apply(voice.Samples, voice.SampleRate, radio, random), voice.SampleRate);
+
+        return new AnnouncementResult(flightEvent, decision, reply, onTheRadio, station);
+    }
 
     /// <param name="speech">What the pilot said, as recorded.</param>
     /// <param name="flight">The state of the flight before this transmission.</param>

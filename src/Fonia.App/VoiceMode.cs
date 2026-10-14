@@ -35,7 +35,8 @@ internal sealed class VoiceMode(
     TextWriter output,
     TextWriter error,
     Random random,
-    Func<Frequency?>? com1 = null) : IVoiceMode
+    Func<Frequency?>? com1 = null,
+    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null) : IVoiceMode
 {
     public async Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct)
     {
@@ -72,9 +73,37 @@ internal sealed class VoiceMode(
         var exchange = new VoiceExchange(transcriber, nlu, engine, phraseology, synthesizer, voices, radio, random);
         var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, new ConsoleVoiceObserver(output, error, station), com1);
 
+        // What the telemetry shows (the takeoff) is something the controller may say without being asked; read only once the radio is up.
+        var following = states?.Invoke(ct) is { } stream ? FollowAsync(loop, stream, ct) : Task.CompletedTask;
+
         // Said only once the microphone and the key are open: whoever reads it may press the key at once.
         await loop.RunAsync(ct, () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta. Ctrl+C encerra."));
+        await following;
         return 0;
+    }
+
+    private static async Task FollowAsync(VoiceLoop loop, IAsyncEnumerable<AircraftState> states, CancellationToken ct)
+    {
+        var detector = new FlightEventDetector();
+        var announcements = new List<Task>();
+
+        try
+        {
+            await foreach (var state in states.WithCancellation(ct))
+            {
+                if (detector.Observe(state) is { } flightEvent)
+                {
+                    // Not awaited: the controller waits for the channel by itself, and the stream must keep being read.
+                    announcements.Add(loop.AnnounceAsync(flightEvent, ct));
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The radio is stopping.
+        }
+
+        await Task.WhenAll(announcements);
     }
 
     private static Task WarmUp(object model, TranscriptionContext context, CancellationToken ct) =>

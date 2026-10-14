@@ -13,6 +13,9 @@ public interface IVoiceLoopObserver
     /// <summary>The exchange is done: what the controller answers (it is about to be played, if it has a voice).</summary>
     void OnReplied(ExchangeResult result);
 
+    /// <summary>The controller spoke first, about something that happened to the flight.</summary>
+    void OnAnnounced(AnnouncementResult result);
+
     /// <summary>The pilot pressed the key while the controller was talking or an answer was in the making: it was ignored.</summary>
     void OnChannelBusy();
 
@@ -69,6 +72,60 @@ public sealed class VoiceLoop(
             recorder.SpeechDiscarded -= OnDiscarded;
             recorder.Dispose();
             await _current;
+        }
+    }
+
+    /// <summary>
+    /// The controller speaks about an event of the flight. Like anyone on a frequency they wait for it to be free: if the pilot
+    /// is being answered, or an answer is playing, this goes after it.
+    /// </summary>
+    public async Task AnnounceAsync(FlightEvent flightEvent, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(flightEvent);
+
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _stop);
+
+        try
+        {
+            while (Interlocked.CompareExchange(ref _busy, 1, 0) != 0)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100), linked.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        try
+        {
+            var onTheFrequency = FrequencyResolver.Apply(airport, com1?.Invoke());
+            var result = await exchange.AnnounceAsync(flightEvent, _flight, onTheFrequency, linked.Token);
+            _flight = result.Decision.NextContext;
+
+            if (result.Reply is not null)
+            {
+                observer.OnAnnounced(result);
+            }
+
+            if (result.Speech is not null)
+            {
+                await player.PlayAsync(result.Speech, linked.Token);
+            }
+        }
+        catch (OperationCanceledException) when (linked.IsCancellationRequested)
+        {
+            // Stopping: what was being said is cut.
+        }
+#pragma warning disable CA1031 // An announcement can fail in many ways (models, devices); one failure must not end the radio.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            observer.OnFailed(ex);
+        }
+        finally
+        {
+            Volatile.Write(ref _busy, 0);
         }
     }
 
