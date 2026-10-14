@@ -1,5 +1,6 @@
 using Fonia.Core.Atc;
 using Fonia.Core.Audio;
+using Fonia.Core.Sim;
 
 namespace Fonia.Core.Pipeline;
 
@@ -33,7 +34,8 @@ public sealed class VoiceLoop(
     IAudioPlayer player,
     AirportContext airport,
     FlightContext flight,
-    IVoiceLoopObserver observer)
+    IVoiceLoopObserver observer,
+    Func<Frequency?>? com1 = null)
 {
     private int _busy;
     private Task _current = Task.CompletedTask;
@@ -87,7 +89,9 @@ public sealed class VoiceLoop(
     {
         try
         {
-            var result = await exchange.RunAsync(speech, _flight, airport, observer.OnHeard, _stop);
+            // Who answers is who is on the frequency the pilot has tuned right now, which may change between two transmissions.
+            var onTheFrequency = FrequencyResolver.Apply(airport, com1?.Invoke());
+            var result = await exchange.RunAsync(speech, _flight, onTheFrequency, observer.OnHeard, _stop);
             _flight = result.Decision.NextContext;
             observer.OnReplied(result);
 

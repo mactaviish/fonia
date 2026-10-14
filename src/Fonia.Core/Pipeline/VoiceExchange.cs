@@ -22,7 +22,8 @@ public sealed record StageTimings(TimeSpan Transcription, TimeSpan Understanding
 /// <param name="Decision">What the ATC engine decided, with the flight afterwards.</param>
 /// <param name="Reply">What the controller says, or null when the controller says nothing (a correct readback).</param>
 /// <param name="Speech">The controller's voice, or null when there is nothing to say aloud (no reply, or a message of the app).</param>
-public sealed record ExchangeResult(string Heard, Intent Intent, AtcDecision Decision, Utterance? Reply, SynthesizedSpeech? Speech, StageTimings Timings);
+/// <param name="Station">Who answered, as called on the radio ("SOLO Curitiba"): it depends on the frequency the pilot was on.</param>
+public sealed record ExchangeResult(string Heard, Intent Intent, AtcDecision Decision, Utterance? Reply, SynthesizedSpeech? Speech, StageTimings Timings, string Station = "");
 
 /// <summary>
 /// One transmission of the pilot through the whole pipeline: speech to text, the NLU, the ATC engine, the phraseology, text
@@ -72,7 +73,7 @@ public sealed class VoiceExchange(
         // Only what the controller says on the radio is voiced; a message of the app is just shown.
         if (reply is not { Kind: UtteranceKind.Radio })
         {
-            return new ExchangeResult(transcript.Text, intent, decision, reply, null, new StageTimings(transcribed, understood, TimeSpan.Zero, TimeSpan.Zero));
+            return new ExchangeResult(transcript.Text, intent, decision, reply, null, new StageTimings(transcribed, understood, TimeSpan.Zero, TimeSpan.Zero), station);
         }
 
         started = _time.GetTimestamp();
@@ -83,6 +84,6 @@ public sealed class VoiceExchange(
         var onTheRadio = new SynthesizedSpeech(RadioEffect.Apply(voice.Samples, voice.SampleRate, radio, random), voice.SampleRate);
         var effect = _time.GetElapsedTime(started);
 
-        return new ExchangeResult(transcript.Text, intent, decision, reply, onTheRadio, new StageTimings(transcribed, understood, synthesized, effect));
+        return new ExchangeResult(transcript.Text, intent, decision, reply, onTheRadio, new StageTimings(transcribed, understood, synthesized, effect), station);
     }
 }

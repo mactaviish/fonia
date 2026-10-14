@@ -79,7 +79,7 @@ Achados no primeiro teste ao vivo; nenhum atrapalha o uso, mas o controlador soa
 ## M4: Voo completo em um aeroporto
 
 - [ ] Posição Torre: alinhar, autorização de decolagem, autorização de pouso
-- [ ] Transferência de frequência entre posições (Solo → Torre) conforme o COM1 do simulador
+- [x] Transferência de frequência entre posições (Solo → Torre) conforme o COM1 do simulador: quem responde vem da frequência do rádio (`FrequencyResolver`, `--com1`, `/com1`, COM1 ao vivo com `--sim`); o relato "no ponto de espera" faz o Solo mandar chamar a Torre. A Torre ainda não fala (avisos), vem nas próximas tarefas
 - [ ] ATIS com METAR real (cache + fallback)
 - [ ] Seleção de pista em uso pelo vento
 - [ ] Configuração em `appsettings.json`; primeira versão utilizável por outras pessoas

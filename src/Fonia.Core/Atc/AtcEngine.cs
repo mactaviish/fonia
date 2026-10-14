@@ -33,7 +33,8 @@ public sealed class AtcEngine : IAtcEngine
             // (line up, take off) are not written yet.
             _ when airport.Unit == ServiceUnit.Tower && (intent is ReportHoldingShort || airport.Airport.HasFrequency(AirportFrequencyType.Ground))
                 => Say(new TowerPhraseologyPending(), flight with { AwaitingCallsign = null }),
-            ReportHoldingShort => HoldingShort(Released(flight), airport),            RequestStartup => Issue(new StartupApproved(), Released(flight), FlightPhase.StartupApproved),
+            ReportHoldingShort => HoldingShort(Released(flight), airport),
+            RequestStartup => Issue(new StartupApproved(), Released(flight), FlightPhase.StartupApproved),
             RequestPushback pushback => Issue(new PushbackApproved(pushback.WithStartup), Released(flight), pushback.WithStartup ? FlightPhase.StartupApproved : FlightPhase.PushbackApproved),
             RequestTaxi => Taxi(Released(flight), airport),
             _ => Say(new SayAgainRequest(), flight),

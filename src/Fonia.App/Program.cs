@@ -74,11 +74,14 @@ var sourceFactory = new SimSourceFactory(loggerFactory, TimeProvider.System);
 
 if (options.AtcAirport is not null)
 {
+    // The connection to the simulator lives as long as the console: it gives the registration and then the radio, at every line.
+    await using var session = new SimSession(sourceFactory, TimeProvider.System, TimeSpan.FromSeconds(10), Console.Error.WriteLine);
+
     VoiceModeHandle? voice = null;
 
     if (options.Voice)
     {
-        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, cancellation.Token);
+        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, () => options.Com1 ?? session.Com1, cancellation.Token);
 
         if (voice is null)
         {
@@ -87,7 +90,6 @@ if (options.AtcAirport is not null)
     }
 
     await using var voiceResources = voice;
-    var callsignReader = new SimCallsignReader(sourceFactory, TimeProvider.System, TimeSpan.FromSeconds(10), Console.Error.WriteLine);
     var atc = new AtcConsole(
         AirportCatalog.Load(),
         new RuleBasedNlu(),
@@ -96,9 +98,10 @@ if (options.AtcAirport is not null)
         Console.In,
         Console.Out,
         Console.Error,
-        callsignReader.ReadAsync,
+        session.ReadCallsignAsync,
         interactive: !Console.IsInputRedirected && interactive,
-        voiceMode: voice?.Mode);
+        voiceMode: voice?.Mode,
+        liveCom1: () => session.Com1);
 
     return await atc.RunAsync(options, cancellation.Token);
 }

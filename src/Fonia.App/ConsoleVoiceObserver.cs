@@ -33,7 +33,7 @@ internal sealed class ConsoleVoiceObserver(TextWriter output, TextWriter error, 
                     output.WriteLine($"[aviso] {notice.Text}");
                     break;
                 case var reply:
-                    output.WriteLine($"{station}: {reply.Text}");
+                    output.WriteLine($"{(result.Station.Length > 0 ? result.Station : station)}: {reply.Text}");
                     break;
             }
 
