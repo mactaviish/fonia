@@ -65,5 +65,10 @@ public sealed record LineUpAndWait(string Runway) : AtcInstruction;
 // TODO(fraseologia): said without the wind while the app has no source of it.
 public sealed record TakeoffClearance(string Runway, Wind? Wind = null) : AtcInstruction;
 
+/// <summary>"Decolado aos 26": the Torre tells the aircraft it is airborne, with the minute it left the ground (MCA 100-16, Art. 127).</summary>
+// TODO(fraseologia): the manual follows it with "chame o Controle ..." (the next unit), which the airport data does not have; the minutes are
+// said even though the first paragraph lets the DECEA waive the time at some aerodromes.
+public sealed record AirborneNotice(int Minute) : AtcInstruction;
+
 /// <summary>A correct readback needs no answer (MCA 100-16 Art. 12): the controller stays silent.</summary>
 public sealed record NoResponse : AtcInstruction;

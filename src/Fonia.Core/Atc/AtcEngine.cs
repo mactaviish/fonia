@@ -48,6 +48,24 @@ public sealed class AtcEngine : IAtcEngine
         };
     }
 
+    public AtcDecision Handle(FlightEvent flightEvent, FlightContext flight, AirportContext airport)
+    {
+        ArgumentNullException.ThrowIfNull(flightEvent);
+        ArgumentNullException.ThrowIfNull(flight);
+        ArgumentNullException.ThrowIfNull(airport);
+
+        switch (flightEvent)
+        {
+            // The Torre that cleared the takeoff, and is still on the frequency, says the aircraft is off the ground.
+            case TookOff tookOff when airport.Unit == ServiceUnit.Tower && flight.Phase == FlightPhase.TakeoffCleared:
+                var notice = new AirborneNotice(tookOff.At.UtcDateTime.Minute);
+
+                return new AtcDecision(notice, flight with { Phase = FlightPhase.Airborne, PendingReadback = null, LastInstruction = notice });
+            default:
+                return new AtcDecision(new NoResponse(), flight);
+        }
+    }
+
     // A request with the right callsign is what the pilot says now; one held for the callsign is dropped.
     private static FlightContext Released(FlightContext flight) => flight with { AwaitingCallsign = null };
 
@@ -68,7 +86,7 @@ public sealed class AtcEngine : IAtcEngine
     // cleared for takeoff. The runway is the one the Solo cleared the taxi to.
     private static AtcDecision Departure(Intent intent, FlightContext flight, AirportContext airport)
     {
-        if (flight.Phase < FlightPhase.Taxiing || intent is ReportTakingOff)
+        if (flight.Phase < FlightPhase.Taxiing || flight.Phase >= FlightPhase.Airborne || intent is ReportTakingOff)
         {
             return Say(new SayAgainRequest(), flight);
         }
