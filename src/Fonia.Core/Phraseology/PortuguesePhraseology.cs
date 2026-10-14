@@ -20,7 +20,7 @@ public sealed class PortuguesePhraseology : IPhraseology
         return instruction switch
         {
             NoResponse => null,
-            SayAgainRequest => new Utterance("Repita."),
+            SayAgainRequest => new Utterance($"{callsign}, repita."),
             // TODO(fraseologia): the manual has no phrase for asking the callsign again; this one is a proposal to confirm.
             RequestCallsign => new Utterance($"Estação chamando {UnitName(context.Airport)}, repita o indicativo."),
             GoAhead => new Utterance($"{callsign}, prossiga."),

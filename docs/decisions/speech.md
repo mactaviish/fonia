@@ -132,6 +132,19 @@ Primeira sessão real com `--atc SBCT --voice`, **CPU** (sem `--stt-gpu`), i7-12
 - Total **2,3 a 3,2 s**, dentro do alvo "abaixo de ~3 s" para respostas curtas e no limite para as longas. Com `--stt-gpu` o reconhecimento cai para ~0,25 s e o total para ~1 a 1,5 s (a medir ao vivo, com o simulador aberto, que é onde a GPU é disputada).
 - Medido sem o MSFS aberto: com o simulador consumindo CPU o reconhecimento deve subir; é o número a repetir no teste de voo completo.
 
+### Ajustes de voz por audição (2026-10-14)
+
+Dois achados do teste ao vivo foram resolvidos gerando variantes com o mesmo modelo, fonetizador e efeito de rádio do app, e o mantenedor ouvindo (mesma frase nas duas vozes aprovadas):
+
+| Problema | Variantes ouvidas | Escolhida |
+|---|---|---|
+| "Repita." sai "repida" (9 fonemas) | atual; linha de estilo de 30 e de 60 fonemas; `t` aspirado; respiro `…` no começo; **com o indicativo** | **"PAPA ROMEO ALFA BRAVO CHARLIE, repita."** |
+| quase sem pausa entre "negativo" e "autorizado" | vírgula (atual); ponto; **reticências**; duas sínteses com 250 ms; três com 200 ms; duas com 400 ms | **"negativo..."** |
+
+Pausa medida depois de "negativo" (silêncio abaixo de 4% do pico, voz `pf_dora` / `pm_alex`): vírgula ~230 / ~210 ms; **reticências ~340 / ~340 ms**; ponto ~410 / ~370 ms; 250 ms de silêncio entre duas frases ~370 ms; 400 ms ~520 ms. O chiado do efeito de rádio preenche parte do silêncio e reduz a impressão de pausa, então vale medir as pausas pela voz limpa, como acima.
+
+Com as reticências a correção ganha uns 110 ms de pausa sem custo de síntese (uma única chamada ao modelo, ao contrário de cortar a frase em duas).
+
 ### Obtenção dos modelos (2026-10-14)
 
 Primeiro teste ao vivo do `--voice` bateu em "modelo não encontrado", e a regra "o usuário baixa na mão" caiu: o app baixa os modelos dos donos, **com confirmação**, e confere o SHA-256. Os arquivos não vão para o repositório (o GitHub recusa mais de 100 MB e o Git LFS gratuito não comporta) nem são redistribuídos pelo projeto, o que também dispensa a pergunta sobre os dados de treino do Kokoro (o dono do modelo é quem distribui).

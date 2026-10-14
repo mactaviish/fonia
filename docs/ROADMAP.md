@@ -44,7 +44,6 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 **Pendências conhecidas do M2** (nenhuma bloqueia o marco):
 
 - Confirmar com o mantenedor duas frases que o MCA não traz e que estão como proposta: pedir o indicativo de novo e o AFIS dizendo que só informa (`TODO(fraseologia)` em `docs/phraseology/solo-pt-br.md`).
-- O piloto que avisa "no ponto de espera da 33" ainda recebe "Repita.": a transferência Solo → Torre é uma tarefa própria.
 - Uma fala com dois pedidos ("quero táxi, pushback") responde só ao primeiro (o pushback); o segundo precisa ser repetido.
 - O ajuste de altímetro (QNH) não é dito no táxi: falta fonte de pressão.
 - Telefonia de empresas: só FAB, GLO e TAM, os exemplos do manual.
@@ -64,17 +63,12 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 
 **Validado em 2026-10-14** pelo mantenedor, ao vivo: PTT, reconhecimento, motor, voz e alto-falante funcionando. Falta só registrar os tempos de uma sessão real (item de latência acima).
 
-### Problemas conhecidos da voz (a analisar depois do M3)
+### Problemas da voz achados no teste ao vivo (resolvidos em 2026-10-14)
 
-Achados no primeiro teste ao vivo; nenhum atrapalha o uso, mas o controlador soa pior do que precisa.
+Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entre variantes geradas pelo mesmo modelo e fonetizador do app (o mantenedor ouviu, as variantes e as medidas ficaram em `docs/decisions/speech.md`):
 
-1. **"Repita." sai com uma leitura estranha** (o mantenedor ouviu "repida"). Frase muito curta: `xˌepˈitæ.`, 8 fonemas.
-   - *Suspeita:* o Kokoro escolhe o vetor de estilo da voz pela **quantidade de fonemas** (a linha `n-1` da tabela de 510); para textos muito curtos essa linha tem pouco treino e a prosódia fica instável. Também pode ser o `t` entre vogais, que o modelo sonoriza.
-   - *A testar:* (a) gerar "Repita." usando a linha de estilo de uma frase mais longa (por exemplo a de ~30 fonemas); (b) deixar um respiro antes (`... Repita.`) ou acrescentar contexto, como "PAPA ROMEO ALFA BRAVO CHARLIE, repita."; (c) conferir se a grafia de pronúncia (`repita` para `repíta`, `repítta`) muda o resultado; (d) comparar com a saída do espeak-ng só como régua (o fonetizador é nosso, a régua não vai para o repositório).
-2. **Quase não há pausa entre "negativo" e "autorizado"** em "PAPA ROMEO ALFA BRAVO CHARLIE, negativo, autorizado táxi...". A vírgula está nos fonemas (token 3), mas o modelo a encolhe.
-   - *A testar:* (a) falar a correção em **duas frases** ("PAPA ROMEO ALFA BRAVO CHARLIE, negativo." e depois "autorizado táxi...") com ~250 ms de silêncio entre elas, o que o `PhonemeChunker` e o `KokoroSynthesizer` já sabem fazer para textos longos (cuidado: cada pedaço curto cai no problema 1); (b) trocar a vírgula por ponto, ou por reticências; (c) pausa maior depois do indicativo e depois de "negativo" definida na fraseologia (uma `Utterance` com partes), sem mudar o texto mostrado.
-   - Qualquer solução precisa valer para o resto da fraseologia (a frase inteira é uma só `Utterance`), então a decisão é de design: **pausas** ficam na camada de pronúncia/voz, não no texto do manual.
-
+1. **"Repita." sai com uma leitura estranha** ("repida"): a frase de 9 fonemas é curta demais para o modelo. Escolhida a variante com o indicativo: o controlador diz **"PAPA ROMEO ALFA BRAVO CHARLIE, repita."** (`PortuguesePhraseology`). O manual traz só "REPITA"; o indicativo na frente é a forma de chamar a aeronave, e as variantes de estilo e de pronúncia não resolveram.
+2. **Quase não havia pausa entre "negativo" e "autorizado":** a vírgula dá ~230 ms. Escolhidas as **reticências** (~340 ms): a camada de pronúncia (`Pronunciation.Respell`) fala a vírgula depois de "negativo" como três pontos, **só na voz**, o texto do manual e o da tela não mudam. A lista de palavras que pedem pausa maior (`LongPauseAfter`) é fácil de ampliar.
 
 ## M4: Voo completo em um aeroporto
 

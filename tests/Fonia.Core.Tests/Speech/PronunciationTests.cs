@@ -53,4 +53,33 @@ public class PronunciationTests
 
         phonemes.ShouldBe("pˈapæ xomˈeʊ ˈaʊfæ brˈavʊ tʃˈaɾəli, prˌosˈiɡæ.");
     }
+
+    // Heard in the live test: "negativo, autorizado" had almost no gap between the two. A comma makes the voice model pause
+    // about 230 ms after "negativo"; three dots make it pause about 340 ms, which the maintainer chose by ear.
+    [Theory]
+    [InlineData("PAPA ROMEO, negativo, autorizado táxi.", "PAPA romeu, negativo... autorizado táxi.")]
+    [InlineData("negativo, autorizado", "negativo... autorizado")]
+    [InlineData("NEGATIVO, autorizado", "NEGATIVO... autorizado")]
+    public void The_comma_after_negativo_becomes_a_longer_pause_for_the_voice_only(string written, string spoken)
+    {
+        Pronunciation.Respell(written).ShouldBe(spoken);
+    }
+
+    [Theory]
+    [InlineData("negativo autorizado")]
+    [InlineData("negativo.")]
+    [InlineData("autorizado, negativo")]
+    [InlineData("negativos, autorizado")]
+    public void Only_a_comma_right_after_the_word_negativo_is_changed(string text)
+    {
+        Pronunciation.Respell(text).ShouldBe(text);
+    }
+
+    [Fact]
+    public void The_pause_reaches_the_phonemes_as_three_stops_before_the_next_word()
+    {
+        var phonemes = Pronunciation.ToPhonemes("PAPA ROMEO ALFA BRAVO CHARLIE, negativo, autorizado táxi.");
+
+        phonemes.ShouldContain("nˌeɡatʃˈivʊ... ˌaʊtoɾizˈadʊ");
+    }
 }
