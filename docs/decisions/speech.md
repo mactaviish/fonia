@@ -94,12 +94,14 @@ O indicativo foi falado por extenso ("Papa Romeo Alfa Bravo Charlie"), como mand
 
 ### Como o Kokoro entra sem espeak-ng
 
-O Kokoro recebe **fonemas**, e os exemplos prontos obtêm os fonemas com o espeak-ng (GPL-3). Para não depender dele, o projeto terá um **fonetizador próprio de pt-BR**, em duas camadas:
+O Kokoro recebe **fonemas**, e os exemplos prontos obtêm os fonemas com o espeak-ng (GPL-3). Para não depender dele, o projeto tem um **fonetizador próprio de pt-BR** (`Fonia.Core.Speech`), em duas camadas:
 
 1. **Camada de pronúncia** (dicionário por idioma, só para o TTS, o texto da fraseologia não muda): grafia aportuguesada de palavras estrangeiras e do alfabeto fonético. Testada na audição com `romeo→romeu`, `charlie→chárli`, `pushback→púchibéqui`, `papa→pápa`, `alfa→álfa`, `bravo→brávo`, `uno→úno`; o mantenedor confirmou que "melhorou demais" e que as 6 frases de teste saíram certas. Sem ela, o Kokoro lia "charLIE" e "pushBAQUI".
-2. **Texto → fonemas** por regras do português do Brasil (a ortografia é regular), cobrindo o vocabulário fechado dos templates do controlador; palavra fora do dicionário usa a regra geral. Risco: qualidade da regra geral; mitigação: testes com todas as frases do catálogo e audição.
+2. **Texto → fonemas** (`PortuguesePhonemizer`) por regras do português do Brasil escritas para o projeto: acentos e sílaba tônica, "ti"/"di" suaves, `lh`, `nh`, `ch`, o "l" que soa como "u", vogais nasais, os cinco sons do "r", o "s" entre vogais, `qu`/`gu`, os cinco sons do "x", ditongos, o "i" de "rádio" como semivogal, tônicas abertas de uma lista curta de exceções e sílabas secundárias. A saída segue as convenções do alfabeto em que o Kokoro foi treinado (o "a" final como `æ`, o "o" final como `ʊ`, o "e" final como `y`), não a transcrição de livro, porque o modelo fala melhor o que ouviu no treino. Só usa símbolos do vocabulário do modelo (há teste), e os nasais saem com o til combinante, que é o que o modelo tem.
 
-O espeak-ng foi usado **só na audição do spike**, num ambiente temporário; nada dele vai para o repositório.
+**Como foi validado:** o espeak-ng rodou apenas num ambiente temporário, como régua de comparação (a saída dele não foi copiada para o repositório, e as regras foram escritas independentemente). Nas 165 palavras comparadas (vocabulário dos templates e nomes dos aeroportos controlados), 144 saíram idênticas e as outras diferem por escolha (por exemplo, o artigo "o" sai `ʊ`, não `ˈɔ`, e o "l" final sai `ʊ`). Os testes de regressão (`PortuguesePhonemizerTests`) fixam a saída de 83 palavras já conferidas; o que cada regra faz está em `PortugueseRulesTests`. A aprovação final é de ouvido (o mantenedor).
+
+O espeak-ng foi usado **só no spike e como régua de comparação**, num ambiente temporário; nada dele vai para o repositório.
 
 ### Configuração de voz (pedido do mantenedor)
 
