@@ -1,6 +1,6 @@
 # Decisão: voz local (STT e TTS) para o M3
 
-**Status: STT decidido; TTS em aberto.** O STT foi medido com a voz real do mantenedor e está decidido. As vozes do Windows foram **reprovadas na audição** ("horríveis"), então o TTS depende de outra pesquisa e de uma decisão de licença do mantenedor (seção "Decisão").
+**Status: decidido.** STT: Whisper.net `small`. TTS: Kokoro-82M (ONNX) com camada de pronúncia própria. Ambos medidos e ouvidos pelo mantenedor em 2026-10-13. As vozes do Windows, o Piper e o Supertonic 3 foram reprovados na audição.
 
 Medido em 2026-10-13 em um i7-12700 (12 núcleos), 32 GB, RTX 3070 Ti, Windows 11, .NET 10.
 
@@ -25,10 +25,12 @@ Medido em 2026-10-13 em um i7-12700 (12 núcleos), 32 GB, RTX 3070 Ti, Windows 1
 
 | Opção | Licença | Tamanho | Qualidade / tempo | Veredito |
 |---|---|---|---|---|
-| **Vozes do Windows** (WinRT `SpeechSynthesizer`; Maria e Daniel pt-BR já vêm instaladas) | parte do Windows; usadas pela API, sem redistribuir nada | 0 | síntese em **~20 ms** por frase, ~6 s de áudio (medido) | **Candidato principal e padrão.** Zero risco de licença e de empacotamento. Só Windows, o que já é o caso do MSFS. Qualidade: precisa de audição. |
-| **Piper** com vozes pt-BR | repositório original MIT, **arquivado em out/2025**; o ativo ([piper1-gpl](https://github.com/OHF-Voice/piper1-gpl)) é GPL-3.0. Vozes pt-BR: `faber`, `cadu`, `jeff` **CC0**; `edresson` CC BY 4.0 ([cartões dos modelos](https://huggingface.co/rhasspy/piper-voices/tree/main/pt/pt_BR)) | ~63 MB por voz | processo inteiro ~0,65 s (faber) e ~1,1 s (cadu) por frase, carregando o modelo a cada vez (medido) | **Bloqueado por licença para embutir:** o Piper fonetiza com o **espeak-ng, GPL-3.0 ou posterior** ([espeak-ng](https://github.com/espeak-ng/espeak-ng)). As vozes são livres, o fonetizador não. Possível só como componente opcional que o usuário instala, decisão do mantenedor. |
+| **Vozes do Windows** (WinRT `SpeechSynthesizer`; Maria e Daniel pt-BR já vêm instaladas) | parte do Windows; usadas pela API, sem redistribuir nada | 0 | síntese em **~20 ms** por frase, ~6 s de áudio (medido) | **Descartada na audição** ("horríveis"). |
+| **Piper** com vozes pt-BR | repositório original MIT, **arquivado em out/2025**; o ativo ([piper1-gpl](https://github.com/OHF-Voice/piper1-gpl)) é GPL-3.0. Vozes pt-BR: `faber`, `cadu`, `jeff` **CC0**; `edresson` CC BY 4.0 ([cartões dos modelos](https://huggingface.co/rhasspy/piper-voices/tree/main/pt/pt_BR)) | ~63 MB por voz | processo inteiro ~0,65 s (faber) e ~1,1 s (cadu) por frase, carregando o modelo a cada vez (medido) | **Descartado:** a voz não agradou; além disso, bloqueado por licença para embutir:** o Piper fonetiza com o **espeak-ng, GPL-3.0 ou posterior** ([espeak-ng](https://github.com/espeak-ng/espeak-ng)). As vozes são livres, o fonetizador não. Possível só como componente opcional que o usuário instala, decisão do mantenedor. |
 | sherpa-onnx (TTS com Piper/VITS) | Apache-2.0, **mas as builds com TTS trazem o espeak-ng (GPL-3) compilado dentro** ([OpenWhispr #2340](https://github.com/OpenWhispr/openwhispr/pull/2340)). O projeto planeja remover o espeak-ng na versão 2.0, sem data ([issue #3731](https://github.com/k2-fsa/sherpa-onnx/issues/3731)) | idem | idem | Mesmo problema do Piper até a versão 2.0. Reavaliar quando sair (vozes com `lexicon.txt`). |
-| Kokoro, MMS-TTS, XTTS e outros | não verificadas | | | **Fora desta rodada.** Antes de qualquer uso, confirmar a licença do modelo e se dependem do espeak-ng. |
+| **Kokoro-82M** | Apache-2.0 (pesos e código) | 325 MB fp32 + 28 MB de vozes | 0,8 a 1,3 s por frase em CPU; vozes pt-BR `pf_dora`, `pm_alex` | **Escolhido**, com fonetizador próprio no lugar do espeak-ng (seção abaixo). |
+| Supertonic 3 | código MIT, modelo OpenRAIL-M; repositório arquivado | ~380 MB | 1,4 a 1,8 s em CPU, só `pt` | **Descartado:** sotaque estrangeiro na audição. |
+| MMS-TTS, XTTS, Breeze TTS 2 | não comerciais | | | Descartados por licença. Chatterbox (MIT) é pesado (GPU de 4 a 6 GB). |
 
 ## Medições de STT (voz sintética: Microsoft Maria falando as 20 frases de `tools/speech-spike/phrases.txt`)
 
@@ -84,14 +86,30 @@ O indicativo foi falado por extenso ("Papa Romeo Alfa Bravo Charlie"), como mand
 ## Decisão
 
 - **STT: Whisper.net (MIT) com o modelo `small` e prompt de vocabulário** montado com o indicativo falado. **CPU é o padrão** (~2 s por frase). **Vulkan opcional**, ligado em configuração: o mantenedor aceita uso leve de GPU, e o `small` cai para ~0,25 s em rajadas curtas. Se a GPU falhar, volta para a CPU. O `base` (0,6 s, 85%) fica como alternativa para máquinas fracas.
-- **TTS: em aberto.** As vozes do Windows (Maria, Daniel) não servem. As vozes do Piper (`faber`, `cadu`, CC0) são o caminho de qualidade conhecido, mas dependem do espeak-ng (GPL-3). Opções para o mantenedor decidir:
-  1. **Piper como componente opcional**, instalado pelo usuário e chamado como processo separado (nada GPL entra no repositório nem no instalador); voz do Windows como reserva.
-  2. **Pesquisar mais** (Kokoro, VITS via sherpa-onnx sem espeak-ng, outras vozes pt-BR) antes de aceitar a opção 1. Como a fala do controlador sai de templates fixos, outra via é pré-gerar e embutir trechos de áudio, o que exige voz com licença que permita redistribuir.
+- **TTS: Kokoro-82M** (pesos e código Apache-2.0, segundo o [cartão do modelo](https://huggingface.co/hexgrad/Kokoro-82M)) rodando em ONNX Runtime (MIT), em CPU: 0,8 a 1,3 s por frase do controlador e 0,2 s para "Repita." (modelo fp32 de 325 MB, vozes 28 MB; existe versão int8 menor, a medir). Vozes pt-BR: `pf_dora` (feminina) e `pm_alex` (masculina). **`pm_santa` está excluída** por qualidade ruim (audição do mantenedor).
+
+### Como o Kokoro entra sem espeak-ng
+
+O Kokoro recebe **fonemas**, e os exemplos prontos obtêm os fonemas com o espeak-ng (GPL-3). Para não depender dele, o projeto terá um **fonetizador próprio de pt-BR**, em duas camadas:
+
+1. **Camada de pronúncia** (dicionário por idioma, só para o TTS, o texto da fraseologia não muda): grafia aportuguesada de palavras estrangeiras e do alfabeto fonético. Testada na audição com `romeo→romeu`, `charlie→chárli`, `pushback→púchibéqui`, `papa→pápa`, `alfa→álfa`, `bravo→brávo`, `uno→úno`; o mantenedor confirmou que "melhorou demais" e que as 6 frases de teste saíram certas. Sem ela, o Kokoro lia "charLIE" e "pushBAQUI".
+2. **Texto → fonemas** por regras do português do Brasil (a ortografia é regular), cobrindo o vocabulário fechado dos templates do controlador; palavra fora do dicionário usa a regra geral. Risco: qualidade da regra geral; mitigação: testes com todas as frases do catálogo e audição.
+
+O espeak-ng foi usado **só na audição do spike**, num ambiente temporário; nada dele vai para o repositório.
+
+### Configuração de voz (pedido do mantenedor)
+
+- O usuário escolhe a voz nas configurações.
+- **Padrão: aleatória** entre as vozes aprovadas (hoje `pf_dora` e `pm_alex`), para diversificar; cada controlador/serviço pode manter a mesma voz durante a sessão. Mais vozes entram na lista conforme forem avaliadas.
+
+### Descartados na audição
+
+Vozes do Windows (Maria, Daniel): "horríveis". Piper (faber, cadu): não agradou, e depende do espeak-ng. Supertonic 3: sotaque estrangeiro ("de indiano"), além da licença OpenRAIL-M e do repositório arquivado. Kokoro `pm_santa`: ruim.
 
 ## Como reproduzir
 
 ```
-dotnet run tools/speech-spike.cs -- tts                       # vozes do Windows
+dotnet run tools/speech-spike.cs -- tts                       # vozes do Windows (descartadas)
 dotnet run tools/speech-spike.cs -- record                    # grava as frases com o microfone (não vai para o git)
 dotnet run tools/speech-spike.cs -- synth                     # gera as frases com voz sintética
 dotnet run tools/speech-spike.cs -- stt --model small --prompt [--runtime vulkan] [--quant q5_1]
