@@ -201,6 +201,10 @@ public static class SpokenText
             {
                 code.Append(designator);
             }
+            else if (SpokenCode.TryReadSpelled(token, out var spelled))
+            {
+                code.Append(spelled);
+            }
             else
             {
                 code.Append(token.ToUpperInvariant());

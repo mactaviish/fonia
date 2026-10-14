@@ -10,6 +10,8 @@ namespace Fonia.Core.Phraseology;
 /// </summary>
 public static class SpokenCode
 {
+    private const int MinimumFuzzyWordLength = 6;
+
     private static readonly Dictionary<string, char> DigitWords = new()
     {
         ["zero"] = '0',
@@ -66,6 +68,11 @@ public static class SpokenCode
         ["bravo"] = 'B',
         ["charlie"] = 'C',
         ["charles"] = 'C',
+        ["charly"] = 'C',
+        ["charli"] = 'C',
+        ["xarli"] = 'C',
+        ["tcharli"] = 'C',
+        ["tcharly"] = 'C',
         ["delta"] = 'D',
         ["echo"] = 'E',
         ["eco"] = 'E',
@@ -105,6 +112,98 @@ public static class SpokenCode
         ["yanque"] = 'Y',
         ["zulu"] = 'Z',
     };
+
+    /// <summary>
+    /// Reads a single word the recognizer wrote for one or more spelled letters when it is not an exact phonetic word:
+    /// two or more phonetic words glued together ("romeoalfa") or a long phonetic word with one letter wrong, missing
+    /// or extra ("chalie", "charllie"). Short phonetic words must be exact: "tanto" is one letter from "tango".
+    /// </summary>
+    public static bool TryReadSpelled(string token, out string letters)
+    {
+        letters = string.Empty;
+
+        if (token.Length < 4 || !token.All(char.IsAsciiLetter))
+        {
+            return false;
+        }
+
+        var found = new StringBuilder();
+
+        if (!Segment(token, found))
+        {
+            return false;
+        }
+
+        letters = found.ToString();
+        return true;
+    }
+
+    private static bool Segment(string rest, StringBuilder letters)
+    {
+        if (rest.Length == 0)
+        {
+            return true;
+        }
+
+        var mark = letters.Length;
+
+        foreach (var (word, letter) in LetterWords.OrderByDescending(w => w.Key.Length))
+        {
+            if (rest.StartsWith(word, StringComparison.Ordinal))
+            {
+                letters.Append(letter);
+
+                if (Segment(rest[word.Length..], letters))
+                {
+                    return true;
+                }
+
+                letters.Length = mark;
+            }
+
+            if (word.Length < MinimumFuzzyWordLength)
+            {
+                continue;
+            }
+
+            foreach (var length in new[] { word.Length - 1, word.Length + 1 })
+            {
+                if (length <= rest.Length && WithinOneEdit(rest[..length], word))
+                {
+                    letters.Append(letter);
+
+                    if (Segment(rest[length..], letters))
+                    {
+                        return true;
+                    }
+
+                    letters.Length = mark;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // True when the words differ by one letter changed, added or removed (but are not the same).
+    private static bool WithinOneEdit(string a, string b)
+    {
+        if (Math.Abs(a.Length - b.Length) > 1 || a == b)
+        {
+            return false;
+        }
+
+        var i = 0;
+
+        while (i < a.Length && i < b.Length && a[i] == b[i])
+        {
+            i++;
+        }
+
+        return a.Length == b.Length
+            ? a[(i + 1)..] == b[(i + 1)..]
+            : a.Length > b.Length ? a[(i + 1)..] == b[i..] : a[i..] == b[(i + 1)..];
+    }
 
     /// <summary>
     /// Reads one number or letter starting at <paramref name="index"/> and moves the index past what it used.

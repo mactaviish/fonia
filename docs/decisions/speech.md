@@ -55,13 +55,17 @@ O que isso mostra:
 
 **Limite desta medição:** a voz sintética é uma má representante da sua voz. O que mais derrubou o acerto foi o **indicativo**: o Whisper escreve "Prabc", "Prabac", "Prabic", "Právix", "Prabe" para "PRABC". E a voz sintética emenda palavras ("solicituacionamento"), o que uma pessoa faz menos.
 
-## O que isso muda no NLU (a tratar em tarefa própria)
+## O que o STT exige do NLU (tratado na tarefa "NLU tolerante ao STT", M3)
 
-Independentemente de qual modelo vencer, o texto que o STT entrega tem erros que o NLU de hoje não perdoa:
+O texto que o STT entrega tem erros que o NLU precisa perdoar, dentro do que é seguro:
 
-1. **Indicativo com 1 letra trocada** ("Prabac", "Prabic", "Prabe" para PRABC): comparar com tolerância (distância de edição ≤ 1, ou por fonemas) e usar o indicativo conhecido do simulador no *prompt*.
-2. **Palavras emendadas** ("solicituacionamento"): procurar as raízes (`acion`, `pushback`) dentro da palavra, não só no começo.
-3. **Números escritos de vários jeitos** ("1,5", "1-5", "quinze", "um cinco"): já tratados em parte pelo `SpokenCode`, falta "1,5" e "1-5".
+1. **Palavras emendadas** ("solicituacionamento", "pushbackeacionamento"): raízes de cinco letras ou mais (`acion`, `pushback`, `solicit`, `autorizad`...) são procuradas **dentro** da palavra. Raízes curtas (`tax`, `push`) continuam só no começo, para não casar com palavras demais.
+2. **Indicativo com palavras fonéticas mal escritas** ("Papá Romeo, Alfa, Bravo Charly", "Chalie", "Charllie", "romeoalfa"): palavras fonéticas de 6 letras ou mais aceitam uma letra errada, a mais ou a menos; as curtas só exatas (senão "tanto" viraria o T de "tango" e "motel" o H de "hotel"); palavras emendadas são separadas.
+3. **Pista escrita como número decimal** ("1,5", "3,3 esquerda"; "1-5" já funcionava): depois de "pista", ou num readback, um dígito, vírgula e mais dígitos é a pista ("15", "33L"), nunca uma frequência.
+
+**Decisão: o indicativo com uma letra trocada NÃO é aceito** ("PRABD" não é PRABC; já era regra e tem teste). Aceitar "Prabac" ou "Prabic" como PRABC aceitaria também uma aeronave diferente, e o motor pede "repita o indicativo" até o piloto dizer o certo. A solução é o prompt com o indicativo falado, que fez o STT acertar 20 de 20.
+
+Medido nas 20 gravações reais, sem prompt: 10/20 antes e depois (os erros que sobram, como "Bravucciarli", "Fábio Tcharly", "assinamento", são do STT e nenhuma regra segura recupera); com prompt: 20/20.
 
 ## Medições com a voz real (20 frases gravadas pelo mantenedor, 2026-10-13)
 
