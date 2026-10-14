@@ -31,7 +31,7 @@ public class AirborneNoticeTests
 
         decision.Instruction.ShouldBe(new AirborneNotice(26));
         decision.NextContext.Phase.ShouldBe(FlightPhase.Airborne);
-        decision.NextContext.PendingReadback.ShouldBeNull();
+        decision.NextContext.PendingReadback.ShouldBe(new AirborneNotice(26));
         decision.NextContext.LastInstruction.ShouldBe(new AirborneNotice(26));
     }
 

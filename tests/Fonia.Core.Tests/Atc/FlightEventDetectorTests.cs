@@ -79,4 +79,66 @@ public class FlightEventDetectorTests
         detector.Observe(State(false, 85, 110));
         detector.Observe(State(false, 85, 115)).ShouldBeOfType<TookOff>();
     }
+
+    [Fact]
+    public void Touching_down_and_staying_on_the_ground_is_a_landing_at_the_time_of_the_touchdown()
+    {
+        var detector = new FlightEventDetector();
+        detector.Observe(State(true, 0, 0));
+        detector.Observe(State(false, 90, 1));
+        detector.Observe(State(false, 90, 7)).ShouldBeOfType<TookOff>();
+        detector.Observe(State(false, 80, 600));
+
+        detector.Observe(State(true, 60, 610)).ShouldBeNull();
+        detector.Observe(State(true, 40, 613)).ShouldBeNull();
+        detector.Observe(State(true, 20, 616)).ShouldBe(new TouchedDown(Noon.AddSeconds(610)));
+    }
+
+    [Fact]
+    public void A_bounce_on_landing_is_one_landing_and_not_two_or_none()
+    {
+        var detector = new FlightEventDetector();
+        detector.Observe(State(false, 80, 0));
+        detector.Observe(State(false, 80, 10));
+
+        detector.Observe(State(true, 60, 20)).ShouldBeNull();
+        detector.Observe(State(false, 55, 22)).ShouldBeNull();
+        detector.Observe(State(true, 50, 24)).ShouldBeNull();
+        detector.Observe(State(true, 40, 30)).ShouldBe(new TouchedDown(Noon.AddSeconds(24)));
+        detector.Observe(State(true, 10, 40)).ShouldBeNull();
+    }
+
+    [Fact]
+    public void An_aircraft_already_flying_when_the_app_starts_lands_like_any_other()
+    {
+        var detector = new FlightEventDetector();
+        detector.Observe(State(false, 120, 0));
+        detector.Observe(State(false, 120, 8));
+        detector.Observe(State(true, 60, 100));
+
+        detector.Observe(State(true, 30, 106)).ShouldBe(new TouchedDown(Noon.AddSeconds(100)));
+    }
+
+    [Fact]
+    public void An_aircraft_that_only_taxis_never_lands()
+    {
+        var detector = new FlightEventDetector();
+
+        foreach (var second in Enumerable.Range(0, 60))
+        {
+            detector.Observe(State(true, 10, second)).ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void A_touch_and_go_is_not_a_landing_but_the_takeoff_that_follows_is_announced()
+    {
+        var detector = new FlightEventDetector();
+        detector.Observe(State(false, 80, 0));
+        detector.Observe(State(false, 80, 10));
+        detector.Observe(State(true, 60, 20)).ShouldBeNull();
+
+        detector.Observe(State(false, 70, 23)).ShouldBeNull();
+        detector.Observe(State(false, 80, 30)).ShouldBe(new TookOff(Noon.AddSeconds(23)));
+    }
 }

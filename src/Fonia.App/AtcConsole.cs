@@ -174,7 +174,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso).");
         }
     }
 
@@ -192,18 +192,27 @@ internal sealed class AtcConsole(
         return trimmed.StartsWith("/evento", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 7 || char.IsWhiteSpace(trimmed[7]));
     }
 
-    // "/evento decolou" stands for what the telemetry shows with a simulator: the aircraft left the ground, now.
+    // "/evento decolou" and "/evento pousou" stand for what the telemetry shows with a simulator: the aircraft left, or touched, the ground, now.
     private FlightContext HandleEventCommand(string line, FlightContext flight, AirportContext onTheFrequency)
     {
         var argument = line.Trim()[7..].Trim();
 
-        if (!argument.Equals("decolou", StringComparison.OrdinalIgnoreCase))
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+
+        FlightEvent? flightEvent = argument.ToUpperInvariant() switch
         {
-            error.WriteLine("fonia: evento desconhecido. Use /evento decolou.");
+            "DECOLOU" => new TookOff(now),
+            "POUSOU" => new TouchedDown(now),
+            _ => null,
+        };
+
+        if (flightEvent is null)
+        {
+            error.WriteLine("fonia: evento desconhecido. Use /evento decolou ou /evento pousou.");
             return flight;
         }
 
-        var decision = engine.Handle(new TookOff((timeProvider ?? TimeProvider.System).GetUtcNow()), flight, onTheFrequency);
+        var decision = engine.Handle(flightEvent, flight, onTheFrequency);
 
         if (phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, onTheFrequency)) is { } utterance)
         {

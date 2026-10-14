@@ -160,6 +160,12 @@ public sealed class RuleBasedNlu : INlu
             return null;
         }
 
+        // "pista livre", "livrando a pista", "livrei a pista" (the instruction "após livrar a pista" is a readback and was left above).
+        if (HasAny(rest, ["livr"]) && rest.Contains("pista"))
+        {
+            return new ReportRunwayVacated(callsign);
+        }
+
         if (HasAny(rest, GoAroundStems))
         {
             return new ReportGoingAround(callsign);
@@ -235,6 +241,9 @@ public sealed class RuleBasedNlu : INlu
 
     /// <summary>True when the words mention landing ("pouso autorizado", "autorizado pousar").</summary>
     internal static bool MentionsLanding(IReadOnlyList<string> tokens) => HasAny(tokens, ["pous"]);
+
+    /// <summary>True when the words mention the apron ("taxie para o pátio").</summary>
+    internal static bool MentionsApron(IReadOnlyList<string> tokens) => HasAny(tokens, ["patio"]);
 
     /// <summary>True when the words mention pushback.</summary>
     internal static bool MentionsPushback(IReadOnlyList<string> tokens) => HasAny(tokens, PushbackStems);

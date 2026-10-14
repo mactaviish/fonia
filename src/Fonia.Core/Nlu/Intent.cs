@@ -59,5 +59,8 @@ public sealed record ReportFinal(string? Callsign) : Intent(Callsign);
 /// <summary>The pilot reports a go-around ("arremetendo", "aproximação perdida"): Art. 136.</summary>
 public sealed record ReportGoingAround(string? Callsign) : Intent(Callsign);
 
+/// <summary>The pilot reports having cleared the runway after landing ("pista livre", "livrando a pista"): Art. 134, I.</summary>
+public sealed record ReportRunwayVacated(string? Callsign) : Intent(Callsign);
+
 /// <summary>Speech that could not be interpreted.</summary>
 public sealed record Unknown(string RawText) : Intent((string?)null);

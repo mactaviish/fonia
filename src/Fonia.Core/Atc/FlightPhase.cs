@@ -31,4 +31,7 @@ public enum FlightPhase
 
     /// <summary>The Torre cleared the landing.</summary>
     LandingCleared,
+
+    /// <summary>The telemetry showed the aircraft on the ground after the clearance, and the Torre said so.</summary>
+    Landed,
 }
