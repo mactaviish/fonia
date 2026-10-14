@@ -23,7 +23,7 @@ O app é um pipeline de voz com um núcleo determinístico de ATC. A telemetria 
 | `Fonia.Sim.Mock` | `MockSimAdapter`, gravação e replay de telemetria. | `net10.0` |
 | `Fonia.Sim.Msfs` | `MsfsSimAdapter` (SimConnect). Compila em qualquer SO; só executa com o MSFS no Windows. | `net10.0` |
 | `Fonia.Audio` | Microfone (NAudio/waveIn), push-to-talk por tecla, playback. Compila em qualquer SO; só executa no Windows (mesma ideia do `Fonia.Sim.Msfs`). | `net10.0` |
-| `Fonia.Speech` | Implementações de STT e TTS. | a definir (M3) |
+| `Fonia.Speech` | Implementações de STT (Whisper.net) e, depois, TTS. Compila em qualquer SO. | `net10.0` |
 | `Fonia.App` | Executável e composição de dependências (console primeiro, UI depois). | `net10.0` (reavaliar quando houver UI) |
 
 Dependências sempre apontam para o Core. O Core não referencia nenhum outro projeto.
@@ -144,7 +144,13 @@ A lógica que não depende do Windows fica no **Core** (`Fonia.Core.Audio`), tes
 
 ### 3. STT (`Fonia.Speech`)
 
-Interface `ITranscriber` (`TranscribeAsync(AudioClip) -> Transcript`). Implementação a escolher no M3 após um spike com medição de latência e precisão em pt-BR. Dica: usar prompt inicial com vocabulário de aviação (indicativos, "QNH", "pista", "autorizado", "táxi") melhora a precisão em modelos Whisper.
+Decidido no spike do M3 (`docs/decisions/speech.md`): **Whisper.net** (MIT) com o modelo `ggml-small.bin` (MIT, 466 MB), local e offline.
+
+- **Core** (`Fonia.Core.Speech`, sem dependência de SO): `ITranscriber` (`TranscribeAsync(RecordedSpeech, TranscriptionContext, ct) -> Transcript`), `WhisperPromptBuilder`, `PcmConverter` (PCM 16 bits para `float`). O `WavDecoder`, em `Fonia.Core.Audio`, lê WAV.
+- **Prompt de vocabulário** (`WhisperPromptBuilder`): vocabulário de aviação, a estação e o **indicativo falado em alfabeto fonético** ("Papa Romeo Alfa Bravo Charlie"). Sem ele o Whisper escreve "Paparromeu"; com ele o NLU entendeu 20 de 20 frases gravadas (30% com o indicativo escrito "PRABC").
+- **`Fonia.Speech`**: `WhisperTranscriber` carrega o modelo na primeira chamada e o mantém; recria o processador só quando o prompt muda. Atende uma fala por vez. Descarta anotações que não são fala ("[BLANK_AUDIO]", "[Música]").
+- **CPU por padrão**, com metade dos núcleos (no máximo 8), porque o simulador precisa do resto: ~2 s por frase. **`--stt-gpu` (Vulkan)** é opcional e cai para a CPU se falhar: ~0,25 s por frase com o modelo já carregado, mas a carga inicial na GPU leva ~7 a 10 s, então a integração deve carregar o modelo na abertura do app.
+- **O app não baixa o modelo.** `WhisperModelLocator` procura `ggml-small.bin` em `%LOCALAPPDATA%\Fonia\models` (ou `--stt-dir`) e, se faltar, a mensagem de erro diz de onde baixar. Download assistido fica para uma tarefa própria.
 
 ### 4. NLU (`Fonia.Core`)
 

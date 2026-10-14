@@ -51,6 +51,11 @@ if (options.MicTestPath is not null)
     return await MicCommands.TestAsync(options, Console.Out, Console.Error, cancellation.Token);
 }
 
+if (options.TranscribePath is not null)
+{
+    return await SttCommands.TranscribeAsync(options, Console.Out, Console.Error, cancellation.Token);
+}
+
 var interactive = !Console.IsOutputRedirected;
 var sourceFactory = new SimSourceFactory(loggerFactory, TimeProvider.System);
 
