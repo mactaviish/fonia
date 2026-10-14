@@ -44,5 +44,20 @@ public sealed record ReportLinedUp(string? Callsign, string? Runway) : Intent(Ca
 /// <summary>The pilot reports starting the takeoff ("decolando"): the Torre has nothing to say to it.</summary>
 public sealed record ReportTakingOff(string? Callsign) : Intent(Callsign);
 
+/// <summary>The pilot asks for instructions to land ("instruções para pouso", "solicito entrada no circuito"): MCA 100-16, Art. 128.</summary>
+public sealed record RequestLanding(string? Callsign) : Intent(Callsign);
+
+/// <summary>The pilot reports the downwind leg ("perna do vento"): Art. 130, I.</summary>
+public sealed record ReportDownwind(string? Callsign) : Intent(Callsign);
+
+/// <summary>The pilot reports the base leg ("perna base"): Art. 131, I.</summary>
+public sealed record ReportBaseLeg(string? Callsign) : Intent(Callsign);
+
+/// <summary>The pilot reports final ("final", "na final", "final longa"): Art. 132, I.</summary>
+public sealed record ReportFinal(string? Callsign) : Intent(Callsign);
+
+/// <summary>The pilot reports a go-around ("arremetendo", "aproximação perdida"): Art. 136.</summary>
+public sealed record ReportGoingAround(string? Callsign) : Intent(Callsign);
+
 /// <summary>Speech that could not be interpreted.</summary>
 public sealed record Unknown(string RawText) : Intent((string?)null);

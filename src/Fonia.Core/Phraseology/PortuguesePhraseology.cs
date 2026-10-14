@@ -32,6 +32,9 @@ public sealed class PortuguesePhraseology : IPhraseology
             NoOneOnFrequency silent => new Utterance(
                 $"Ninguém responde em {Mhz(silent.Frequency)}. Sintonize uma frequência de {context.Airport.Airport.Ident}: {FrequenciesOf(context.Airport)}.",
                 UtteranceKind.Notice),
+            CallTheTower tower => new Utterance(
+                $"{UnitName(context.Airport)}: o Solo não trata de chegada neste app: chame a Torre em {Mhz(tower.Frequency)}.",
+                UtteranceKind.Notice),
             CallTheSolo solo => new Utterance(
                 $"{UnitName(context.Airport)}: a Torre não trata de acionamento, pushback nem táxi neste app: chame o Solo em {Mhz(solo.Frequency)}.",
                 UtteranceKind.Notice),
@@ -57,11 +60,20 @@ public sealed class PortuguesePhraseology : IPhraseology
         // MCA 100-16 Art. 126, II: the runway, the clearance and then the wind. "Alinhe e mantenha" is composed from the manual's
         // examples (see LineUpAndWait). Art. 50: "decolagem" only in the clearance (or its cancellation).
         LineUpAndWait lineUp => $"{SpokenText.Runway(lineUp.Runway)}, alinhe e mantenha.",
+        // Art. 129 to 132: the circuit clearance says the clearance first and then the runway; the landing, the runway first. Both end with the wind.
+        CircuitClearance circuit => $"autorizado para o circuito de tráfego, {SpokenText.Runway(circuit.Runway)}{WindPart(circuit.Wind)}, reporte perna do vento.",
+        ReportBase => "reporte perna base.",
+        ReportOnFinal => "reporte na final.",
+        LandingClearance landing => $"{SpokenText.Runway(landing.Runway)}, pouso autorizado{WindPart(landing.Wind)}.",
+        GoAroundNoted => "ciente.",
+
         // Art. 127: the minutes only, digit by digit (Art. 25).
         AirborneNotice airborne => $"decolado aos {SpokenText.Digits(airborne.Minute.ToString("00", System.Globalization.CultureInfo.InvariantCulture))}.",
         TakeoffClearance takeoff => $"{SpokenText.Runway(takeoff.Runway)}, autorizado decolagem{(takeoff.Wind is { } wind ? $", {SpokenText.Wind(wind)}" : string.Empty)}.",
         _ => throw new ArgumentOutOfRangeException(nameof(instruction), instruction, "There is no phrase for this instruction."),
     };
+
+    private static string WindPart(Sim.Wind? wind) => wind is { } known ? $", {SpokenText.Wind(known)}" : string.Empty;
 
     // For the messages of the app, which are read on the screen: "118.55", not digit by digit.
     private static string Mhz(Sim.Frequency frequency) => frequency.MHz.ToString("0.0##", System.Globalization.CultureInfo.InvariantCulture);

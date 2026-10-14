@@ -37,6 +37,11 @@ public sealed class AtcEngine : IAtcEngine
             RequestStartup or RequestPushback or RequestTaxi when airport.Unit == ServiceUnit.Tower && airport.Airport.FrequencyOf(AirportFrequencyType.Ground) is { } ground
                 => Say(new CallTheSolo(ground.Frequency), Released(flight)),
 
+            // The arrival belongs to the Torre; the Solo, asked for it, says where to call.
+            RequestLanding or ReportDownwind or ReportBaseLeg or ReportFinal or ReportGoingAround when airport.Unit == ServiceUnit.Tower
+                => Arrival(intent, Released(flight), airport),
+            RequestLanding or ReportDownwind or ReportBaseLeg or ReportFinal or ReportGoingAround => CallTheTower(Released(flight), airport),
+
             // The departure belongs to the Torre; the Solo, asked for it, passes the flight on.
             ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff when airport.Unit == ServiceUnit.Tower
                 => Departure(intent, Released(flight), airport),
@@ -115,6 +120,43 @@ public sealed class AtcEngine : IAtcEngine
             flight with { Phase = FlightPhase.LineUpCleared, PendingReadback = lineUp, LastInstruction = lineUp, AssignedRunway = runway });
     }
 
+    // The Torre's part of an arrival (MCA 100-16, Art. 128 to 132): clearance to the circuit, a report asked at each leg, then the landing.
+    // A pilot who reports a leg without the controller having asked gets what the leg calls for, and the phase never goes back.
+    private static AtcDecision Arrival(Intent intent, FlightContext flight, AirportContext airport)
+    {
+        if (intent is ReportGoingAround)
+        {
+            var noted = new GoAroundNoted();
+
+            return new AtcDecision(noted, flight with { Phase = FlightPhase.Airborne, PendingReadback = null, LastInstruction = noted });
+        }
+
+        var runway = intent is not RequestLanding && flight.Phase >= FlightPhase.InCircuit
+            ? flight.AssignedRunway ?? airport.RunwayInUse
+            : airport.RunwayInUse;
+
+        if (runway is null)
+        {
+            return Say(new NoRunwayAvailable(), flight);
+        }
+
+        return intent switch
+        {
+            RequestLanding => Clearance(new CircuitClearance(runway, airport.Wind), flight, FlightPhase.InCircuit, runway),
+            ReportDownwind => Clearance(new ReportBase(), flight, FlightPhase.OnDownwind, runway),
+            ReportBaseLeg => Clearance(new ReportOnFinal(), flight, FlightPhase.OnBase, runway),
+            _ => Clearance(new LandingClearance(runway, airport.Wind), flight, FlightPhase.LandingCleared, runway),
+        };
+    }
+
+    private static AtcDecision Clearance(AtcInstruction instruction, FlightContext flight, FlightPhase phase, string runway) =>
+        new(instruction, flight with { Phase = phase > flight.Phase || instruction is CircuitClearance ? phase : flight.Phase, PendingReadback = instruction, LastInstruction = instruction, AssignedRunway = runway });
+
+    private static AtcDecision CallTheTower(FlightContext flight, AirportContext airport) =>
+        airport.Airport.FrequencyOf(AirportFrequencyType.Tower) is { } tower
+            ? Say(new Atc.CallTheTower(tower.Frequency), flight)
+            : Say(new NoTowerAvailable(), flight);
+
     // The pilot is at the holding point: the Solo passes the flight to the Torre. Reporting it before any taxi was cleared makes no sense.
     private static AtcDecision HoldingShort(FlightContext flight, AirportContext airport)
     {
@@ -163,7 +205,7 @@ public sealed class AtcEngine : IAtcEngine
 
         // The manual does not list the frequency change among what must be read back (Art. 12): pilots do it anyway, and the
         // controller takes it in silence, whatever the words and with or without the callsign, instead of arguing about it.
-        if (expected is HandoffToTower)
+        if (expected is HandoffToTower or ReportBase or ReportOnFinal)
         {
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }
@@ -188,6 +230,8 @@ public sealed class AtcEngine : IAtcEngine
         PushbackApproved pushback => RuleBasedNlu.MentionsPushback(heard) && (!pushback.WithStartup || RuleBasedNlu.MentionsStartup(heard)),
         LineUpAndWait lineUp => RuleBasedNlu.MentionsLineUp(heard) && SaysRunway(heard, lineUp.Runway),
         TakeoffClearance takeoff => RuleBasedNlu.MentionsTakeoff(heard) && SaysRunway(heard, takeoff.Runway),
+        CircuitClearance circuit => RuleBasedNlu.MentionsCircuit(heard) && SaysRunway(heard, circuit.Runway),
+        LandingClearance landing => RuleBasedNlu.MentionsLanding(heard) && SaysRunway(heard, landing.Runway),
         _ => true,
     };
 

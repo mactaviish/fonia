@@ -65,6 +65,30 @@ public sealed record LineUpAndWait(string Runway) : AtcInstruction;
 // TODO(fraseologia): said without the wind while the app has no source of it.
 public sealed record TakeoffClearance(string Runway, Wind? Wind = null) : AtcInstruction;
 
+/// <summary>
+/// Cleared to the traffic circuit on <paramref name="Runway"/>, with the wind when known, to report the downwind (MCA 100-16, Art. 129).
+/// </summary>
+// TODO(fraseologia): the manual also says the altimeter setting ("QNH 1015") here; it is left out while the app has no source for it.
+// The other form, "autorizada aproximação direta ... reporte final", is not implemented yet.
+public sealed record CircuitClearance(string Runway, Wind? Wind = null) : AtcInstruction;
+
+/// <summary>"Reporte perna base" (Art. 130, II). Art. 12 does not list reports among what must be read back.</summary>
+public sealed record ReportBase : AtcInstruction;
+
+/// <summary>"Reporte na final" (Art. 131, II).</summary>
+public sealed record ReportOnFinal : AtcInstruction;
+
+/// <summary>Landing clearance: the runway, the clearance and, when the wind is known, the wind (Art. 132, II).</summary>
+public sealed record LandingClearance(string Runway, Wind? Wind = null) : AtcInstruction;
+
+/// <summary>The pilot reported a go-around and the Torre takes note of it.</summary>
+// TODO(fraseologia): the manual shows the go-around only as the handoff of Art. 136 ("Ciente, PT CTA, chame Controle ..."), which needs a
+// next unit the airport data does not have; "ciente" alone is a proposal to confirm.
+public sealed record GoAroundNoted : AtcInstruction;
+
+/// <summary>The pilot asked the Solo for an arrival, which is the Torre's. A message of the app, not radio: the manual has no phrase for it.</summary>
+public sealed record CallTheTower(Frequency Frequency) : AtcInstruction;
+
 /// <summary>"Decolado aos 26": the Torre tells the aircraft it is airborne, with the minute it left the ground (MCA 100-16, Art. 127).</summary>
 // TODO(fraseologia): the manual follows it with "chame o Controle ..." (the next unit), which the airport data does not have; the minutes are
 // said even though the first paragraph lets the DECEA waive the time at some aerodromes.

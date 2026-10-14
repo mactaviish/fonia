@@ -292,6 +292,40 @@ public class AtcConsoleFrequencyTests
         result.Error.ShouldContain("/evento decolou");
     }
 
+    [Fact]
+    public async Task The_whole_arrival_from_the_circuit_to_the_landing_clearance_on_the_torre()
+    {
+        var typed = string.Join(
+            '\n',
+            "/com1 119.5",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, cinco milhas ao sul, instruções para pouso",
+            "autorizado circuito de tráfego pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, perna do vento",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, perna base",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, final",
+            "pista uno uno, pouso autorizado, Papa Romeo Alfa Bravo Charlie",
+            "sair\n");
+
+        var result = await RunAsync(Atc(), typed);
+
+        var text = result.Output;
+        text.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, autorizado para o circuito de tráfego, PISTA UNO UNO, reporte perna do vento.");
+        text.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, reporte perna base.");
+        text.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, reporte na final.");
+        text.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, PISTA UNO UNO, pouso autorizado.");
+        text.ShouldNotContain("repita");
+        text.ShouldNotContain("negativo");
+        result.Error.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task The_solo_asked_to_land_says_to_call_the_torre()
+    {
+        var result = await RunAsync(Atc(), "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, instruções para pouso\nsair\n");
+
+        result.Output.ShouldContain("[aviso] SOLO Curitiba: o Solo não trata de chegada neste app: chame a Torre em 119.5.");
+    }
+
     // A reader that hands over its lines one at a time and runs an action between them, like a person at a keyboard.
     private sealed class BlockingReader(string[] lines, Action between) : TextReader
     {
