@@ -36,7 +36,11 @@ internal sealed record AppOptions(
     string SpeakOut = "fonia-speak.wav",
     string? TtsVoice = null,
     string? TtsDirectory = null,
-    RadioIntensity RadioEffect = Core.Speech.RadioEffect.DefaultIntensity);
+    RadioIntensity RadioEffect = Core.Speech.RadioEffect.DefaultIntensity,
+    bool Voice = false,
+    int AudioOut = -1,
+    bool DownloadModels = false,
+    string? ModelsDir = null);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -52,6 +56,8 @@ internal static class ArgumentParser
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
+             fonia --atc <ICAO> --voice [--callsign <indicativo>] [--ptt-key <tecla>] [--stt-gpu] [--tts-voice <voz>]
+             fonia --download-models [--models-dir <pasta>]
              fonia --speak "<texto>" [--speak-out <arquivo.wav>] [--tts-voice <voz>] [--radio-effect <nível>]
 
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
@@ -84,6 +90,19 @@ internal static class ArgumentParser
           --tts-dir <pasta>      Pasta do modelo de voz. Padrão: %LOCALAPPDATA%\Fonia\models. Precisa de
                                  kokoro-v1.0.onnx (325 MB) e voices-v1.0.bin (28 MB), baixados por você; a
                                  mensagem de erro diz de onde.
+
+          --voice                Com --atc: conversa por voz. Segure o push-to-talk, fale, solte, e o controlador
+                                 responde em voz alta, tudo local. O texto do que ele entendeu e da resposta aparece
+                                 na tela, com o tempo de cada etapa. Enquanto o controlador fala, o PTT é ignorado
+                                 (canal ocupado). Usa as opções --ptt-key, --mic-device, --audio-out, --stt-*,
+                                 --tts-* e --radio-effect. Só no Windows.
+          --audio-out <n>        Alto-falante da resposta (número de --mic-list). Padrão: o do Windows.
+
+          --download-models      Baixa os modelos de voz que faltam (reconhecimento e voz do controlador, ~820 MB no total)
+                                 dos donos, confere o SHA-256 e guarda em %LOCALAPPDATA%\Fonia\models. Pode ser
+                                 interrompido: continua de onde parou. Os modos de voz também oferecem isso quando
+                                 falta modelo.
+          --models-dir <pasta>   Outra pasta para o --download-models (use a mesma em --stt-dir e --tts-dir).
 
           --sim msfs|mock        Fonte dos dados. msfs (padrão) lê o Microsoft Flight Simulator 2020;
                                  mock mostra um taxi simulado, para testar sem simulador.
@@ -126,6 +145,10 @@ internal static class ArgumentParser
         string? ttsVoice = null;
         string? ttsDir = null;
         RadioIntensity? radioEffect = null;
+        var voice = false;
+        int? audioOut = null;
+        var downloadModels = false;
+        string? modelsDir = null;
         double? speed = null;
         TimeSpan? duration = null;
         var logLevel = LogLevel.Warning;
@@ -145,6 +168,18 @@ internal static class ArgumentParser
                 continue;
             }
 
+            if (name == "--download-models")
+            {
+                downloadModels = true;
+                continue;
+            }
+
+            if (name == "--voice")
+            {
+                voice = true;
+                continue;
+            }
+
             if (name == "--stt-gpu")
             {
                 sttGpu = true;
@@ -156,7 +191,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -223,6 +258,12 @@ internal static class ArgumentParser
                 case "--radio-effect":
                     radioEffect = ParseRadioEffect(value, out problem);
                     break;
+                case "--models-dir":
+                    modelsDir = value;
+                    break;
+                case "--audio-out":
+                    audioOut = ParseDevice("--audio-out", value, out problem);
+                    break;
                 case "--speed":
                     speed = ParseSpeed(value, out problem);
                     break;
@@ -240,7 +281,7 @@ internal static class ArgumentParser
             }
         }
 
-        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect));
+        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect), new VoiceRaw(voice, audioOut), new DownloadRaw(downloadModels, modelsDir));
     }
 
     private sealed record MicRaw(string? TestPath, int? Device, string? Key, bool List);
@@ -251,22 +292,51 @@ internal static class ArgumentParser
         public bool Any => Text is not null || Out is not null || Voice is not null || Dir is not null || Effect is not null;
     }
 
+    private sealed record VoiceRaw(bool On, int? AudioOut);
+
+    private sealed record DownloadRaw(bool On, string? Dir);
+
     private sealed record SttRaw(string? TranscribePath, string? Directory, string? Model, bool Gpu)
     {
         public bool Any => TranscribePath is not null || Directory is not null || Model is not null || Gpu;
     }
 
     private static ParsedArguments Validate(
-        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt, TtsRaw tts)
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt, TtsRaw tts, VoiceRaw voice, DownloadRaw download)
     {
         var others = source is not null || replay is not null || record is not null || speed is not null || duration is not null
             || atc is not null || runway is not null || callsign is not null;
 
+        if (download.On || download.Dir is not null)
+        {
+            if (!download.On)
+            {
+                return Failure("--models-dir só vale com --download-models.");
+            }
+
+            var mixed = others || mic.List || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
+                || stt.Any || tts.Any || voice.On || voice.AudioOut is not null;
+
+            return mixed
+                ? Failure("--download-models não combina com outras opções: use só --download-models (e --models-dir).")
+                : new ParsedArguments(new AppOptions(LogLevel: logLevel, DownloadModels: true, ModelsDir: download.Dir), null, ShowHelp: false);
+        }
+
         if (mic.List)
         {
-            return others || stt.Any || tts.Any || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
+            return others || stt.Any || tts.Any || voice.On || voice.AudioOut is not null || mic.TestPath is not null || mic.Device is not null || mic.Key is not null
                 ? Failure("--mic-list não combina com outras opções: use só --mic-list.")
                 : new ParsedArguments(new AppOptions(LogLevel: logLevel, ListMics: true), null, ShowHelp: false);
+        }
+
+        if (voice.On)
+        {
+            return ValidateVoice(source, replay, record, speed, duration, logLevel, atc, runway, callsign, mic, stt, tts, voice);
+        }
+
+        if (voice.AudioOut is not null)
+        {
+            return Failure("--audio-out só vale no modo de voz: use também --atc <ICAO> --voice.");
         }
 
         if (tts.Text is not null)
@@ -356,6 +426,43 @@ internal static class ArgumentParser
         }
 
         return new ParsedArguments(new AppOptions(effective, replay, speed ?? 1.0, record, duration, logLevel), null, ShowHelp: false);
+    }
+
+    // The voice mode is the ATC mode plus a microphone, a recognizer, a voice and a loudspeaker: it takes the options of those
+    // and none of the modes that use only one of them.
+    private static ParsedArguments ValidateVoice(
+        SimSourceKind? source, string? replay, string? record, double? speed, TimeSpan? duration, LogLevel logLevel, string? atc, string? runway, string? callsign, MicRaw mic, SttRaw stt, TtsRaw tts, VoiceRaw voice)
+    {
+        if (atc is null)
+        {
+            return Failure("--voice só vale no modo ATC: use também --atc <ICAO>.");
+        }
+
+        if (mic.TestPath is not null || stt.TranscribePath is not null || tts.Text is not null || tts.Out is not null)
+        {
+            return Failure("--voice não combina com --mic-test, --transcribe, --speak nem --speak-out.");
+        }
+
+        var parsed = ValidateAtc(source, replay, record, speed, duration, logLevel, atc, runway, callsign);
+
+        return parsed.Options is null
+            ? parsed
+            : new ParsedArguments(
+                parsed.Options with
+                {
+                    Voice = true,
+                    PttKey = mic.Key ?? PushToTalkKey.DefaultName,
+                    MicDevice = mic.Device ?? -1,
+                    AudioOut = voice.AudioOut ?? -1,
+                    SttDirectory = stt.Directory,
+                    SttModel = stt.Model,
+                    SttGpu = stt.Gpu,
+                    TtsVoice = string.IsNullOrEmpty(tts.Voice) ? null : tts.Voice,
+                    TtsDirectory = tts.Dir,
+                    RadioEffect = tts.Effect ?? Core.Speech.RadioEffect.DefaultIntensity,
+                },
+                null,
+                ShowHelp: false);
     }
 
     private static ParsedArguments ValidateAtc(
@@ -464,7 +571,9 @@ internal static class ArgumentParser
         return null;
     }
 
-    private static int? ParseMicDevice(string value, out string? problem)
+    private static int? ParseMicDevice(string value, out string? problem) => ParseDevice("--mic-device", value, out problem);
+
+    private static int? ParseDevice(string option, string value, out string? problem)
     {
         problem = null;
 
@@ -473,7 +582,7 @@ internal static class ArgumentParser
             return device;
         }
 
-        problem = $"--mic-device '{value}' é inválido: use o número mostrado por --mic-list (0, 1, 2...).";
+        problem = $"{option} '{value}' é inválido: use o número mostrado por --mic-list (0, 1, 2...).";
         return null;
     }
 

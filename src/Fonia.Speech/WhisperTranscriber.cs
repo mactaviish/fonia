@@ -12,7 +12,7 @@ namespace Fonia.Speech;
 /// stays loaded; the processor is rebuilt only when the prompt changes (a new callsign or station), so the usual call
 /// pays for recognition alone.
 /// </summary>
-public sealed class WhisperTranscriber(WhisperOptions options) : ITranscriber
+public sealed class WhisperTranscriber(WhisperOptions options) : ITranscriber, IWarmUp
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private WhisperFactory? _factory;
@@ -63,6 +63,10 @@ public sealed class WhisperTranscriber(WhisperOptions options) : ITranscriber
             _gate.Release();
         }
     }
+
+    /// <summary>Loads the model and recognizes a second of silence, with the prompt of the flight, so that the first real call pays for nothing.</summary>
+    public async Task WarmUpAsync(TranscriptionContext context, CancellationToken ct) =>
+        _ = await TranscribeAsync(new RecordedSpeech(AudioFormat.Speech, new byte[AudioFormat.Speech.BytesPerSecond]), context, ct);
 
     public async ValueTask DisposeAsync()
     {

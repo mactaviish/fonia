@@ -117,14 +117,29 @@ dotnet run --project src/Fonia.App -- --mic-test fala.wav                       
 dotnet run --project src/Fonia.App -- --mic-test fala.wav --mic-device 1 --ptt-key F8
 ```
 
-Para transcrever a gravação, localmente e sem internet, e ver o que o NLU entendeu, baixe o modelo [`ggml-small.bin`](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin) (466 MB, licença MIT) para `%LOCALAPPDATA%\Fonia\models` (ou use `--stt-dir`):
+Para transcrever a gravação, localmente e sem internet, e ver o que o NLU entendeu, use o modelo [`ggml-small.bin`](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin) (466 MB, licença MIT), que o app baixa sozinho se faltar (ou use `--stt-dir` para outra pasta):
 
 ```bash
 dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC          # CPU, ~2 s por frase
 dotnet run --project src/Fonia.App -- --transcribe fala.wav --callsign PR-ABC --stt-gpu  # GPU (Vulkan), opcional
 ```
 
-Para ouvir como o controlador soa (voz local, sem internet), baixe [`kokoro-v1.0.onnx`](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx) (325 MB) e [`voices-v1.0.bin`](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin) (28 MB) para a mesma pasta `%LOCALAPPDATA%\Fonia\models` (ou use `--tts-dir`). O modelo Kokoro-82M é Apache-2.0. A fala sai em um WAV:
+**Modelos de voz.** Os modelos (~800 MB, de código aberto) não vêm no repositório: o app os baixa dos donos, confere o SHA-256 e os guarda em `%LOCALAPPDATA%\Fonia\models`. Na primeira vez que um modo de voz precisar deles, ele lista o que falta e pergunta antes de baixar; ou baixe de uma vez:
+
+```bash
+dotnet run --project src/Fonia.App -- --download-models
+```
+
+Pode interromper (Ctrl+C) e rodar de novo: continua de onde parou. Uma distribuição que traga os modelos pode colocá-los em `models/` ao lado do executável, que é procurado primeiro. Créditos e licenças: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+
+**Conversa por voz** (Windows; precisa dos modelos de voz, que o app baixa se faltarem, e de microfone e alto-falante): segure o push-to-talk (Ctrl direito), fale como um piloto ("Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento"), solte, e o controlador responde em voz alta. A tela mostra o que ele entendeu, a resposta em texto e o tempo de cada etapa. Enquanto ele fala, o PTT é ignorado, como num canal ocupado. Ctrl+C encerra.
+
+```bash
+dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC --voice
+dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC --voice --stt-gpu --ptt-key F8 --audio-out 1   # GPU no reconhecimento, outra tecla e outro alto-falante
+```
+
+Para ouvir como o controlador soa (voz local, sem internet), sem o resto do pipeline: o modelo Kokoro-82M (Apache-2.0) é baixado pelo app se faltar. A fala sai em um WAV:
 
 ```bash
 dotnet run --project src/Fonia.App -- --speak "PAPA ROMEO ALFA BRAVO CHARLIE, prossiga."                       # voz sorteada, efeito de rádio média

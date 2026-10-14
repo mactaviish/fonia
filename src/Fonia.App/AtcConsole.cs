@@ -13,6 +13,7 @@ namespace Fonia.App;
 /// </summary>
 /// <param name="callsignFromSim">Reads the aircraft's registration from the simulator; used only when no callsign was given.</param>
 /// <param name="interactive">True on a terminal: shows the "piloto&gt;" prompt.</param>
+/// <param name="voiceMode">When given, the pilot speaks to the microphone and the controller answers aloud, instead of typing.</param>
 internal sealed class AtcConsole(
     IAirportCatalog catalog,
     INlu nlu,
@@ -22,7 +23,8 @@ internal sealed class AtcConsole(
     TextWriter output,
     TextWriter error,
     Func<AppOptions, CancellationToken, Task<string?>> callsignFromSim,
-    bool interactive)
+    bool interactive,
+    IVoiceMode? voiceMode = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -71,6 +73,12 @@ internal sealed class AtcConsole(
         WriteHeader(context, callsign);
 
         var flight = new FlightContext(callsign, FlightPhase.Parked, airport.Ident, PendingReadback: null);
+
+        if (voiceMode is not null)
+        {
+            return await voiceMode.RunAsync(context, flight, ct);
+        }
+
         var phrase = new PhraseContext(callsign, context);
 
         while (true)
@@ -137,7 +145,10 @@ internal sealed class AtcConsole(
             output.WriteLine($"Frequências: {string.Join(", ", frequencies)}.");
         }
 
-        output.WriteLine("Digite a fala do piloto (\"sair\" encerra).");
+        if (voiceMode is null)
+        {
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra).");
+        }
     }
 
     private void Show(Utterance? utterance, AirportContext context)

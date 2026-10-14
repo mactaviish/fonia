@@ -28,6 +28,18 @@ internal static class MicCommands
             output.WriteLine($"  {i}: {devices[i]}");
         }
 
+        var speakers = NAudioPlayer.ListDevices();
+
+        if (speakers.Count > 0)
+        {
+            output.WriteLine("Alto-falantes (--audio-out; o padrão do Windows é usado sem ele):");
+
+            for (var i = 0; i < speakers.Count; i++)
+            {
+                output.WriteLine($"  {i}: {speakers[i]}");
+            }
+        }
+
         return 0;
     }
 

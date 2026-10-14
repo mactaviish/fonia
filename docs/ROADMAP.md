@@ -56,8 +56,9 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 - [x] `ITranscriber` com a opção escolhida (modelo pequeno, prompt de aviação): `fonia --transcribe <arquivo.wav>`
 - [x] Camada de pronúncia e fonetizador pt-BR próprio (`Pronunciation`, `PortuguesePhonemizer`), sem espeak-ng
 - [x] `ISynthesizer` com voz pt-BR (Kokoro, voz configurável, padrão aleatória) e efeito de rádio configurável (desligado, leve, **média** por padrão, forte): `fonia --speak "<texto>"`
-- [ ] Integrar ao pipeline do M2
-- [ ] Medir e registrar latência por etapa
+- [x] Integrar ao pipeline do M2: `fonia --atc <ICAO> --voice` (PTT, reconhecimento, NLU, motor, fraseologia, voz do controlador e alto-falante)
+- [x] Download assistido dos modelos de voz (`fonia --download-models`, pergunta ao faltar modelo, SHA-256 fixado, retomada) e `THIRD-PARTY-NOTICES.txt`; tarefa adicionada em 2026-10-14 depois do primeiro teste ao vivo, que bateu no modelo ausente. O instalador do M4 vai usar o mesmo downloader
+- [ ] Medir e registrar latência por etapa: o app já mostra o tempo de cada etapa a cada troca (`tempos: reconhecimento ... | voz ... | até o áudio ...`); falta registrar em `docs/decisions/speech.md` os números de uma sessão real
 
 **Pronto quando:** você aperta PTT, fala "solicito táxi" e ouve a resposta do Solo, sem digitar nada.
 
@@ -87,6 +88,7 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 ## Backlog / ideias
 
 - Sotaques e vozes diferentes por posição e aeroporto
+- Voz de Natal: a `pm_santa` (hoje fora do `VoiceCatalog` porque não agradou no rádio) como voz especial de temporada, sorteada só em dezembro (data via `TimeProvider`) ou escolhida à mão com `--tts-voice`. Ouvir de novo com as pronúncias e o efeito de rádio antes de liberar
 - Efeito de rádio realista (ruído, queda de sinal por distância)
 - Emergências (MAYDAY/PAN-PAN)
 - Integração com addons de aeroportos

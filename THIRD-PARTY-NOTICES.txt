@@ -1,0 +1,65 @@
+Fonia: avisos de terceiros
+==========================
+
+O Fonia é licenciado sob Apache-2.0 (arquivo LICENSE). Ele usa os componentes abaixo, cada um sob a sua própria
+licença. Esta lista existe para dar o crédito devido e para acompanhar qualquer distribuição do aplicativo.
+
+Os MODELOS de voz não fazem parte do repositório nem do código: o aplicativo os baixa dos próprios donos
+(fonia --download-models), confere o SHA-256 e os guarda no computador do usuário. Uma distribuição que traga os
+modelos dentro deve manter esta lista e as licenças dos modelos junto.
+
+
+Modelos de voz (baixados)
+-------------------------
+
+Whisper (reconhecimento de voz), modelo "small" em formato ggml
+  Pesos: OpenAI, https://github.com/openai/whisper (licença MIT)
+  Conversão e formato ggml: whisper.cpp, https://github.com/ggml-org/whisper.cpp (licença MIT)
+  Arquivo: ggml-small.bin, https://huggingface.co/ggerganov/whisper.cpp
+
+Kokoro-82M (voz do controlador)
+  Pesos: hexgrad, https://huggingface.co/hexgrad/Kokoro-82M (licença Apache-2.0)
+  Arquivos em formato ONNX: kokoro-onnx, https://github.com/thewh1teagle/kokoro-onnx (licença MIT; o repositório
+  indica o modelo como Apache-2.0). Arquivos: kokoro-v1.0.onnx e voices-v1.0.bin.
+  Segundo o cartão do modelo, o Kokoro foi treinado com áudio de domínio público, áudio sob licenças como Apache e MIT
+  e áudio sintético de provedores de TTS fechados, e traz estas atribuições (CC BY):
+    - Koniwa (CC BY 3.0)
+    - SIWIS (CC BY 4.0)
+
+
+Bibliotecas (pacotes NuGet)
+---------------------------
+
+Whisper.net, Whisper.net.Runtime, Whisper.net.Runtime.Vulkan - MIT
+  https://github.com/sandrohanea/whisper.net (as bibliotecas nativas são builds do whisper.cpp, MIT)
+
+Microsoft.ML.OnnxRuntime - MIT
+  https://github.com/microsoft/onnxruntime
+
+NAudio.WinMM, NAudio.Core - MIT
+  https://github.com/naudio/NAudio
+
+SimConnect.NET - MIT
+  Detalhes e o aviso sobre a DLL do SimConnect (do SDK do Microsoft Flight Simulator, não distribuída aqui):
+  docs/decisions/simconnect.md
+
+Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.Logging.Console - MIT
+  https://github.com/dotnet/runtime
+
+
+Dados
+-----
+
+OurAirports (aeroportos, pistas e frequências) - domínio público
+  https://ourairports.com/data/
+  Recorte do Brasil embutido em data/ourairports/.
+
+Os nomes falados dos aeroportos (data/atc-names.csv) e a fraseologia seguem o MCA 100-16 do DECEA
+(https://publicacoes.decea.mil.br/publicacao/mca-100-16); o texto do manual não é reproduzido aqui.
+
+
+Fonetizador e pronúncia
+-----------------------
+
+O fonetizador do português do Brasil (src/Fonia.Core/Speech/PortuguesePhonemizer.cs) e a camada de pronúncia foram
+escritos para o projeto, sem código nem dicionário do espeak-ng (GPL). O Fonia não distribui nem usa o espeak-ng.

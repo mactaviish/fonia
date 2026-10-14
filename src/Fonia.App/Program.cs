@@ -41,6 +41,14 @@ Console.CancelKeyPress += (_, e) =>
     cancellation.Cancel();
 };
 
+// A terminal in both directions: only then can the app ask the user something, or rewrite a line of progress.
+var terminal = !Console.IsInputRedirected && !Console.IsOutputRedirected;
+
+if (options.DownloadModels)
+{
+    return await ModelCommands.DownloadAsync(options, Console.In, Console.Out, Console.Error, terminal, cancellation.Token);
+}
+
 if (options.ListMics)
 {
     return MicCommands.List(Console.Out, Console.Error);
@@ -53,12 +61,12 @@ if (options.MicTestPath is not null)
 
 if (options.TranscribePath is not null)
 {
-    return await SttCommands.TranscribeAsync(options, Console.Out, Console.Error, cancellation.Token);
+    return await SttCommands.TranscribeAsync(options, Console.In, Console.Out, Console.Error, terminal, cancellation.Token);
 }
 
 if (options.SpeakText is not null)
 {
-    return await TtsCommands.SpeakAsync(options, Console.Out, Console.Error, cancellation.Token);
+    return await TtsCommands.SpeakAsync(options, Console.In, Console.Out, Console.Error, terminal, cancellation.Token);
 }
 
 var interactive = !Console.IsOutputRedirected;
@@ -66,6 +74,19 @@ var sourceFactory = new SimSourceFactory(loggerFactory, TimeProvider.System);
 
 if (options.AtcAirport is not null)
 {
+    VoiceModeHandle? voice = null;
+
+    if (options.Voice)
+    {
+        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, cancellation.Token);
+
+        if (voice is null)
+        {
+            return 1;
+        }
+    }
+
+    await using var voiceResources = voice;
     var callsignReader = new SimCallsignReader(sourceFactory, TimeProvider.System, TimeSpan.FromSeconds(10), Console.Error.WriteLine);
     var atc = new AtcConsole(
         AirportCatalog.Load(),
@@ -76,7 +97,8 @@ if (options.AtcAirport is not null)
         Console.Out,
         Console.Error,
         callsignReader.ReadAsync,
-        interactive: !Console.IsInputRedirected && interactive);
+        interactive: !Console.IsInputRedirected && interactive,
+        voiceMode: voice?.Mode);
 
     return await atc.RunAsync(options, cancellation.Token);
 }
