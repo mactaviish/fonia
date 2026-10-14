@@ -44,7 +44,7 @@ public class AtcEngineHandoffTests
     [InlineData("Chamará Torre Curitiba no...")]
     [InlineData("Uno noito, decimal cinco, cinco, Alfa Bravo Charlie.")]
     [InlineData("1, 1, 8, decimal cinco para o Alfa Bravo Charlie.")]
-    [InlineData("um um nove decimal cinco, Papa Romeo Alfa Bravo Charlie")]
+    [InlineData("uno uno nove decimal cinco, Papa Romeo Alfa Bravo Charlie")]
     public void What_the_pilot_says_after_the_handoff_is_taken_in_silence_and_never_asked_to_be_repeated(string said)
     {
         var handed = _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, SoloAndTower).NextContext;
@@ -59,10 +59,10 @@ public class AtcEngineHandoffTests
     // The manual does not list the frequency change among what must be read back (Art. 12), but pilots do it: the Solo takes
     // it in silence, with or without the callsign, and does not argue about how it was said.
     [Theory]
-    [InlineData("chamarei Torre Curitiba um um oito decimal cinco cinco")]
+    [InlineData("chamarei Torre Curitiba uno uno oito decimal cinco cinco")]
     [InlineData("Chamará Torre Curitiba no")]
-    [InlineData("um oito decimal cinco para o Alfa Bravo Charlie")]
-    [InlineData("um um nove decimal cinco")]
+    [InlineData("uno oito decimal cinco para o Alfa Bravo Charlie")]
+    [InlineData("uno uno nove decimal cinco")]
     public void A_readback_of_the_handoff_is_taken_in_silence_whatever_was_said(string said)
     {
         var handed = _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, SoloAndTower).NextContext;
@@ -171,7 +171,7 @@ public class AtcEngineHandoffTests
     {
         var onTower = FrequencyResolver.Apply(SoloAndTower, Tower);
 
-        var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista um um"), Taxiing, onTower);
+        var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista uno uno"), Taxiing, onTower);
 
         decision.Instruction.ShouldBe(new NoResponse());
     }
@@ -180,7 +180,7 @@ public class AtcEngineHandoffTests
     public void A_readback_that_is_silently_taken_does_not_stop_a_real_correction_of_the_taxi()
     {
         // Only the handoff is optional: the taxi clearance still has to be read back right.
-        var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista um cinco"), Taxiing, SoloAndTower);
+        var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista uno cinco"), Taxiing, SoloAndTower);
 
         decision.Instruction.ShouldBeOfType<RequestReadbackCorrection>();
     }

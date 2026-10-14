@@ -6,7 +6,7 @@ namespace Fonia.Core.Phraseology;
 /// <summary>
 /// Turns what the speech-to-text returned (or what the pilot typed) into plain lowercase tokens: no accents, no
 /// punctuation, a decimal separator between digits becomes the word "decimal". The NLU works on these tokens, so
-/// "Três, um-zero!" and "tres um zero" look the same to it.
+/// "Três, um-zero!" and "tres uno zero" look the same to it.
 /// </summary>
 public static class SpokenTokens
 {

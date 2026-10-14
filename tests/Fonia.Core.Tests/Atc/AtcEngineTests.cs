@@ -116,7 +116,7 @@ public class AtcEngineTests
     {
         var cleared = _engine.Handle(new RequestTaxi(Own, null), Parked, Solo).NextContext;
 
-        var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista um um"), cleared, Solo);
+        var decision = _engine.Handle(new Readback(Own, "autorizado taxi pista uno uno"), cleared, Solo);
 
         decision.Instruction.ShouldBe(new NoResponse());
         decision.NextContext.PendingReadback.ShouldBeNull();
@@ -124,8 +124,8 @@ public class AtcEngineTests
     }
 
     [Theory]
-    [InlineData("autorizado taxi pista um cinco")]
-    [InlineData("autorizado taxi pista um um esquerda")]
+    [InlineData("autorizado taxi pista uno cinco")]
+    [InlineData("autorizado taxi pista uno uno esquerda")]
     [InlineData("ciente")]
     [InlineData("autorizado taxi")]
     public void A_wrong_or_incomplete_taxi_readback_is_corrected_and_still_pending(string said)
@@ -188,9 +188,9 @@ public class AtcEngineTests
     }
 
     [Theory]
-    [InlineData("autorizado taxi para o ponto de espera da um um")]
+    [InlineData("autorizado taxi para o ponto de espera da uno uno")]
     [InlineData("autorizado taxi para o ponto de espera da onze o")]
-    [InlineData("táxi um um")]
+    [InlineData("táxi uno uno")]
     [InlineData("autorizado taxi para o ponto de espera da pista onze")]
     public void A_taxi_readback_may_leave_out_the_word_pista(string said)
     {
@@ -214,8 +214,8 @@ public class AtcEngineTests
     }
 
     [Theory]
-    [InlineData("autorizado taxi para o ponto de espera da um cinco")]
-    [InlineData("autorizado taxi para o ponto de espera da um um esquerda")]
+    [InlineData("autorizado taxi para o ponto de espera da uno cinco")]
+    [InlineData("autorizado taxi para o ponto de espera da uno uno esquerda")]
     public void A_wrong_runway_without_the_word_pista_is_still_corrected(string said)
     {
         var cleared = _engine.Handle(new RequestTaxi(Own, null), Parked, Solo).NextContext;
@@ -364,7 +364,7 @@ public class AtcEngineTests
         Say("abc").ShouldBe(new PushbackApproved(false));
         Say("abc pushback").ShouldBe(new NoResponse());
         Say("abc pronto").ShouldBe(new TaxiClearance("11"));
-        Say("abc um um").ShouldBe(new NoResponse());
+        Say("abc uno uno").ShouldBe(new NoResponse());
         flight.PendingReadback.ShouldBeNull();
         flight.Phase.ShouldBe(FlightPhase.Taxiing);
     }
@@ -387,7 +387,7 @@ public class AtcEngineTests
         Say("Solo, PRABC, box 3, solicita pushback e acionamento").Instruction.ShouldBe(new PushbackApproved(true));
         Say("Autorizado pushback e acionamento, PRABC").Instruction.ShouldBe(new NoResponse());
         Say("Solo, PRABC, pronto para o táxi").Instruction.ShouldBe(new TaxiClearance("11"));
-        Say("Táxi pista um um, PRABC").Instruction.ShouldBe(new NoResponse());
+        Say("Táxi pista uno uno, PRABC").Instruction.ShouldBe(new NoResponse());
         flight.PendingReadback.ShouldBeNull();
         flight.Phase.ShouldBe(FlightPhase.Taxiing);
     }

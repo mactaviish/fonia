@@ -69,7 +69,7 @@ Medido nas 20 gravações reais, sem prompt: 10/20 antes e depois (os erros que 
 
 ## Medições com a voz real (20 frases gravadas pelo mantenedor, 2026-10-13)
 
-O indicativo foi falado por extenso ("Papa Romeo Alfa Bravo Charlie"), como manda a regra do projeto. O WER não vale aqui (as frases de referência traziam "PRABC" e "um cinco", e o mantenedor falou de outro jeito); vale a intenção entendida pelo `RuleBasedNlu`.
+O indicativo foi falado por extenso ("Papa Romeo Alfa Bravo Charlie"), como manda a regra do projeto. O WER não vale aqui (as frases de referência traziam "PRABC" e "uno cinco", e o mantenedor falou de outro jeito); vale a intenção entendida pelo `RuleBasedNlu`.
 
 | Modelo | Prompt | Intenção | Tempo/frase | Memória |
 |---|---|---|---|---|
@@ -83,7 +83,7 @@ O indicativo foi falado por extenso ("Papa Romeo Alfa Bravo Charlie"), como mand
 
 ## Regras de saída (vale para o TTS e para qualquer voz)
 
-- **Pista sempre dígito a dígito:** "UNO CINCO", nunca "quinze" nem "um cinco". `SpokenText` já faz isso (também para frequência e QNH).
+- **Pista sempre dígito a dígito:** "UNO CINCO", nunca "quinze". `SpokenText` já faz isso (também para frequência e QNH).
 - **Indicativo sempre letra por letra**, no alfabeto fonético ("PAPA ROMEO ALFA BRAVO CHARLIE"), nunca como palavra.
 - Qualquer TTS recebe o texto já escrito por extenso pela fraseologia; nenhum motor pode reinterpretar números ou siglas.
 

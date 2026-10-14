@@ -195,8 +195,8 @@ public class AtcConsoleFrequencyTests
             "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento",
             "acionamento aprovado, Papa Romeo Alfa Bravo Charlie",
             "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
-            "autorizado táxi pista um um, Papa Romeo Alfa Bravo Charlie",
-            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista um um",
+            "autorizado táxi pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
             "Uno noito, decimal cinco, cinco, Alfa Bravo Charlie.",
             "sair\n");
 
@@ -216,14 +216,14 @@ public class AtcConsoleFrequencyTests
             "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento",
             "acionamento aprovado, Papa Romeo Alfa Bravo Charlie",
             "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
-            "autorizado táxi pista um um, Papa Romeo Alfa Bravo Charlie",
-            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista um um",
-            "Chamando Torre Curitiba, um um nove decimal cinco, Alfa Bravo Charlie",
+            "autorizado táxi pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
+            "Chamando Torre Curitiba, uno uno nove decimal cinco, Alfa Bravo Charlie",
             "/com1 119.5",
-            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, ponto de espera pista um um, pronto para partida",
-            "alinhe e mantenha pista um um, Papa Romeo Alfa Bravo Charlie",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, ponto de espera pista uno uno, pronto para partida",
+            "alinhe e mantenha pista uno uno, Papa Romeo Alfa Bravo Charlie",
             "Papa Romeo Alfa Bravo Charlie, alinhado",
-            "autorizado decolagem pista um um, Papa Romeo Alfa Bravo Charlie",
+            "autorizado decolagem pista uno uno, Papa Romeo Alfa Bravo Charlie",
             "Papa Romeo Alfa Bravo Charlie, decolando",
             "sair\n");
 
@@ -246,10 +246,10 @@ public class AtcConsoleFrequencyTests
             '\n',
             "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento",
             "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
-            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista um um",
+            "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
             "/com1 119.5",
             "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, pronto para decolagem",
-            "alinhe e mantenha pista um cinco, Papa Romeo Alfa Bravo Charlie",
+            "alinhe e mantenha pista uno cinco, Papa Romeo Alfa Bravo Charlie",
             "sair\n");
 
         var result = await RunAsync(Atc(), typed);

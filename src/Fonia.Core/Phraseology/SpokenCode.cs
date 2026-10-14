@@ -3,7 +3,7 @@ using System.Text;
 namespace Fonia.Core.Phraseology;
 
 /// <summary>
-/// Reads numbers, letters and registrations the way pilots say them: digit by digit ("um um oito decimal um"), by
+/// Reads numbers, letters and registrations the way pilots say them: digit by digit ("uno uno oito decimal uno"), by
 /// words ("quinze", "vinte e cinco"), spelled with the phonetic alphabet ("papa romeo alfa") or with plain letters.
 /// It accepts the manual's words (UNO, MEIA) and the everyday ones (um, seis, Romeu) alike: the NLU understands the
 /// pilot, not the manual. Works on the tokens from <see cref="SpokenTokens"/>.
@@ -276,7 +276,7 @@ public static class SpokenCode
     }
 
     /// <summary>
-    /// Reads the longest sequence of numbers and letters starting at <paramref name="start"/> ("um um oito decimal um"
+    /// Reads the longest sequence of numbers and letters starting at <paramref name="start"/> ("uno uno oito decimal uno"
     /// gives "118.1"). Returns an empty string when the first token is not one of them.
     /// </summary>
     public static string ReadRun(IReadOnlyList<string> tokens, int start, out int end)

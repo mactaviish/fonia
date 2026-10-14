@@ -82,9 +82,9 @@ public class RuleBasedNluTests
 
     [Theory]
     [InlineData("Autorizado pushback e acionamento, chamo pronto para o táxi, PRABC")]
-    [InlineData("autorizado táxi para o ponto de espera da pista um cinco, PRABC")]
+    [InlineData("autorizado táxi para o ponto de espera da pista uno cinco, PRABC")]
     [InlineData("PRABC, ciente")]
-    [InlineData("pista um cinco, PRABC")]
+    [InlineData("pista uno cinco, PRABC")]
     public void An_answer_to_an_instruction_is_a_readback_when_one_is_waiting(string said)
     {
         var intent = _nlu.Interpret(said, AwaitingReadback);
@@ -95,9 +95,9 @@ public class RuleBasedNluTests
     [Fact]
     public void A_readback_keeps_what_was_said_without_the_callsign_so_the_engine_can_check_it()
     {
-        var intent = _nlu.Interpret("Autorizado táxi, pista um cinco, PRABC", AwaitingReadback);
+        var intent = _nlu.Interpret("Autorizado táxi, pista uno cinco, PRABC", AwaitingReadback);
 
-        intent.ShouldBeOfType<Readback>().Text.ShouldBe("autorizado taxi pista um cinco");
+        intent.ShouldBeOfType<Readback>().Text.ShouldBe("autorizado taxi pista uno cinco");
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class RuleBasedNluTests
     [Fact]
     public void The_callsign_with_numbers_while_an_instruction_waits_is_still_a_readback()
     {
-        _nlu.Interpret("pista um cinco, PRABC", AwaitingReadback).ShouldBeOfType<Readback>();
+        _nlu.Interpret("pista uno cinco, PRABC", AwaitingReadback).ShouldBeOfType<Readback>();
     }
 
     [Fact]
@@ -308,7 +308,7 @@ public class RuleBasedNluTests
     [InlineData("Táxi, pista 1,5, PRABC", "15")]
     [InlineData("Táxi, pista 3,3 esquerda, PRABC", "33L")]
     [InlineData("PRABC pronto para o táxi pista 1-5", "15")]
-    [InlineData("PRABC pronto para o táxi pista um cinco", "15")]
+    [InlineData("PRABC pronto para o táxi pista uno cinco", "15")]
     public void A_runway_written_with_a_comma_or_a_dash_is_a_runway_not_a_decimal_number(string said, string runway)
     {
         _nlu.Interpret(said, Parked).ShouldBe(new RequestTaxi(Own, runway));

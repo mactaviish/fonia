@@ -69,9 +69,9 @@ public class TowerDepartureTests
     // ---- line-up readback
 
     [Theory]
-    [InlineData("alinhe e mantenha pista um um")]
-    [InlineData("alinhando e mantendo pista um um")]
-    [InlineData("pista um um alinhe e mantenha")]
+    [InlineData("alinhe e mantenha pista uno uno")]
+    [InlineData("alinhando e mantendo pista uno uno")]
+    [InlineData("pista uno uno alinhe e mantenha")]
     public void A_correct_line_up_readback_with_the_callsign_gets_no_answer(string said)
     {
         var lineUp = Handle(new RequestDeparture(Own, null), Handed).NextContext;
@@ -84,9 +84,9 @@ public class TowerDepartureTests
     }
 
     [Theory]
-    [InlineData("alinhe e mantenha pista um cinco", "wrong runway")]
+    [InlineData("alinhe e mantenha pista uno cinco", "wrong runway")]
     [InlineData("alinhe e mantenha", "no runway")]
-    [InlineData("pista um um", "no instruction")]
+    [InlineData("pista uno uno", "no instruction")]
     [InlineData("ciente", "nothing")]
     public void A_wrong_or_incomplete_line_up_readback_is_corrected_and_stays_pending(string said, string why)
     {
@@ -103,7 +103,7 @@ public class TowerDepartureTests
     {
         var lineUp = Handle(new RequestDeparture(Own, null), Handed).NextContext;
 
-        Handle(new Readback(null, "alinhe e mantenha pista um um"), lineUp).Instruction.ShouldBeOfType<RequestReadbackCorrection>();
+        Handle(new Readback(null, "alinhe e mantenha pista uno uno"), lineUp).Instruction.ShouldBeOfType<RequestReadbackCorrection>();
     }
 
     // ---- takeoff clearance
@@ -144,9 +144,9 @@ public class TowerDepartureTests
     }
 
     [Theory]
-    [InlineData("autorizado decolagem pista um um")]
-    [InlineData("autorizado decolar pista um um")]
-    [InlineData("decolagem pista um um")]
+    [InlineData("autorizado decolagem pista uno uno")]
+    [InlineData("autorizado decolar pista uno uno")]
+    [InlineData("decolagem pista uno uno")]
     public void A_correct_takeoff_readback_gets_no_answer(string said)
     {
         var cleared = Handle(new ReportLinedUp(Own, null), Handed).NextContext;
@@ -159,9 +159,9 @@ public class TowerDepartureTests
     }
 
     [Theory]
-    [InlineData("autorizado decolagem pista um cinco")]
+    [InlineData("autorizado decolagem pista uno cinco")]
     [InlineData("autorizado decolagem")]
-    [InlineData("pista um um")]
+    [InlineData("pista uno uno")]
     public void A_wrong_takeoff_readback_is_corrected_and_stays_pending(string said)
     {
         var cleared = Handle(new ReportLinedUp(Own, null), Handed).NextContext;

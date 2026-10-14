@@ -22,10 +22,10 @@ public class DepartureNluTests
 
     // Art. 126, I: "Torre Rio, TIB 5570, ponto de espera pista 17, pronto para partida."
     [Theory]
-    [InlineData("Torre Curitiba, PRABC, ponto de espera pista um cinco, pronto para partida", "15")]
-    [InlineData("Torre Curitiba, Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista um cinco, pronto para partida", "15")]
+    [InlineData("Torre Curitiba, PRABC, ponto de espera pista uno cinco, pronto para partida", "15")]
+    [InlineData("Torre Curitiba, Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno cinco, pronto para partida", "15")]
     [InlineData("PRABC pronto para decolar", null)]
-    [InlineData("PRABC, pronto para decolagem, pista um cinco", "15")]
+    [InlineData("PRABC, pronto para decolagem, pista uno cinco", "15")]
     [InlineData("Torre, PRABC, solicito decolagem pista 15", "15")]
     [InlineData("PRABC solicita decolagem", null)]
     [InlineData("Alfa Bravo Charlie, pronto para a partida", null)]
@@ -62,24 +62,24 @@ public class DepartureNluTests
     [Fact]
     public void Lined_up_keeps_the_runway_if_one_was_said()
     {
-        _nlu.Interpret("PRABC, alinhado pista um cinco", LineUp).ShouldBe(new ReportLinedUp(Own, "15"));
+        _nlu.Interpret("PRABC, alinhado pista uno cinco", LineUp).ShouldBe(new ReportLinedUp(Own, "15"));
     }
 
     [Theory]
-    [InlineData("alinhe e mantenha pista um cinco, PRABC")]
-    [InlineData("alinhando e mantendo pista um cinco, PRABC")]
-    [InlineData("alinha e mantém, pista um cinco, Alfa Bravo Charlie")]
-    [InlineData("pista um cinco, alinhe e mantenha, PRABC")]
+    [InlineData("alinhe e mantenha pista uno cinco, PRABC")]
+    [InlineData("alinhando e mantendo pista uno cinco, PRABC")]
+    [InlineData("alinha e mantém, pista uno cinco, Alfa Bravo Charlie")]
+    [InlineData("pista uno cinco, alinhe e mantenha, PRABC")]
     public void Repeating_the_line_up_instruction_is_a_readback(string said)
     {
         _nlu.Interpret(said, LineUp).ShouldBeOfType<Readback>();
     }
 
     [Theory]
-    [InlineData("autorizado decolagem pista um cinco, PRABC")]
-    [InlineData("autorizado decolar, pista um cinco, PRABC")]
-    [InlineData("decolagem pista um cinco, PRABC")]
-    [InlineData("pista um cinco, autorizado a decolar, Alfa Bravo Charlie")]
+    [InlineData("autorizado decolagem pista uno cinco, PRABC")]
+    [InlineData("autorizado decolar, pista uno cinco, PRABC")]
+    [InlineData("decolagem pista uno cinco, PRABC")]
+    [InlineData("pista uno cinco, autorizado a decolar, Alfa Bravo Charlie")]
     public void Repeating_the_takeoff_clearance_is_a_readback(string said)
     {
         _nlu.Interpret(said, Takeoff).ShouldBeOfType<Readback>();

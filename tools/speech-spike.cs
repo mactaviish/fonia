@@ -356,7 +356,7 @@ string Describe(Intent intent)
     return $"{kind}@{intent.Callsign ?? "-"}";
 }
 
-// Word error rate on the words as the NLU sees them: no accents or punctuation, and numbers as digits ("um cinco" = "15").
+// Word error rate on the words as the NLU sees them: no accents or punctuation, and numbers as digits ("uno cinco" = "15").
 double WordErrorRate(string reference, string hypothesis)
 {
     var r = Canonical(reference);
