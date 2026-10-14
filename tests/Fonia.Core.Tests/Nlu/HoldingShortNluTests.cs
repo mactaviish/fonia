@@ -20,7 +20,7 @@ public class HoldingShortNluTests
     [InlineData("Papa Romeo Alfa Bravo Charlie, no ponto de espera da 33", "33")]
     [InlineData("PRABC no ponto de espera, pronto", null)]
     [InlineData("alfa bravo charlie, no ponto de espera", null)]
-    [InlineData("PRABC chegando no ponto de espera da pista 15, pronto para decolagem", "15")]
+    [InlineData("PRABC chegando no ponto de espera da pista 15", "15")]
     [InlineData("Solo, PRABC, no ponto de espera pista 1,5", "15")]
     public void The_pilot_who_reports_being_at_the_holding_point_is_understood_even_with_a_readback_waiting(string said, string? runway)
     {

@@ -227,8 +227,25 @@ Como num rádio de verdade, **quem responde é quem está na frequência sintoni
 
 - `FrequencyResolver.Apply(airport, com1)` devolve o `AirportContext` daquela fala: `Unit` = Solo, Torre ou AFIS se a frequência é a dele (do `Airport.Frequencies`), ou **ninguém** em qualquer outra (inclusive ATIS e Aproximação, que não atendem quem está no solo); `Tuned` guarda a frequência. Sem leitura do rádio (nulo), vale a unidade padrão do aeroporto, que é como o modo texto sem simulador sempre funcionou.
 - De onde vem o rádio: `--com1 <MHz>` ou `/com1 <MHz>` na sessão de texto (o que o usuário digitou vence), ou o **COM1 do simulador, lido a cada fala** (`SimSession` mantém a conexão aberta durante a sessão; o indicativo vem da mesma conexão). O laço de voz lê o rádio a cada transmissão, então trocar de frequência no meio do voo muda quem responde na fala seguinte, e a posição (Solo ou Torre) tem voz própria.
-- O motor continua **determinístico e sem estado**: recebe o contexto já resolvido. Em frequência de ninguém, qualquer fala recebe o aviso `NoOneOnFrequency` (com as frequências do aeroporto); a Torre de um aeroporto **com Solo** não faz o trabalho do Solo (`TowerPhraseologyPending`, aviso, até a fraseologia da Torre entrar).
+- O motor continua **determinístico e sem estado**: recebe o contexto já resolvido. Em frequência de ninguém, qualquer fala recebe o aviso `NoOneOnFrequency` (com as frequências do aeroporto); a Torre de um aeroporto **com Solo** não faz o trabalho do Solo e diz onde chamá-lo (`CallTheSolo`, aviso, não rádio).
 - **Passagem Solo → Torre:** o piloto relata o ponto de espera (`ReportHoldingShort`; o NLU o separa do cotejamento do táxi pelo "no/em ponto de espera") e o Solo responde `HandoffToTower` com a frequência da Torre ("chame Torre Curitiba UNO UNO OITO DECIMAL CINCO CINCO"); a fase vira `HandedToTower`. O cotejamento da troca é **opcional**: fica "pendente" só para o NLU ler o que o piloto disser em seguida como resposta, e o Solo a recebe em silêncio, sem checar a frequência dita (o reconhecedor erra números, e o manual não a exige). Não é detectado pela posição porque o modelo de pista ainda não tem coordenadas das cabeceiras.
+
+### 11. A Torre: alinhar e decolar (`Fonia.Core.Atc`)
+
+Depois da passagem do Solo (`HandedToTower`), o piloto sintoniza a frequência da Torre e o motor, com `airport.Unit == Tower`, conduz a saída (MCA 100-16/2025, Art. 126; catálogo em `docs/phraseology/torre-pt-br.md`):
+
+```
+RequestDeparture ("pronto para partida")  ->  LineUpAndWait (pista)   ->  fase LineUpCleared,   cotejamento exigido
+ReportLinedUp ("alinhado")                ->  TakeoffClearance (pista) ->  fase TakeoffCleared,  cotejamento exigido
+ReportTakingOff ("decolando")             ->  em silêncio
+```
+
+- A **pista** é a que o Solo autorizou no táxi (`FlightContext.AssignedRunway`), ou a pista em uso se não houver. "No ponto de espera" na frequência da Torre vale como pedido de partida; o piloto que já diz "alinhado" recebe a autorização de decolagem direto.
+- O **NLU** separa o pedido de partida do cotejamento pelas palavras (quem repete diz "autorizado", "alinhe e mantenha" com a pista) e pela fase do voo: "partida" é a partida dos motores antes do táxi e a partida para decolar depois dele.
+- **Cotejamento exigido, com o indicativo e a pista**, nas duas instruções (Art. 12: entrar na pista e decolar): sem a palavra ("alinh", "decol") ou com a pista errada, "negativo" e a versão certa.
+- **Art. 50:** "decolagem" só aparece na autorização de decolagem (ou no seu cancelamento), nunca em "alinhe e mantenha".
+- O **vento** vem do `AirportContext.Wind` e é dito no fim da autorização (`SpokenText.Wind`, Art. 31); sem fonte de vento (ainda não há METAR nem leitura do simulador) a frase sai sem ele.
+- Na frequência do **Solo**, "pronto para partida", "alinhado" e "decolando" não são atendidos: o Solo passa o voo para a Torre, como no relato do ponto de espera.
 
 ## Fluxo de uma interação (exemplo)
 

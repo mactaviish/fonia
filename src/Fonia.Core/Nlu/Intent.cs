@@ -32,5 +32,17 @@ public sealed record CallsignOnly(string? Callsign) : Intent(Callsign);
 /// <param name="Runway">The runway the pilot named, or null when none was said.</param>
 public sealed record ReportHoldingShort(string? Callsign, string? Runway) : Intent(Callsign);
 
+/// <summary>
+/// The pilot is ready to depart ("pronto para partida", "solicito decolagem", with or without the holding point): the Torre lines
+/// the flight up, or, if it already is, clears the takeoff (MCA 100-16, Art. 126, I).
+/// </summary>
+public sealed record RequestDeparture(string? Callsign, string? Runway) : Intent(Callsign);
+
+/// <summary>The pilot reports being lined up on the runway ("alinhado").</summary>
+public sealed record ReportLinedUp(string? Callsign, string? Runway) : Intent(Callsign);
+
+/// <summary>The pilot reports starting the takeoff ("decolando"): the Torre has nothing to say to it.</summary>
+public sealed record ReportTakingOff(string? Callsign) : Intent(Callsign);
+
 /// <summary>Speech that could not be interpreted.</summary>
 public sealed record Unknown(string RawText) : Intent((string?)null);

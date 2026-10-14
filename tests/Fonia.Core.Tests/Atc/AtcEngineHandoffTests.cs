@@ -143,11 +143,19 @@ public class AtcEngineHandoffTests
     public void On_the_torre_of_an_airport_that_has_a_solo_the_torre_does_not_do_the_solos_job()
     {
         var onTower = FrequencyResolver.Apply(SoloAndTower, Tower);
+        var solo = SoloAndTower.Airport.FrequencyOf(AirportFrequencyType.Ground)!.Frequency;
 
-        _engine.Handle(new RequestStartup(Own, null), Parked, onTower).Instruction.ShouldBe(new TowerPhraseologyPending());
-        _engine.Handle(new RequestPushback(Own, false, null), Parked, onTower).Instruction.ShouldBe(new TowerPhraseologyPending());
-        _engine.Handle(new RequestTaxi(Own, null), Parked, onTower).Instruction.ShouldBe(new TowerPhraseologyPending());
-        _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, onTower).Instruction.ShouldBe(new TowerPhraseologyPending());
+        _engine.Handle(new RequestStartup(Own, null), Parked, onTower).Instruction.ShouldBe(new CallTheSolo(solo));
+        _engine.Handle(new RequestPushback(Own, false, null), Parked, onTower).Instruction.ShouldBe(new CallTheSolo(solo));
+        _engine.Handle(new RequestTaxi(Own, null), Parked, onTower).Instruction.ShouldBe(new CallTheSolo(solo));
+    }
+
+    [Fact]
+    public void On_the_torre_the_report_of_the_holding_point_is_a_departure_to_line_up()
+    {
+        var onTower = FrequencyResolver.Apply(SoloAndTower, Tower);
+
+        _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, onTower).Instruction.ShouldBeOfType<LineUpAndWait>();
     }
 
     [Fact]

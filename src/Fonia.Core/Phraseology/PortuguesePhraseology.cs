@@ -32,8 +32,8 @@ public sealed class PortuguesePhraseology : IPhraseology
             NoOneOnFrequency silent => new Utterance(
                 $"Ninguém responde em {Mhz(silent.Frequency)}. Sintonize uma frequência de {context.Airport.Airport.Ident}: {FrequenciesOf(context.Airport)}.",
                 UtteranceKind.Notice),
-            TowerPhraseologyPending => new Utterance(
-                $"{UnitName(context.Airport)}: a fraseologia da Torre ainda não existe neste app (em desenvolvimento).{BackToSolo(context.Airport)}",
+            CallTheSolo solo => new Utterance(
+                $"{UnitName(context.Airport)}: a Torre não trata de acionamento, pushback nem táxi neste app: chame o Solo em {Mhz(solo.Frequency)}.",
                 UtteranceKind.Notice),
             NoRunwayAvailable => new Utterance($"Os dados de {context.Airport.Airport.Ident} não têm pista utilizável: o controlador não pode autorizar o táxi.", UtteranceKind.Notice),
             RequestReadbackCorrection correction => new Utterance($"{callsign}, negativo, {Body(correction.Expected)}"),
@@ -53,6 +53,11 @@ public sealed class PortuguesePhraseology : IPhraseology
         // MCA 100-16 Art. 125, II, without the taxiway: the airport data has none. Without the altimeter setting too:
         // TODO(fraseologia): say the QNH ("ajuste de altímetro") when there is a source for it.
         TaxiClearance taxi => $"autorizado táxi para o ponto de espera da {SpokenText.Runway(taxi.Runway)}.",
+
+        // MCA 100-16 Art. 126, II: the runway, the clearance and then the wind. "Alinhe e mantenha" is composed from the manual's
+        // examples (see LineUpAndWait). Art. 50: "decolagem" only in the clearance (or its cancellation).
+        LineUpAndWait lineUp => $"{SpokenText.Runway(lineUp.Runway)}, alinhe e mantenha.",
+        TakeoffClearance takeoff => $"{SpokenText.Runway(takeoff.Runway)}, autorizado decolagem{(takeoff.Wind is { } wind ? $", {SpokenText.Wind(wind)}" : string.Empty)}.",
         _ => throw new ArgumentOutOfRangeException(nameof(instruction), instruction, "There is no phrase for this instruction."),
     };
 

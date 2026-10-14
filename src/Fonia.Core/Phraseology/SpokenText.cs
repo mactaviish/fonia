@@ -93,6 +93,30 @@ public static class SpokenText
         return Digits(text.EndsWith('.') ? text + "0" : text);
     }
 
+    /// <summary>
+    /// The wind as the manual has it (Art. 31, table 9): VENTO, the direction in three digits and GRAUS, then the speed and NÓ/NÓS,
+    /// every digit apart: "VENTO DOIS DOIS ZERO GRAUS, OITO NÓS". Calm below one knot, "superior a 99" from a hundred, and gusts after.
+    /// </summary>
+    public static string Wind(Wind wind)
+    {
+        ArgumentNullException.ThrowIfNull(wind);
+
+        if (wind.SpeedKnots < 1)
+        {
+            return "VENTO CALMO";
+        }
+
+        var direction = (wind.DirectionDegrees == 0 ? 360 : wind.DirectionDegrees).ToString("000", CultureInfo.InvariantCulture);
+        var speed = wind.SpeedKnots >= 100
+            ? "VENTO SUPERIOR A 99 NÓS"
+            : $"{Digits(wind.SpeedKnots.ToString(CultureInfo.InvariantCulture))} {(wind.SpeedKnots == 1 ? "NÓ" : "NÓS")}";
+        var text = $"VENTO {Digits(direction)} GRAUS, {speed}";
+
+        return wind.GustKnots is { } gust
+            ? text + (gust >= 100 ? ", RAJADAS SUPERIORES A 99 NÓS" : $", RAJADAS DE {Digits(gust.ToString(CultureInfo.InvariantCulture))} NÓS")
+            : text;
+    }
+
     /// <summary>The altimeter setting in hPa, digit by digit: 1017 is "UNO ZERO UNO SETE" and 1000 is "UNO MIL".</summary>
     public static string Qnh(int hectopascals)
     {
