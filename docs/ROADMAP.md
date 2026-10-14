@@ -62,6 +62,20 @@ Cada marco termina com testes passando e algo que você consegue demonstrar. Mar
 
 **Pronto quando:** você aperta PTT, fala "solicito táxi" e ouve a resposta do Solo, sem digitar nada.
 
+**Validado em 2026-10-14** pelo mantenedor, ao vivo: PTT, reconhecimento, motor, voz e alto-falante funcionando. Falta só registrar os tempos de uma sessão real (item de latência acima).
+
+### Problemas conhecidos da voz (a analisar depois do M3)
+
+Achados no primeiro teste ao vivo; nenhum atrapalha o uso, mas o controlador soa pior do que precisa.
+
+1. **"Repita." sai com uma leitura estranha** (o mantenedor ouviu "repida"). Frase muito curta: `xˌepˈitæ.`, 8 fonemas.
+   - *Suspeita:* o Kokoro escolhe o vetor de estilo da voz pela **quantidade de fonemas** (a linha `n-1` da tabela de 510); para textos muito curtos essa linha tem pouco treino e a prosódia fica instável. Também pode ser o `t` entre vogais, que o modelo sonoriza.
+   - *A testar:* (a) gerar "Repita." usando a linha de estilo de uma frase mais longa (por exemplo a de ~30 fonemas); (b) deixar um respiro antes (`... Repita.`) ou acrescentar contexto, como "PAPA ROMEO ALFA BRAVO CHARLIE, repita."; (c) conferir se a grafia de pronúncia (`repita` para `repíta`, `repítta`) muda o resultado; (d) comparar com a saída do espeak-ng só como régua (o fonetizador é nosso, a régua não vai para o repositório).
+2. **Quase não há pausa entre "negativo" e "autorizado"** em "PAPA ROMEO ALFA BRAVO CHARLIE, negativo, autorizado táxi...". A vírgula está nos fonemas (token 3), mas o modelo a encolhe.
+   - *A testar:* (a) falar a correção em **duas frases** ("PAPA ROMEO ALFA BRAVO CHARLIE, negativo." e depois "autorizado táxi...") com ~250 ms de silêncio entre elas, o que o `PhonemeChunker` e o `KokoroSynthesizer` já sabem fazer para textos longos (cuidado: cada pedaço curto cai no problema 1); (b) trocar a vírgula por ponto, ou por reticências; (c) pausa maior depois do indicativo e depois de "negativo" definida na fraseologia (uma `Utterance` com partes), sem mudar o texto mostrado.
+   - Qualquer solução precisa valer para o resto da fraseologia (a frase inteira é uma só `Utterance`), então a decisão é de design: **pausas** ficam na camada de pronúncia/voz, não no texto do manual.
+
+
 ## M4: Voo completo em um aeroporto
 
 - [ ] Posição Torre: alinhar, autorização de decolagem, autorização de pouso
