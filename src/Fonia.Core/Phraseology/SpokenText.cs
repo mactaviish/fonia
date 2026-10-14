@@ -198,6 +198,51 @@ public static class SpokenText
             || (heardCode.Length >= 3 && heardCode.All(char.IsAsciiLetter) && ownCode.EndsWith(heardCode, StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Whether what the recognizer wrote is this aircraft's callsign with one letter wrong, missing or extra ("Papa Romeo Foxtrot Alfa Romeo
+    /// Alfa" for PRFRA). The exact and the abbreviated forms are <see cref="IsSameCallsign"/>; this is the last resort, and only for a
+    /// registration of letters long enough that one letter cannot be another aircraft: the session has a single pilot.
+    /// </summary>
+    public static bool IsCloseCallsign(string heard, string own)
+    {
+        var heardCode = Normalize(heard);
+        var ownCode = Normalize(own);
+
+        return ownCode.Length >= 5
+            && ownCode.All(char.IsAsciiLetter)
+            && heardCode.Length >= ownCode.Length - 1
+            && heardCode.Length <= ownCode.Length + 1
+            && heardCode.All(char.IsAsciiLetter)
+            && WithinOneEdit(heardCode, ownCode);
+    }
+
+    private static bool WithinOneEdit(string a, string b)
+    {
+        if (Math.Abs(a.Length - b.Length) > 1)
+        {
+            return false;
+        }
+
+        var i = 0;
+
+        while (i < a.Length && i < b.Length && a[i] == b[i])
+        {
+            i++;
+        }
+
+        if (i == a.Length || i == b.Length)
+        {
+            return true;
+        }
+
+        // One substitution, deletion or insertion: what is left after the first difference must be the same.
+        return a.Length == b.Length
+            ? string.CompareOrdinal(a, i + 1, b, i + 1, a.Length) == 0
+            : a.Length > b.Length
+                ? string.CompareOrdinal(a, i + 1, b, i, b.Length - i) == 0
+                : string.CompareOrdinal(a, i, b, i + 1, a.Length - i) == 0;
+    }
+
     // Phonetic and digit words become characters ("papa romeo alfa" is PRA); the telephony of a company becomes its
     // designator ("gol" is GLO); any other word is taken as the letters themselves ("pr abc" is PRABC).
     private static string Normalize(string callsign)

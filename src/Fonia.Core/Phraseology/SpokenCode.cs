@@ -77,6 +77,7 @@ public static class SpokenCode
         ["echo"] = 'E',
         ["eco"] = 'E',
         ["foxtrot"] = 'F',
+        ["fox"] = 'F',
         ["golf"] = 'G',
         ["golfe"] = 'G',
         ["hotel"] = 'H',

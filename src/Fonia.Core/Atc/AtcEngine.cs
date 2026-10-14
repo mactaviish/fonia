@@ -94,8 +94,15 @@ public sealed class AtcEngine : IAtcEngine
             return new AtcDecision(new RequestCallsign(), flight);
         }
 
-        return flight.AwaitingCallsign is { } held
-            ? Handle(held with { Callsign = flight.Callsign }, flight with { AwaitingCallsign = null }, airport)
+        if (flight.AwaitingCallsign is { } held)
+        {
+            return Handle(held with { Callsign = flight.Callsign }, flight with { AwaitingCallsign = null }, airport);
+        }
+
+        // Only the callsign right after a notice of the controller ("decolado aos ...", "reporte perna base") is the acknowledgement. After
+        // "chame Torre ..." it is a call to the unit the pilot is still on, which is invited to go ahead.
+        return flight.PendingReadback is AirborneNotice or LandedNotice or ReportBase or ReportOnFinal
+            ? new AtcDecision(new NoResponse(), flight with { PendingReadback = null })
             : Say(new GoAhead(), flight);
     }
 
@@ -236,7 +243,7 @@ public sealed class AtcEngine : IAtcEngine
 
         // The manual does not list the frequency change among what must be read back (Art. 12): pilots do it anyway, and the
         // controller takes it in silence, whatever the words and with or without the callsign, instead of arguing about it.
-        if (expected is HandoffToTower or HandoffToGround or ReportBase or ReportOnFinal or AirborneNotice or LandedNotice)
+        if (IsTakenInSilence(expected))
         {
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }
@@ -252,6 +259,11 @@ public sealed class AtcEngine : IAtcEngine
         // Wrong or incomplete: "negativo" and the right version; the instruction is still waiting for its readback.
         return Say(new RequestReadbackCorrection(expected), flight);
     }
+
+    // What the manual does not list among what must be read back (Art. 12), or says without the pilot having asked: pilots acknowledge
+    // it anyway, and the controller takes it in silence, whatever the words and with or without the callsign.
+    private static bool IsTakenInSilence(AtcInstruction instruction) =>
+        instruction is HandoffToTower or HandoffToGround or ReportBase or ReportOnFinal or AirborneNotice or LandedNotice;
 
     // The taxi readback must have the runway; the startup and pushback ones must say what was approved.
     private static bool IsCorrect(AtcInstruction expected, IReadOnlyList<string> heard) => expected switch

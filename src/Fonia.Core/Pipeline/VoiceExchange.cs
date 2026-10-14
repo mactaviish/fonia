@@ -50,6 +50,12 @@ public sealed class VoiceExchange(
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
 
+    // What the controller last said on the radio, which the pilot is probably about to read back. A message of the app is not radio.
+    private string? LastTransmission(FlightContext flight, AirportContext airport) =>
+        flight.LastInstruction is { } last && phraseology.Speak(last, new PhraseContext(flight.Callsign, airport)) is { Kind: UtteranceKind.Radio } said
+            ? said.Text
+            : null;
+
     /// <summary>The controller speaks first, about something the telemetry showed: no recognizer, the rest as in an exchange.</summary>
     public async Task<AnnouncementResult> AnnounceAsync(FlightEvent flightEvent, FlightContext flight, AirportContext airport, CancellationToken ct)
     {
@@ -89,7 +95,7 @@ public sealed class VoiceExchange(
         var station = phraseology.UnitName(airport);
 
         var started = _time.GetTimestamp();
-        var transcript = await transcriber.TranscribeAsync(speech, new TranscriptionContext(flight.Callsign, station), ct);
+        var transcript = await transcriber.TranscribeAsync(speech, new TranscriptionContext(flight.Callsign, station, LastTransmission(flight, airport)), ct);
         var transcribed = _time.GetElapsedTime(started);
         onHeard?.Invoke(transcript.Text);
 
