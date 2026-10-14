@@ -57,6 +57,8 @@ public sealed class PortuguesePhraseology : IPhraseology
         // MCA 100-16 Art. 126, II: the runway, the clearance and then the wind. "Alinhe e mantenha" is composed from the manual's
         // examples (see LineUpAndWait). Art. 50: "decolagem" only in the clearance (or its cancellation).
         LineUpAndWait lineUp => $"{SpokenText.Runway(lineUp.Runway)}, alinhe e mantenha.",
+        // Art. 127: the minutes only, digit by digit (Art. 25).
+        AirborneNotice airborne => $"decolado aos {SpokenText.Digits(airborne.Minute.ToString("00", System.Globalization.CultureInfo.InvariantCulture))}.",
         TakeoffClearance takeoff => $"{SpokenText.Runway(takeoff.Runway)}, autorizado decolagem{(takeoff.Wind is { } wind ? $", {SpokenText.Wind(wind)}" : string.Empty)}.",
         _ => throw new ArgumentOutOfRangeException(nameof(instruction), instruction, "There is no phrase for this instruction."),
     };

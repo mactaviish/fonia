@@ -41,6 +41,22 @@ internal sealed class ConsoleVoiceObserver(TextWriter output, TextWriter error, 
         }
     }
 
+    public void OnAnnounced(AnnouncementResult result)
+    {
+        lock (_gate)
+        {
+            switch (result.Reply)
+            {
+                case { Kind: UtteranceKind.Notice } notice:
+                    output.WriteLine($"[aviso] {notice.Text}");
+                    break;
+                case { } reply:
+                    output.WriteLine($"{(result.Station.Length > 0 ? result.Station : station)}: {reply.Text}");
+                    break;
+            }
+        }
+    }
+
     public void OnChannelBusy()
     {
         lock (_gate)

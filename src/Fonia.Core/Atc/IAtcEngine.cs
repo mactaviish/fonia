@@ -9,4 +9,10 @@ namespace Fonia.Core.Atc;
 public interface IAtcEngine
 {
     AtcDecision Handle(Intent intent, FlightContext flight, AirportContext airport);
+
+    /// <summary>
+    /// Decides what the controller says, if anything, about something the telemetry showed. Most events are no business of
+    /// the controller that is on the frequency, and then the instruction is <see cref="NoResponse"/> and the flight is unchanged.
+    /// </summary>
+    AtcDecision Handle(FlightEvent flightEvent, FlightContext flight, AirportContext airport);
 }

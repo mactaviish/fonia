@@ -247,6 +247,18 @@ ReportTakingOff ("decolando")             ->  em silêncio
 - O **vento** vem do `AirportContext.Wind` e é dito no fim da autorização (`SpokenText.Wind`, Art. 31); sem fonte de vento (ainda não há METAR nem leitura do simulador) a frase sai sem ele.
 - Na frequência do **Solo**, "pronto para partida", "alinhado" e "decolando" não são atendidos: o Solo passa o voo para a Torre, como no relato do ponto de espera.
 
+### 12. O controlador que fala primeiro: eventos da telemetria (`Fonia.Core.Atc`, `Fonia.Core.Pipeline`)
+
+Parte da fraseologia é fala do controlador sem o piloto falar antes (Art. 127: "decolado aos 26"). O caminho é o mesmo das outras falas, só que a entrada é um evento e não uma intenção:
+
+```
+ISimAdapter (AircraftState) -> FlightEventDetector -> FlightEvent (TookOff) -> IAtcEngine.Handle(FlightEvent) -> Fraseologia -> TTS -> Áudio
+```
+
+- `FlightEventDetector` acompanha os snapshots: `TookOff` quando o voo estava no solo, saiu dele e fica no ar por 5 s (sem exigir velocidade, porque helicóptero decola a 0 nó; a espera separa decolagem de quique ou falha do simulador). Quem já voa ao abrir o app não gera decolagem. A hora do evento é a de quando saiu do chão.
+- O motor decide se o evento importa: a Torre que autorizou a decolagem (`FlightPhase.TakeoffCleared`) e continua na frequência diz `AirborneNotice` ("PRABC, decolado aos DOIS MEIA.", só os minutos em UTC, dígito a dígito, 6 é MEIA) e o voo vai para `Airborne`. Qualquer outro caso é `NoResponse` e o voo não muda.
+- `VoiceLoop.AnnounceAsync` espera o canal ficar livre (como quem está na frequência), fala e leva o estado do voo adiante. `VoiceMode` lê a telemetria enquanto o rádio roda; sem simulador (`--callsign` dado) não há telemetria, e no console de texto `/evento decolou` faz o papel dela.
+
 ## Fluxo de uma interação (exemplo)
 
 1. Piloto aperta PTT e diz: "Solo Curitiba, PR-ABC, pátio 1, posição 3, solicita instruções de táxi".

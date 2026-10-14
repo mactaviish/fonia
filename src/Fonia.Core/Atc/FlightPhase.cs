@@ -16,4 +16,7 @@ public enum FlightPhase
 
     /// <summary>The Torre cleared the takeoff.</summary>
     TakeoffCleared,
+
+    /// <summary>The telemetry showed the aircraft left the ground after the clearance, and the Torre said so.</summary>
+    Airborne,
 }

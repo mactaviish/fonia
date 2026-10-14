@@ -81,7 +81,7 @@ if (options.AtcAirport is not null)
 
     if (options.Voice)
     {
-        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, () => options.Com1 ?? session.Com1, cancellation.Token);
+        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, () => options.Com1 ?? session.Com1, session.States, cancellation.Token);
 
         if (voice is null)
         {

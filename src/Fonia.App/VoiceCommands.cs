@@ -11,7 +11,7 @@ namespace Fonia.App;
 internal static class VoiceCommands
 {
     /// <summary>The voice mode and the devices it must close, or null (with the reason on <paramref name="error"/>) when it cannot be built.</summary>
-    public static async Task<VoiceModeHandle?> TryCreateAsync(AppOptions options, TextReader input, TextWriter output, TextWriter error, bool interactive, Func<Fonia.Core.Sim.Frequency?> com1, CancellationToken ct)
+    public static async Task<VoiceModeHandle?> TryCreateAsync(AppOptions options, TextReader input, TextWriter output, TextWriter error, bool interactive, Func<Fonia.Core.Sim.Frequency?> com1, Func<CancellationToken, IAsyncEnumerable<Fonia.Core.Sim.AircraftState>?> states, CancellationToken ct)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -83,7 +83,8 @@ internal static class VoiceCommands
                 output,
                 error,
                 Random.Shared,
-                com1);
+                com1,
+                states);
 
             return new VoiceModeHandle(mode, resources, asyncResources);
         }

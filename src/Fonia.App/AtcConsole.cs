@@ -27,7 +27,8 @@ internal sealed class AtcConsole(
     Func<AppOptions, CancellationToken, Task<string?>> callsignFromSim,
     bool interactive,
     IVoiceMode? voiceMode = null,
-    Func<Frequency?>? liveCom1 = null)
+    Func<Frequency?>? liveCom1 = null,
+    TimeProvider? timeProvider = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -126,6 +127,13 @@ internal sealed class AtcConsole(
                 continue;
             }
 
+            if (IsEventCommand(line))
+            {
+                var radio = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
+                flight = HandleEventCommand(line, flight, radio);
+                continue;
+            }
+
             // Who answers is who is on the frequency the radio is on at this moment.
             var onTheFrequency = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
             var decision = engine.Handle(nlu.Interpret(line, flight), flight, onTheFrequency);
@@ -166,7 +174,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem).");
         }
     }
 
@@ -175,6 +183,38 @@ internal sealed class AtcConsole(
         var trimmed = line.TrimStart();
 
         return trimmed.StartsWith("/com1", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 5 || char.IsWhiteSpace(trimmed[5]));
+    }
+
+    private static bool IsEventCommand(string line)
+    {
+        var trimmed = line.TrimStart();
+
+        return trimmed.StartsWith("/evento", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 7 || char.IsWhiteSpace(trimmed[7]));
+    }
+
+    // "/evento decolou" stands for what the telemetry shows with a simulator: the aircraft left the ground, now.
+    private FlightContext HandleEventCommand(string line, FlightContext flight, AirportContext onTheFrequency)
+    {
+        var argument = line.Trim()[7..].Trim();
+
+        if (!argument.Equals("decolou", StringComparison.OrdinalIgnoreCase))
+        {
+            error.WriteLine("fonia: evento desconhecido. Use /evento decolou.");
+            return flight;
+        }
+
+        var decision = engine.Handle(new TookOff((timeProvider ?? TimeProvider.System).GetUtcNow()), flight, onTheFrequency);
+
+        if (phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, onTheFrequency)) is { } utterance)
+        {
+            Show(utterance, onTheFrequency);
+        }
+        else
+        {
+            output.WriteLine("(o controlador não diz nada sobre isso)");
+        }
+
+        return decision.NextContext;
     }
 
     // "/com1" shows the radio, "/com1 118.55" tunes it, "/com1 off" gives it back to what the airport has by default.
