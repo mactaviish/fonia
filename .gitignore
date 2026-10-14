@@ -60,3 +60,7 @@ spike-*.log
 
 # Spike de voz: gravações com a voz do mantenedor (dado pessoal, fora do git)
 /tools/speech-spike/recordings/
+
+# Manuais e outras fontes baixadas para consulta local (o projeto cita o artigo e o link, não redistribui o PDF)
+/*.pdf
+/docs/fontes-locais/

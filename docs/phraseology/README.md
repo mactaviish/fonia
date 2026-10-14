@@ -18,9 +18,14 @@ Regra do projeto: o que o controlador **fala** segue o MCA 100-16 vigente. Onde 
 - As edições de **2016** (Portarias 36/DGCEA e 231/DGCEA) e a de 2020 (Portaria 290/DGCEA) estão **revogadas**. Diferenças que importam, vistas na comparação 2016 → 2025: o alfabeto passou a "Romeo" (antes "Romeu"), a resposta de partida passou a "acionamento aprovado" (antes "livre acionar") e o **`pushback` entrou no manual** (Art. 123). Notas ou código baseados no PDF de 2016 estão errados nesses pontos.
 - Como conferir a edição vigente: abrir a página oficial acima (o portal mostra "Em vigor em" e avisos de alteração futura), olhar a Portaria da primeira página e o "Revoga".
 
+## O PDF do manual
+
+Para ler o manual, baixe o PDF da edição vigente na página oficial e guarde **fora do git**: a raiz do repositório (`/*.pdf`) e `docs/fontes-locais/` estão no `.gitignore`. O projeto não redistribui o manual: as notas citam o artigo e a frase.
+
 ## Arquivos
 
 - [`solo-pt-br.md`](solo-pt-br.md): catálogo da fraseologia do Solo usada no M2 (acionamento, pushback, táxi, readback), com a fonte de cada frase, e como falar números, letras, pistas e indicativos.
+- [`torre-pt-br.md`](torre-pt-br.md): catálogo da fraseologia da Torre usada no M4 (saída: ponto de espera, alinhar, decolagem; chegada: circuito, final, pouso; depois do pouso), com artigo de cada frase, como falar vento e hora e o que fica de fora.
 
 ## O que o NLU não deve herdar daqui
 
