@@ -262,6 +262,27 @@ public static class SpokenText
                 : string.CompareOrdinal(a, i, b, i + 1, a.Length - i) == 0;
     }
 
+    /// <summary>
+    /// Whether the words end with the last two letters of this aircraft's callsign ("... Romeo Alfa" for PRFRA). A weaker sign than the
+    /// whole callsign: it is used only to take a readback that is right in everything else.
+    /// </summary>
+    public static bool EndsWithCallsignTail(IReadOnlyList<string> tokens, string own)
+    {
+        ArgumentNullException.ThrowIfNull(tokens);
+
+        const int Letters = 2;
+        var ownCode = Normalize(own);
+
+        if (ownCode.Length < Letters + 3 || !ownCode.All(char.IsAsciiLetter) || tokens.Count < Letters)
+        {
+            return false;
+        }
+
+        var heard = Normalize(string.Join(' ', tokens.Skip(tokens.Count - Letters)));
+
+        return heard == ownCode[^Letters..];
+    }
+
     // Phonetic and digit words become characters ("papa romeo alfa" is PRA); the telephony of a company becomes its
     // designator ("gol" is GLO); any other word is taken as the letters themselves ("pr abc" is PRABC).
     private static string Normalize(string callsign)
@@ -272,6 +293,14 @@ public static class SpokenText
 
         while (index < tokens.Count)
         {
+            // "Fox Trot" and its slips ("Fox Troc") are two words for one letter.
+            if (tokens[index] == "fox" && index + 1 < tokens.Count && (tokens[index + 1].StartsWith("tro", StringComparison.Ordinal) || tokens[index + 1].StartsWith("str", StringComparison.Ordinal)))
+            {
+                code.Append('F');
+                index += 2;
+                continue;
+            }
+
             if (SpokenCode.TryRead(tokens, ref index, out var value))
             {
                 code.Append(value);

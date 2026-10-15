@@ -38,7 +38,7 @@ public sealed class RuleBasedNlu : INlu
     private static readonly string[] LineUpStems = ["alinh"];
 
     // The arrival (MCA 100-16, Art. 128 to 132, 136).
-    private static readonly string[] LandingStems = ["pouso", "pousar", "circuito", "aproxim"];
+    private static readonly string[] LandingStems = ["pous", "pouso", "pousar", "circuito", "aproxim"];
     private static readonly string[] GoAroundStems = ["arremet", "perdida"];
 
     // The conditions of the aerodrome (Art. 121): asking for them needs no request word when the pilot names the information, and
@@ -72,7 +72,8 @@ public sealed class RuleBasedNlu : INlu
         var pushback = HasAny(rest, PushbackStems);
         var startup = HasAny(rest, StartupStems);
         // "ciente" comes out of the recognizer as "sente" and "siente" too; the short one is no stem because it is inside other words.
-        var repeating = HasAny(rest, ReadbackStems) || rest.Contains("sente");
+        // "alinhe" and "mantenha" are the words of the line-up clearance, which the pilot repeats without "autorizado".
+        var repeating = HasAny(rest, ReadbackStems) || rest.Contains("sente") || rest.Contains("alinhe") || rest.Contains("mantenha");
 
         if (AsksForInformation(rest, repeating))
         {
@@ -116,13 +117,13 @@ public sealed class RuleBasedNlu : INlu
             var soundsLikeAnAnswer = repeating || rest.Contains("pista") || HasNumber(rest);
 
             return flight.PendingReadback is not null && soundsLikeAnAnswer
-                ? new Readback(callsign, string.Join(' ', rest))
+                ? new Readback(callsign, string.Join(' ', rest), TailOnly(callsign, tokens, flight))
                 : new Unknown(text ?? string.Empty);
         }
 
         if (repeating && !asking || (!asking && Answers(flight.PendingReadback, pushback, startup, taxi)))
         {
-            return new Readback(callsign, string.Join(' ', rest));
+            return new Readback(callsign, string.Join(' ', rest), TailOnly(callsign, tokens, flight));
         }
 
         if (pushback)
@@ -150,6 +151,10 @@ public sealed class RuleBasedNlu : INlu
 
         return HasAny(rest, InformationStems) || (HasAny(rest, WeakInformationStems) && (HasAny(rest, RequestStems) || rest.Contains("qual")));
     }
+
+    // The callsign was not found but the words end with its last two letters: only the start of it was written badly.
+    private static bool TailOnly(string? callsign, IReadOnlyList<string> tokens, FlightContext flight) =>
+        callsign is null && SpokenText.EndsWithCallsignTail(tokens, flight.Callsign);
 
     // What the pilot says at the holding point and on the runway: ready for departure, lined up, taking off. A readback (which
     // has words like "autorizado") is none of these, and neither is the repeating of the line-up or the takeoff clearance.
@@ -203,6 +208,12 @@ public sealed class RuleBasedNlu : INlu
         }
 
         // "pernabase": the recognizer glues the two words.
+        // In the circuit the recognizer often loses "perna" ("nado, vento"): the word "vento" alone is the downwind report.
+        if (flight.Phase == FlightPhase.InCircuit && rest.Contains("vento"))
+        {
+            return new ReportDownwind(callsign);
+        }
+
         if (rest.Contains("base") || rest.Contains("pernabase"))
         {
             return new ReportBaseLeg(callsign);

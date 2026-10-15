@@ -90,7 +90,7 @@ public sealed class VoiceLoopNewFlightTests : IAsyncDisposable
     public async Task What_waited_for_a_readback_in_the_old_flight_does_not_follow_to_the_new_one()
     {
         _loop.StartFlight(Second, NewFlight);
-        _said = "Papa Tango Xray Yankee Zulu, pista uno um";
+        _said = "Papa Tango Xray Yankee Zulu, pista uno uno";
 
         await SpeakAsync();
 
@@ -101,7 +101,7 @@ public sealed class VoiceLoopNewFlightTests : IAsyncDisposable
     [Fact]
     public async Task Without_a_new_flight_the_loop_goes_on_as_before()
     {
-        _said = "Papa Romeo Alfa Bravo Charlie, pista uno um";
+        _said = "Papa Romeo Alfa Bravo Charlie, pista uno uno";
 
         await SpeakAsync();
 

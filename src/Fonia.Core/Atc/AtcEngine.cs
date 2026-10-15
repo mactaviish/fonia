@@ -56,6 +56,8 @@ public sealed class AtcEngine : IAtcEngine
             ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff => HoldingShort(Released(flight), airport),
             RequestStartup => Issue(new StartupApproved(), Released(flight), FlightPhase.StartupApproved),
             RequestPushback pushback => Issue(new PushbackApproved(pushback.WithStartup), Released(flight), pushback.WithStartup ? FlightPhase.StartupApproved : FlightPhase.PushbackApproved),
+            // After the landing the taxi is to the apron, not to the holding point of a runway.
+            RequestTaxi when flight.Phase >= FlightPhase.LandingCleared => Vacated(Released(flight), new TaxiToApron(), keepPhase: false),
             RequestTaxi => Taxi(Released(flight), airport),
             _ => Say(new SayAgainRequest(), flight),
         };
@@ -254,7 +256,7 @@ public sealed class AtcEngine : IAtcEngine
         var heard = SpokenTokens.Tokenize(readback.Text);
 
         // The callsign is part of the readback (Art. 12 lists the registration; the practice ends the readback with it).
-        if (readback.Callsign is not null && IsCorrect(expected, heard))
+        if ((readback.Callsign is not null || readback.CallsignTail) && IsCorrect(expected, heard))
         {
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }

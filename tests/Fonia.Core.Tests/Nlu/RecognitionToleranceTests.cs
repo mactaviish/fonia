@@ -33,9 +33,9 @@ public class RecognitionToleranceTests
         new(Own, phase, "SBXX", pending, pending, null, Runway);
 
     [Theory]
-    [InlineData("Foxtroot Romeo Alfa, autorizado de colagem, pista uno um.")]
+    [InlineData("Foxtroot Romeo Alfa, autorizado de colagem, pista uno uno.")]
     [InlineData("Foxtrot Romeo Alfa. Pista uno um. Autorizado de colagem.")]
-    [InlineData("Autorizado decolagem pista uno um, Papa Romeo Foxtrot Romeo Alfa.")]
+    [InlineData("Autorizado decolagem pista uno uno, Papa Romeo Foxtrot Romeo Alfa.")]
     public void The_takeoff_readback_is_taken_when_the_recognizer_splits_decolagem(string said)
     {
         var decision = Say(said, Flight(FlightPhase.TakeoffCleared, new TakeoffClearance(Runway)), OnTower);
@@ -52,8 +52,8 @@ public class RecognitionToleranceTests
     }
 
     [Theory]
-    [InlineData("Autorizado, táxi para o ponto de espera da pista uno um, o Fox Romeo Alfa.")]
-    [InlineData("Autorizado táxi para o ponto de espera da pista uno um, Foxtroot Romeo Alfa.")]
+    [InlineData("Autorizado, táxi para o ponto de espera da pista uno uno, o Fox Romeo Alfa.")]
+    [InlineData("Autorizado táxi para o ponto de espera da pista uno uno, Foxtroot Romeo Alfa.")]
     public void Fox_is_foxtrot_in_the_callsign_of_a_readback(string said)
     {
         Say(said, Flight(FlightPhase.Taxiing, new TaxiClearance(Runway)), OnSolo).Instruction.ShouldBeOfType<NoResponse>();
