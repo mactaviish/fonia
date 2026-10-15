@@ -15,9 +15,9 @@ O Fonia é um aplicativo de ATC por voz para o Microsoft Flight Simulator 2020: 
 
 1. Baixe `fonia-setup-<versão>.exe` e execute. Ele instala só para o seu usuário (sem pedir administrador) em `%LOCALAPPDATA%\Programs\Fonia` e cria os atalhos no menu Iniciar.
 2. O Windows pode mostrar o aviso **"O Windows protegeu o computador"** (SmartScreen), porque o instalador ainda não é assinado digitalmente. Clique em **Mais informações** e depois em **Executar assim mesmo**. A soma de verificação (SHA-256) de cada arquivo está em `SHA256SUMS.txt` na página do lançamento.
-3. No fim da instalação, deixe marcado **"Baixar agora os modelos de voz"**. Abre uma janela que baixa o modelo de reconhecimento de voz e a voz do controlador (~800 MB), confere a integridade e guarda em `%LOCALAPPDATA%\Fonia\models`. Se for interrompido, é só rodar de novo: continua de onde parou. Também dá para baixar depois pelo atalho **"Fonia - baixar modelos de voz"**.
+3. Na página **"Selecionar tarefas adicionais"**, deixe marcados os dois **modelos de voz**: o reconhecimento de voz (Whisper small, 466 MB) e a voz do controlador (Kokoro-82M, 353 MB). **O Fonia só funciona com os dois.** Ao fim da instalação abre uma janela que baixa os marcados, confere a integridade (SHA-256) e guarda em `%LOCALAPPDATA%\Fonia\models`; ela mostra o resultado, inclusive "já estão instalados", e espera uma tecla antes de fechar. Se for interrompido, é só rodar de novo: continua de onde parou. Se você desmarcar algum, o Fonia pergunta se deve baixar na primeira vez em que for usado, e também dá para baixar depois pelo atalho **"Fonia - baixar modelos de voz"**.
 
-*Sem o instalador:* descompacte o `.zip` numa pasta e rode `fonia.exe --download-models` uma vez.
+*Sem o instalador:* descompacte o `.zip` numa pasta e rode `fonia.exe --download-models` uma vez (`--only stt` ou `--only tts` baixam só um deles).
 
 ## Primeiro uso
 
@@ -68,7 +68,17 @@ Os registros mais detalhados saem com `--log-level information` (ou `debug`).
 
 ## Desinstalar
 
-Pelo menu Iniciar (**Desinstalar Fonia**) ou em *Configurações > Aplicativos*. Isso remove o programa e **mantém** os modelos de voz (`%LOCALAPPDATA%\Fonia\models`) e as suas configurações (`%APPDATA%\Fonia`), que são seus: apague essas pastas se quiser liberar o espaço.
+Pelo menu Iniciar (**Desinstalar Fonia**) ou em *Configurações > Aplicativos*. O programa sai sempre (o .NET e as bibliotecas vão dentro dele, então não sobra dependência). O desinstalador **pergunta** se você quer remover também o que o Fonia guardou para você, e a resposta padrão é **Não**:
+
+| O que é | Onde fica |
+|---|---|
+| os modelos de voz baixados (~850 MB) | `%LOCALAPPDATA%\Fonia\models` |
+| o METAR guardado e as últimas respostas (aeroporto e indicativo) | `%LOCALAPPDATA%\Fonia\cache` e `last-*.txt`, na mesma pasta |
+| as suas configurações | `%APPDATA%\Fonia\appsettings.json` |
+
+Com **Sim**, as duas pastas `Fonia` (a de `%LOCALAPPDATA%` e a de `%APPDATA%`) são apagadas por inteiro. Com **Não**, ficam, e um Fonia instalado depois as reaproveita sem baixar tudo de novo. Se você configurou outra pasta para os modelos (`modelsDir`), ela não é apagada: remova à mão. O programa não grava arquivos de registro (os logs saem na janela).
+
+Em um desinstalar silencioso (`/SILENT`, `/VERYSILENT`) nada do usuário é apagado, a não ser que se acrescente `/PURGEDATA`.
 
 ## Para quem gera o pacote
 

@@ -44,7 +44,8 @@ internal sealed record AppOptions(
     Fonia.Core.Sim.Frequency? Com1 = null,
     bool NoMetar = false,
     bool ShowConfig = false,
-    bool InitConfig = false);
+    bool InitConfig = false,
+    string? OnlyModels = null);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp, bool ShowVersion = false);
@@ -63,7 +64,7 @@ internal static class ArgumentParser
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
              fonia --atc <ICAO> --voice [--callsign <indicativo>] [--ptt-key <tecla>] [--stt-gpu] [--tts-voice <voz>]
-             fonia --download-models [--models-dir <pasta>]
+             fonia --download-models [--only stt|tts] [--models-dir <pasta>]
              fonia --speak "<texto>" [--speak-out <arquivo.wav>] [--tts-voice <voz>] [--radio-effect <nível>]
 
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
@@ -120,6 +121,7 @@ internal static class ArgumentParser
                                  dos donos, confere o SHA-256 e guarda em %LOCALAPPDATA%\Fonia\models. Pode ser
                                  interrompido: continua de onde parou. Os modos de voz também oferecem isso quando
                                  falta modelo.
+          --only <stt|tts|all>   Com --download-models: baixa só o reconhecimento de voz (stt), só a voz do controlador (tts) ou tudo (padrão).
           --models-dir <pasta>   Outra pasta para o --download-models (use a mesma em --stt-dir e --tts-dir).
 
           --sim msfs|mock        Fonte dos dados. msfs (padrão) lê o Microsoft Flight Simulator 2020;
@@ -172,6 +174,7 @@ internal static class ArgumentParser
         string? sttModel = null;
         var sttGpu = false;
         var noMetar = false;
+        string? only = null;
         string? speak = null;
         string? speakOut = null;
         string? ttsVoice = null;
@@ -244,7 +247,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1" or "--only"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -317,6 +320,9 @@ internal static class ArgumentParser
                 case "--models-dir":
                     modelsDir = value;
                     break;
+                case "--only":
+                    only = value.ToLowerInvariant();
+                    break;
                 case "--audio-out":
                     audioOut = ParseDevice("--audio-out", value, out problem);
                     break;
@@ -339,9 +345,18 @@ internal static class ArgumentParser
 
         var parsed = Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect), new VoiceRaw(voice, audioOut), new DownloadRaw(downloadModels, modelsDir), com1);
 
-        if (!noMetar || parsed.Options is null)
+        if (parsed.Options is null || (!noMetar && only is null))
         {
             return parsed;
+        }
+
+        if (only is not null)
+        {
+            return only is not ("stt" or "tts" or "all")
+                ? Failure($"--only '{only}' não existe. Use stt (reconhecimento de voz), tts (voz do controlador) ou all.")
+                : parsed.Options.DownloadModels
+                    ? new ParsedArguments(parsed.Options with { OnlyModels = only }, null, ShowHelp: false)
+                    : Failure("--only só vale com --download-models.");
         }
 
         return parsed.Options.AtcAirport is null
@@ -383,7 +398,7 @@ internal static class ArgumentParser
                 || stt.Any || tts.Any || voice.On || voice.AudioOut is not null;
 
             return mixed
-                ? Failure("--download-models não combina com outras opções: use só --download-models (e --models-dir).")
+                ? Failure("--download-models não combina com outras opções: use só --download-models (e --only, --models-dir).")
                 : new ParsedArguments(new AppOptions(LogLevel: logLevel, DownloadModels: true, ModelsDir: download.Dir), null, ShowHelp: false);
         }
 

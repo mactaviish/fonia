@@ -675,4 +675,22 @@ public class ArgumentParserTests
         AppVersion.Current.ShouldMatch(@"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$");
         AppVersion.Current.ShouldNotContain("+");
     }
+
+    [Theory]
+    [InlineData("stt")]
+    [InlineData("tts")]
+    [InlineData("all")]
+    public void The_download_can_be_limited_to_one_of_the_models(string which)
+    {
+        Ok("--download-models", "--only", which).OnlyModels.ShouldBe(which);
+    }
+
+    [Fact]
+    public void The_download_takes_everything_unless_told_otherwise_and_the_other_ones_are_refused()
+    {
+        Ok("--download-models").OnlyModels.ShouldBeNull();
+        Error("--download-models", "--only", "banana").ShouldContain("--only");
+        Error("--only", "stt").ShouldContain("--download-models");
+        Error("--atc", "SBCT", "--only", "stt").ShouldContain("--download-models");
+    }
 }

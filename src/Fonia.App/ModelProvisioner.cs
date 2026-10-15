@@ -20,6 +20,14 @@ internal static class ModelNeeds
     public static IReadOnlyList<ModelNeed> ForSpeak(AppOptions options) =>
         [new ModelNeed(ModelCatalog.KokoroModel, options.TtsDirectory), new ModelNeed(ModelCatalog.KokoroVoices, options.TtsDirectory)];
 
+    /// <summary>What <c>--download-models --only</c> picks: the recognizer ("stt"), the voice and its voices ("tts"), or everything (null or "all").</summary>
+    public static IReadOnlyList<ModelNeed> Selected(string? only, string? directory) => only switch
+    {
+        "stt" => [new ModelNeed(ModelCatalog.WhisperSmall, directory)],
+        "tts" => [new ModelNeed(ModelCatalog.KokoroModel, directory), new ModelNeed(ModelCatalog.KokoroVoices, directory)],
+        _ => All(directory),
+    };
+
     /// <summary>Everything the app knows how to download, into one folder.</summary>
     public static IReadOnlyList<ModelNeed> All(string? directory) => [.. ModelCatalog.All.Select(file => new ModelNeed(file, directory))];
 }
