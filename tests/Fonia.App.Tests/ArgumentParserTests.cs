@@ -658,4 +658,21 @@ public class ArgumentParserTests
     {
         Error("--no-metar").ShouldContain("--atc");
     }
+
+    [Fact]
+    public void The_version_is_asked_for_like_the_help()
+    {
+        var parsed = ArgumentParser.Parse(["--version"]);
+
+        parsed.ShowVersion.ShouldBeTrue();
+        parsed.Error.ShouldBeNull();
+        ArgumentParser.Parse(["--sim", "mock"]).ShowVersion.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void The_version_of_the_program_is_the_one_of_the_build_without_the_commit()
+    {
+        AppVersion.Current.ShouldMatch(@"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$");
+        AppVersion.Current.ShouldNotContain("+");
+    }
 }

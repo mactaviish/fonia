@@ -67,3 +67,6 @@ spike-*.log
 
 # Spike de voz, frases de voo (dado pessoal, fora do git)
 /tools/speech-spike/recordings-voo/
+
+# Saída da publicação (tools/publish.ps1)
+/dist/

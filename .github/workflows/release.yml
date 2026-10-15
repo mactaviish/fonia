@@ -1,0 +1,72 @@
+name: Release (Windows)
+
+# Builds the package for users: the zip of the program and the installer. Runs on a version tag (v0.1.0) and on demand (Actions > Release
+# (Windows) > Run workflow), which only builds and keeps the files for a few days. A tag also makes a DRAFT release with the files, for the
+# maintainer to review before publishing. Windows minutes cost 2x on private repositories: this does not run on pull requests.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  package:
+    name: Zip and installer
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Publish (zip)
+        run: pwsh tools/publish.ps1
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (& dist/fonia/fonia.exe --version).Split(' ')[1]
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "The tag $env:GITHUB_REF_NAME does not match the version of the program ($version): change <Version> in Directory.Build.props, or tag again."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.version.outputs.version }}" installer\fonia.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item dist/fonia-*-win-x64.zip, installer/Output/fonia-setup-*.exe release/
+          Get-ChildItem release -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content release/SHA256SUMS.txt
+          Get-Content release/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fonia-${{ steps.version.outputs.version }}
+          path: release/*
+          retention-days: 14
+
+      - name: Draft release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$env:GITHUB_REF_NAME" release/* --draft --generate-notes --title "Fonia ${{ steps.version.outputs.version }}"

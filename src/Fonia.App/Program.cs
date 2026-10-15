@@ -50,6 +50,12 @@ if (parsed.ShowHelp)
     return 0;
 }
 
+if (parsed.ShowVersion)
+{
+    Console.Out.WriteLine($"fonia {AppVersion.Current}");
+    return 0;
+}
+
 if (parsed.Error is not null)
 {
     Console.Error.WriteLine($"fonia: {parsed.Error}");

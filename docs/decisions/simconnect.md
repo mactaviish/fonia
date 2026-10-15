@@ -35,6 +35,10 @@ Não encontrei declaração oficial da Microsoft ou da Asobo permitindo redistri
 - **Distribuição (M4):** usar a opção A significa redistribuir a DLL que o pacote embute. Decidir antes do instalador entre (1) manter e documentar o risco, (2) excluir o ativo nativo e carregar a DLL do SDK/instalação do usuário por caminho configurável, ou (3) obter confirmação por escrito.
 - Ação sugerida: perguntar no fórum de desenvolvedores do MSFS.
 
+## Distribuição (M4, 2026-10-15): decisão pendente antes de publicar
+
+O pacote que `tools/publish.ps1` gera (o `.zip` e o instalador) **inclui o `SimConnect.dll`** que o pacote SimConnect.NET traz. O instalador existe, mas o repositório continua privado e o workflow de release só cria um **rascunho**, então nada foi publicado. **Antes da primeira publicação** é preciso escolher: (1) manter a DLL no pacote e registrar o risco, (2) tirá-la do pacote e carregar a do usuário (o SDK, ou a que o MSFS instala, se houver), ou (3) a resposta oficial que o fórum do MSFS ainda não deu. Enquanto isso o `THIRD-PARTY-NOTICES.txt` diz a verdade sobre ela.
+
 ## Compatibilidade MSFS 2020 e 2024
 
 A [documentação do SDK 2024](https://docs.flightsimulator.com/msfs2024/html/6_Programming_APIs/SimConnect/SimConnect_SDK.htm) indica uma mudança de tamanho do campo `ident` (heliportos) em estruturas de *facilities* (aeroportos). Para o M1, que só lê SimVars básicas, isso não importa; reavaliar no M5. Há também um [relato](https://devsupport.flightsimulator.com/t/simconnect-open-consistently-returns-e-fail-in-msfs-2024-1-7-35-0/18221) de `SimConnect_Open` falhando com E_FAIL no MSFS 2024 1.7.35.0, sem correção confirmada; não afeta o M1.
