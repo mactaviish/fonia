@@ -168,4 +168,29 @@ public class RecognitionToleranceTests
 
         decision.Instruction.ShouldBeOfType<NoResponse>();
     }
+
+    [Theory]
+    [InlineData("TORRE Curitiba. Papa Romeo Foxtrot Romeo Alfa. Pernabase.")]
+    [InlineData("Torre Curitiba, Papa Romeo Foxtrat Romeo Alfa, perna base")]
+    public void The_report_of_the_base_leg_is_understood_when_the_words_are_glued_or_a_letter_is_off(string said)
+    {
+        _nlu.Interpret(said, Flight(FlightPhase.OnDownwind, new ReportBase())).ShouldBe(new ReportBaseLeg(Own));
+    }
+
+    [Fact]
+    public void Reparto_na_final_is_the_readback_of_the_request_to_report_final_and_clears_nothing()
+    {
+        var decision = Say("Reparto na final Papa Romeo Foxroot Romeo Alfa.", Flight(FlightPhase.OnBase, new ReportOnFinal()), OnTower);
+
+        decision.Instruction.ShouldBeOfType<NoResponse>();
+        decision.NextContext.Phase.ShouldBe(FlightPhase.OnBase);
+    }
+
+    [Theory]
+    [InlineData("Papa Romeo Foxtrat Romeo Alfa")]
+    [InlineData("Papa Romeo Faxtrot Romeo Alfa")]
+    public void A_phonetic_word_with_a_letter_changed_is_still_that_letter(string heard)
+    {
+        SpokenText.IsSameCallsign(heard, Own).ShouldBeTrue();
+    }
 }

@@ -117,7 +117,7 @@ public static class SpokenCode
     /// <summary>
     /// Reads a single word the recognizer wrote for one or more spelled letters when it is not an exact phonetic word:
     /// two or more phonetic words glued together ("romeoalfa") or a long phonetic word with one letter wrong, missing
-    /// or extra ("chalie", "charllie"). Short phonetic words must be exact: "tanto" is one letter from "tango".
+    /// or extra ("chalie", "charllie", "foxtrat"). Short phonetic words must be exact: "tanto" is one letter from "tango".
     /// </summary>
     public static bool TryReadSpelled(string token, out string letters)
     {
@@ -167,7 +167,7 @@ public static class SpokenCode
                 continue;
             }
 
-            foreach (var length in new[] { word.Length - 1, word.Length + 1 })
+            foreach (var length in new[] { word.Length, word.Length - 1, word.Length + 1 })
             {
                 if (length <= rest.Length && WithinOneEdit(rest[..length], word))
                 {

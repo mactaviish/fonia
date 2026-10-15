@@ -212,3 +212,18 @@ Teste do roteiro com a voz sintética do Windows (só prova o processo, não val
 | do app + última fala | 31/36 (86%) | 35/36 | 2,5 s |
 
 O prompt é o que mais pesa; o da última fala não mudou o acerto na voz sintética, e três cotejamentos saíram só com o indicativo (o Whisper tende a omitir o que repete o prompt). Quem decide é a medição com a voz do mantenedor.
+
+Medição com a **voz real** do mantenedor (36 frases de voo gravadas em 2026-10-14, MSFS fechado, RTX 3070 Ti, 10 threads). "Faz o certo" é o que o controlador faria com a frase; todos com o prompt do app:
+
+| Modelo | Última fala | Runtime | Faz o certo | Indicativo | Tempo/frase | Memória |
+|---|---|---|---|---|---|---|
+| small | não | CPU | 32/36 (89%) | 33/36 | 2,06 s | 886 MB |
+| **small** | **sim** | **CPU** | **35/36 (97%)** | **36/36** | **2,08 s** | 900 MB |
+| small | não | Vulkan | 32/36 (89%) | 33/36 | 0,25 s | 618 MB |
+| **small** | **sim** | **Vulkan** | **35/36 (97%)** | **36/36** | **0,24 s** | |
+| medium | sim | Vulkan | 32/36 (89%) | 35/36 | 0,41 s | 1,2 GB |
+| medium | sim | CPU | 32/36 (89%) | 35/36 | 6,3 s | 2,1 GB |
+| large-v3-turbo | sim | Vulkan | 26/36 (72%) | 25/36 | 0,38 s | 1,1 GB |
+| large-v3-turbo | sim | CPU | 26/36 (72%) | 24/36 | 9,3 s | 2,1 GB |
+
+**Decisão:** continua o `small` (MIT), com o prompt do app **e a última fala do controlador**, que levou o acerto de 89% para 97% e o indicativo de 92% para 100% sem custo de tempo. Os modelos maiores não acertam mais neste conjunto (o `large-v3-turbo` escreve "Foxtroch" para Foxtrot e o `medium` não passa de 89%), e na CPU são 3 a 4 vezes mais lentos. O `--stt-gpu` (Vulkan) reduz o `small` de 2,1 s para 0,24 s com o mesmo acerto: fica opcional, porque a GPU é a do simulador. A única falha do `small` com a última fala foi o Whisper escrever só o indicativo no lugar do cotejamento ("Papa Romeo Foxtroot Romeo Alfa.").

@@ -24,7 +24,7 @@ public sealed class RuleBasedNlu : INlu
 
     // The pilot is repeating what the controller said, or acknowledging it.
     private static readonly string[] ReadbackStems =
-        ["autorizad", "aprovad", "ciente", "cient", "sient", "copiad", "coteja", "chame", "chamo", "chamar", "chamand", "report", "portar", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
+        ["autorizad", "aprovad", "ciente", "cient", "sient", "copiad", "coteja", "chame", "chamo", "chamar", "chamand", "report", "repart", "portar", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
 
     private static readonly string[] PushbackStems = ["pushback", "push", "empurr", "recu"];
     // "cionament" because the recognizer glues "solicito acionamento" into "solicitocionamento".
@@ -179,7 +179,8 @@ public sealed class RuleBasedNlu : INlu
             return new ReportDownwind(callsign);
         }
 
-        if (rest.Contains("base"))
+        // "pernabase": the recognizer glues the two words.
+        if (rest.Contains("base") || rest.Contains("pernabase"))
         {
             return new ReportBaseLeg(callsign);
         }
