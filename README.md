@@ -95,12 +95,14 @@ O núcleo e os testes rodam sem simulador, usando o `MockSimAdapter`. Apenas a i
 Para ver o estado da aeronave em tempo real (com o MSFS 2020 aberto e um voo carregado):
 
 ```bash
-dotnet run --project src/Fonia.App                 # lê o MSFS
+dotnet run --project src/Fonia.App -- --sim msfs         # lê o MSFS (sem argumentos, num terminal, ele pergunta o aeroporto)
 dotnet run --project src/Fonia.App -- --sim mock   # taxi simulado, sem simulador
 dotnet run --project src/Fonia.App -- --help       # todas as opções (gravar e reproduzir sessões)
 ```
 
 Para conversar com o controlador por texto (ATC do M2, sem áudio): você digita a fala do piloto e o Solo, a Torre ou o AFIS do aeroporto responde.
+
+**Configuração:** as preferências (tecla do PTT, microfone, voz do controlador, GPU, aeroporto sugerido...) ficam em `%APPDATA%\Fonia\appsettings.json`. `fonia --init-config` cria o arquivo com tudo comentado e `fonia --config` mostra o que está valendo; o que você digita na linha de comando sempre vale mais. Sem argumentos, num terminal, `fonia` pergunta o aeroporto e conversa por voz (o antigo modo de ler o MSFS é `fonia --sim msfs`).
 
 ```bash
 dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC          # sem simulador

@@ -214,6 +214,16 @@ O modelo (`kokoro-v1.0.onnx`, 325 MB) e as vozes (`voices-v1.0.bin`, 28 MB) segu
 - Ainda sem o texto do ATIS: a fraseologia dele não está no MCA 100-16 catalogado (`TODO(fraseologia)`); depende de uma fonte indicada pelo mantenedor. Sem METAR cai-se no comportamento anterior (vento e QNH omitidos, pista padrão). O vento do simulador como fallback fica para depois.
 - Plano de voo (futuro): API do SimBrief.
 
+### 8b. Configuração (`Fonia.App`)
+
+As preferências de quem usa o app ficam em `appsettings.json`, não nos modos (o que o app faz continua vindo da linha de comando):
+
+- **Precedência** (a última vence): padrões do programa, `appsettings.json` ao lado do exe (padrões da máquina ou versão portátil), `%APPDATA%\Fonia\appsettings.json` (o do usuário, que uma atualização não apaga), variáveis `FONIA_<chave>` (`FONIA_VOICE__PTTKEY` é `voice:pttKey`) e a **linha de comando**. `ArgumentParser.OptionsGiven` diz o que a linha de comando falou, para o valor padrão digitado de propósito (`--ptt-key RControl`) também vencer o arquivo.
+- **Chaves** (`AppSettings`): `airport`, `callsign`, `logLevel`, `voice.{pttKey, micDevice, audioOut, ttsVoice, radioEffect, sttGpu, sttModel, modelsDir}`, `weather.metar`. Os valores passam pelas mesmas validações da linha de comando e um erro diz a chave. **Chave desconhecida ou valor de tipo errado é erro** (`ErrorOnUnknownConfiguration`), em vez de ser ignorado: um erro de digitação ignorado deixa o usuário sem saber por que nada mudou.
+- O arquivo aceita comentários e vírgula sobrando (as pessoas editam à mão). Pacotes: `Microsoft.Extensions.Configuration.Json` e `.Binder` (MIT, Microsoft). As variáveis de ambiente são lidas pelo próprio `SettingsLoader` (sem o pacote de variáveis de ambiente).
+- `fonia --config` mostra os arquivos (e se existem) e o que está configurado; `fonia --init-config` cria o arquivo do usuário com todas as opções comentadas, e nunca sobrescreve um existente.
+- **Sem argumentos num terminal**, `fonia` pergunta o aeroporto (sugerindo o de `airport` ou o último usado, guardado em `%LOCALAPPDATA%\Fonia\last-airport.txt`) e entra no modo de voz (`StartupWizard`). Sem terminal, ou com argumentos, nada muda; o modo antigo de ler o MSFS é `fonia --sim msfs`.
+
 ### 9. Laço de voz (`Fonia.Core.Pipeline`)
 
 Junta as etapas anteriores, sem regra nova: a decisão é do motor e as palavras são dos templates.

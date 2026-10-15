@@ -42,7 +42,9 @@ internal sealed record AppOptions(
     bool DownloadModels = false,
     string? ModelsDir = null,
     Fonia.Core.Sim.Frequency? Com1 = null,
-    bool NoMetar = false);
+    bool NoMetar = false,
+    bool ShowConfig = false,
+    bool InitConfig = false);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -54,7 +56,9 @@ internal static class ArgumentParser
         Fonia: estado da aeronave em tempo real, vindo do simulador, e ATC por texto.
 
         Uso: fonia [opções]
+             fonia                  (sem argumentos, num terminal: pergunta o aeroporto e conversa por voz)
              fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar]
+             fonia --config | --init-config
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
@@ -65,6 +69,10 @@ internal static class ArgumentParser
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
                                  aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
           --runway <pista>       Pista em uso (ex.: 15, 33L). Padrão: a mais longa do aeroporto.
+          --config               Mostra de onde vêm as configurações e o que está configurado.
+          --init-config          Cria o seu arquivo de configuração (%APPDATA%\Fonia\appsettings.json) com todas as opções
+                                 comentadas, para você editar. Suas preferências (tecla do PTT, microfone, voz, GPU...) ficam
+                                 lá e a linha de comando sempre vale mais. Variáveis FONIA_<chave> também valem.
           --no-metar             Não busca o METAR na internet (aviationweather.gov, só o código do aeroporto vai pela rede).
                                  Com o METAR o controlador diz o vento e o ajuste de altímetro e a pista em uso é a que o
                                  vento favorece (--runway manda); sem ele, ou sem rede, essas partes ficam de fora. O último
@@ -131,6 +139,17 @@ internal static class ArgumentParser
         """;
 
     private static readonly string[] LogLevelNames = ["trace", "debug", "information", "warning", "error", "critical", "none"];
+
+    /// <summary>The names (without the dashes) of the options the command line has, so that the settings do not override them.</summary>
+    public static IReadOnlySet<string> OptionsGiven(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        return args
+            .Where(a => a.StartsWith("--", StringComparison.Ordinal))
+            .Select(a => Split(a).Name[2..])
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
 
     public static ParsedArguments Parse(string[] args)
     {
@@ -202,6 +221,16 @@ internal static class ArgumentParser
             {
                 noMetar = true;
                 continue;
+            }
+
+            if (name is "--config" or "--init-config")
+            {
+                if (args.Length > 1)
+                {
+                    return Failure($"{name} não combina com outras opções: use só {name}.");
+                }
+
+                return new ParsedArguments(new AppOptions(ShowConfig: name == "--config", InitConfig: name == "--init-config"), null, ShowHelp: false);
             }
 
             if (!name.StartsWith("--", StringComparison.Ordinal))
@@ -569,7 +598,7 @@ internal static class ArgumentParser
         return null;
     }
 
-    private static string? ParseTtsVoice(string value, out string? problem)
+    internal static string? ParseTtsVoice(string value, out string? problem)
     {
         problem = null;
         var name = value.Trim().ToLowerInvariant().Replace("ó", "o", StringComparison.Ordinal);
@@ -588,7 +617,7 @@ internal static class ArgumentParser
         return null;
     }
 
-    private static RadioIntensity? ParseRadioEffect(string value, out string? problem)
+    internal static RadioIntensity? ParseRadioEffect(string value, out string? problem)
     {
         problem = null;
 
@@ -629,7 +658,7 @@ internal static class ArgumentParser
         return null;
     }
 
-    private static string? ParsePttKey(string value, out string? problem)
+    internal static string? ParsePttKey(string value, out string? problem)
     {
         problem = null;
 
@@ -642,7 +671,7 @@ internal static class ArgumentParser
         return null;
     }
 
-    private static LogLevel ParseLogLevel(string value, out string? problem)
+    internal static LogLevel ParseLogLevel(string value, out string? problem)
     {
         problem = null;
         var index = Array.IndexOf(LogLevelNames, value.ToLowerInvariant());
