@@ -108,7 +108,9 @@ dotnet run --project src/Fonia.App -- --atc SBCT --runway 15                # in
 dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC --com1 118.55   # rádio na frequência da Torre de Curitiba
 ```
 
-Quem responde depende da **frequência do rádio**: o Solo na dele, a Torre na dela, ninguém em outra. Com o simulador (`--sim msfs`) ela vem do COM1 ao vivo; sem ele, use `--com1 <MHz>` ou digite `/com1 118.55` durante a sessão. No ponto de espera, diga "no ponto de espera da pista 15" e o Solo manda chamar a Torre; a Torre ainda não tem fraseologia neste app (mostra um aviso).
+Quem responde depende da **frequência do rádio**: o Solo na dele, a Torre na dela, ninguém em outra. Com o simulador (`--sim msfs`) ela vem do COM1 ao vivo; sem ele, use `--com1 <MHz>` ou digite `/com1 118.55` durante a sessão. O voo vai do acionamento ao táxi, "no ponto de espera da pista uno cinco" (o Solo manda chamar a Torre), alinhar e decolar, circuito, pouso e volta ao pátio. Quando o simulador mostra a decolagem ou o pouso, a Torre fala sozinha ("decolado aos ...", "no solo aos ..."); sem simulador, `/evento decolou` e `/evento pousou` fazem esse papel.
+
+**Tempo:** o app busca o METAR do aeroporto em `aviationweather.gov` (só o código ICAO vai pela rede; o último fica guardado em `%LOCALAPPDATA%\Fonia\cache`). Com ele, a pista em uso é a que o vento favorece (`--runway` manda), e o controlador diz o vento e o ajuste de altímetro. Sem rede, ou com `--no-metar`, essas partes ficam de fora.
 
 Por exemplo: `Solo Curitiba, PRABC, box 3, solicito pushback e acionamento`, depois o readback `autorizado pushback e acionamento, PRABC`, depois `PRABC, pronto para o táxi`. `sair` encerra.
 

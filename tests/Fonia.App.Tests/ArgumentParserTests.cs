@@ -644,4 +644,18 @@ public class ArgumentParserTests
         options.Voice.ShouldBeTrue();
         options.Com1.ShouldBe(new Fonia.Core.Sim.Frequency(119500));
     }
+
+    [Fact]
+    public void The_metar_is_on_by_default_and_no_metar_turns_it_off()
+    {
+        Ok("--atc", "SBCT", "--callsign", "PRABC").NoMetar.ShouldBeFalse();
+        Ok("--atc", "SBCT", "--callsign", "PRABC", "--no-metar").NoMetar.ShouldBeTrue();
+        Ok("--atc", "SBCT", "--voice", "--sim", "mock", "--no-metar").NoMetar.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void No_metar_only_makes_sense_in_the_atc_mode()
+    {
+        Error("--no-metar").ShouldContain("--atc");
+    }
 }

@@ -75,6 +75,7 @@ public class WeatherOnAirportTests
     [Theory]
     [InlineData(0, 0)]
     [InlineData(90, 2)]
+    [InlineData(300, 5)]
     public void With_calm_or_almost_no_wind_the_default_runway_stays(int direction, int speed)
     {
         var plain = AirportContext.Create(Curitiba);

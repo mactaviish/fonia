@@ -17,8 +17,8 @@ namespace Fonia.Core.Atc;
 /// </param>
 public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null)
 {
-    // Below this the wind says nothing about which way to land.
-    private const int WindThatChoosesTheRunwayKnots = 3;
+    // Up to five knots the wind is as good as calm for choosing the runway (a light tailwind is accepted): the default stays.
+    private const int WindThatChoosesTheRunwayKnots = 6;
 
     /// <summary>
     /// The airport with the weather of a METAR: the wind said the way the controller says it (magnetic, to the ten degrees), the altimeter
