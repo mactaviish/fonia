@@ -42,8 +42,49 @@ public sealed class VoiceLoop(
 {
     private int _busy;
     private Task _current = Task.CompletedTask;
+    private readonly Lock _flightGate = new();
+    private AirportContext _airport = airport;
     private FlightContext _flight = flight;
+    private int _generation;
     private CancellationToken _stop;
+
+    /// <summary>
+    /// The simulator loaded another flight: from the next transmission on, the controller is the one of <paramref name="newAirport"/> and the
+    /// flight is <paramref name="newFlight"/>. What an exchange in the making was going to leave behind is dropped, so the old flight
+    /// does not come back.
+    /// </summary>
+    public void StartFlight(AirportContext newAirport, FlightContext newFlight)
+    {
+        ArgumentNullException.ThrowIfNull(newAirport);
+        ArgumentNullException.ThrowIfNull(newFlight);
+
+        lock (_flightGate)
+        {
+            _generation++;
+            _airport = newAirport;
+            _flight = newFlight;
+        }
+    }
+
+    private (int Generation, AirportContext Airport, FlightContext Flight) Snapshot()
+    {
+        lock (_flightGate)
+        {
+            return (_generation, _airport, _flight);
+        }
+    }
+
+    // The flight after an exchange, unless another flight began meanwhile.
+    private void Keep(int generation, FlightContext after)
+    {
+        lock (_flightGate)
+        {
+            if (generation == _generation)
+            {
+                _flight = after;
+            }
+        }
+    }
 
     /// <summary>True while an exchange is being made or the answer is being played.</summary>
     public bool IsBusy => Volatile.Read(ref _busy) != 0;
@@ -99,9 +140,10 @@ public sealed class VoiceLoop(
 
         try
         {
-            var onTheFrequency = FrequencyResolver.Apply(airport, com1?.Invoke());
-            var result = await exchange.AnnounceAsync(flightEvent, _flight, onTheFrequency, linked.Token);
-            _flight = result.Decision.NextContext;
+            var (generation, airportNow, flightNow) = Snapshot();
+            var onTheFrequency = FrequencyResolver.Apply(airportNow, com1?.Invoke());
+            var result = await exchange.AnnounceAsync(flightEvent, flightNow, onTheFrequency, linked.Token);
+            Keep(generation, result.Decision.NextContext);
 
             if (result.Reply is not null)
             {
@@ -147,9 +189,10 @@ public sealed class VoiceLoop(
         try
         {
             // Who answers is who is on the frequency the pilot has tuned right now, which may change between two transmissions.
-            var onTheFrequency = FrequencyResolver.Apply(airport, com1?.Invoke());
-            var result = await exchange.RunAsync(speech, _flight, onTheFrequency, observer.OnHeard, _stop);
-            _flight = result.Decision.NextContext;
+            var (generation, airportNow, flightNow) = Snapshot();
+            var onTheFrequency = FrequencyResolver.Apply(airportNow, com1?.Invoke());
+            var result = await exchange.RunAsync(speech, flightNow, onTheFrequency, observer.OnHeard, _stop);
+            Keep(generation, result.Decision.NextContext);
             observer.OnReplied(result);
 
             if (result.Speech is not null)
