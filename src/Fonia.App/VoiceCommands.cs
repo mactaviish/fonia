@@ -1,5 +1,6 @@
 using Fonia.Audio;
 using Fonia.Core.Atc;
+using Fonia.Core.Audio;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
 using Fonia.Core.Speech;
@@ -11,7 +12,7 @@ namespace Fonia.App;
 internal static class VoiceCommands
 {
     /// <summary>The voice mode and the devices it must close, or null (with the reason on <paramref name="error"/>) when it cannot be built.</summary>
-    public static async Task<VoiceModeHandle?> TryCreateAsync(AppOptions options, TextReader input, TextWriter output, TextWriter error, bool interactive, Func<Fonia.Core.Sim.Frequency?> com1, Func<CancellationToken, IAsyncEnumerable<Fonia.Core.Sim.AircraftState>?> states, CancellationToken ct)
+    public static async Task<VoiceModeHandle?> TryCreateAsync(AppOptions options, TextReader input, TextWriter output, TextWriter error, bool interactive, Func<Fonia.Core.Sim.Frequency?> com1, Func<CancellationToken, IAsyncEnumerable<Fonia.Core.Sim.AircraftState>?> states, Func<AirportContext, string, CaseLog?>? cases, CancellationToken ct)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -60,6 +61,16 @@ internal static class VoiceCommands
             resources.Add(capture);
             var pushToTalk = KeyboardPushToTalk.Create(virtualKey);
             resources.Add(pushToTalk);
+
+            // The key that marks an exchange the controller got wrong; only when the cases are being kept.
+            IPushToTalk? markKey = null;
+
+            if (cases is not null && PushToTalkKey.TryParse(options.MarkKey, out var markVirtualKey))
+            {
+                markKey = KeyboardPushToTalk.Create(markVirtualKey);
+                resources.Add(markKey);
+            }
+
             var player = new NAudioPlayer(options.AudioOut);
             asyncResources.Add(player);
             var transcriber = new WhisperTranscriber(new WhisperOptions(sttModel, options.SttGpu));
@@ -84,7 +95,10 @@ internal static class VoiceCommands
                 error,
                 Random.Shared,
                 com1,
-                states);
+                states,
+                cases,
+                markKey,
+                options.MarkKey);
 
             return new VoiceModeHandle(mode, resources, asyncResources);
         }

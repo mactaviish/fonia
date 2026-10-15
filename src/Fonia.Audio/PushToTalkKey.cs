@@ -7,6 +7,9 @@ public static class PushToTalkKey
 {
     public const string DefaultName = "RControl";
 
+    /// <summary>The key that marks the last exchange as misunderstood: one nobody uses in a simulator.</summary>
+    public const string DefaultMarkName = "ScrollLock";
+
     /// <summary>A few names for the help text; many more parse (letters, digits, F1 to F24).</summary>
     public static IReadOnlyList<string> ExampleNames { get; } =
         ["RControl", "LControl", "RShift", "RAlt", "CapsLock", "Space", "ScrollLock", "Insert", "F8", "Mouse4", "Mouse5"];

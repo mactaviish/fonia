@@ -121,7 +121,8 @@ begin
       'Remover também tudo o que o Fonia guardou para você?' + #13#10 + #13#10 +
       '  - os modelos de voz baixados (~850 MB)' + #13#10 +
       '  - as suas configurações (appsettings.json)' + #13#10 +
-      '  - o METAR guardado e as últimas respostas (aeroporto e indicativo)' + #13#10 + #13#10 +
+      '  - o METAR guardado e as últimas respostas (aeroporto e indicativo)' + #13#10 +
+      '  - os casos guardados para melhoria (e o som da sua voz, se você deixou)' + #13#10 + #13#10 +
       'Se você escolher "Não", esses arquivos ficam e o próximo Fonia que você instalar os reaproveita, sem baixar de novo.' + #13#10 +
       'Se você configurou outra pasta para os modelos (modelsDir), ela não é apagada.',
       mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;

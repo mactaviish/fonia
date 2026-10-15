@@ -24,7 +24,8 @@ O Fonia é um aplicativo de ATC por voz para o Microsoft Flight Simulator 2020: 
 1. Abra o MSFS e **carregue um voo** parado em um aeroporto (por exemplo, no pátio de Curitiba, SBCT).
 2. Abra o **Fonia** no menu Iniciar. Ele procura o simulador: com o voo carregado, pega sozinho o **indicativo** (a matrícula da aeronave) e o **aeroporto** onde você está, e carrega os modelos. Se o MSFS não estiver aberto (ou o voo ainda não carregou), ele avisa e **pergunta o aeroporto** (código ICAO, por exemplo `SBCT`) **e o indicativo** (por exemplo `PR-ABC`), sugerindo o que você usou da última vez. Assim dá para testar sem o simulador, só sem leitura do rádio COM1.
 3. Quando aparecer *"Pronto. Segure RControl, fale e solte"*, **segure o Ctrl direito**, fale e solte. O controlador responde em voz alta e o texto do que ele entendeu aparece na janela.
-4. **Sintonize o rádio COM1 do MSFS** na frequência certa: quem responde depende dela (o programa mostra as frequências do aeroporto ao abrir). Solo para acionamento e táxi, Torre para decolar e pousar. Em uma frequência que não é do aeroporto, ninguém responde e o programa avisa.
+4. **Trocar de voo não exige reiniciar o Fonia:** se você carregar outro voo no MSFS (outro aeroporto ou outra aeronave), ele percebe sozinho, mostra "Novo voo detectado" e recomeça com o aeroporto e o indicativo novos.
+5. **Sintonize o rádio COM1 do MSFS** na frequência certa: quem responde depende dela (o programa mostra as frequências do aeroporto ao abrir). Solo para acionamento e táxi, Torre para decolar e pousar. Em uma frequência que não é do aeroporto, ninguém responde e o programa avisa.
 
 Fale como numa conversa de rádio, com o **seu indicativo** (a matrícula que está no simulador, dita por extenso: "Papa Romeo Foxtrot Romeo Alfa") e os números dígito a dígito ("pista uno cinco"). Um voo completo:
 
@@ -66,6 +67,10 @@ Para ver os microfones e alto-falantes e escolher outro: `fonia --mic-list`, dep
 
 Os registros mais detalhados saem com `--log-level information` (ou `debug`).
 
+## O que o Fonia guarda sobre os seus voos
+
+Para melhorar, o Fonia guarda **no seu computador** (nunca envia) as trocas em que o controlador não entendeu: o texto que o reconhecedor escreveu, em que fase do voo foi e o que o controlador respondeu, em `%LOCALAPPDATA%\Fonia\cases`. **O som da sua voz não é guardado**, a não ser que você ligue `--save-audio` (ou `"saveAudio": true` no arquivo de configuração). Quando o controlador entender errado sem saber (por exemplo, autorizar o que você não pediu), aperte **ScrollLock** para marcar a troca; no modo texto, digite `/errado`. `fonia --cases` mostra a pasta e quantos casos há. Os casos com mais de 30 dias são apagados sozinhos, e a pasta não passa de 200 MB. Para desligar, `--no-cases` (ou `"save": false` na seção `cases`). Se um dia você quiser nos ajudar, o conteúdo dessa pasta é o que você poderia mandar; hoje não existe envio automático.
+
 ## Desinstalar
 
 Pelo menu Iniciar (**Desinstalar Fonia**) ou em *Configurações > Aplicativos*. O programa sai sempre (o .NET e as bibliotecas vão dentro dele, então não sobra dependência). O desinstalador **pergunta** se você quer remover também o que o Fonia guardou para você, e a resposta padrão é **Não**:
@@ -74,6 +79,7 @@ Pelo menu Iniciar (**Desinstalar Fonia**) ou em *Configurações > Aplicativos*.
 |---|---|
 | os modelos de voz baixados (~850 MB) | `%LOCALAPPDATA%\Fonia\models` |
 | o METAR guardado e as últimas respostas (aeroporto e indicativo) | `%LOCALAPPDATA%\Fonia\cache` e `last-*.txt`, na mesma pasta |
+| os casos em que o controlador não entendeu (e o som, se você deixou) | `%LOCALAPPDATA%\Fonia\cases` |
 | as suas configurações | `%APPDATA%\Fonia\appsettings.json` |
 
 Com **Sim**, as duas pastas `Fonia` (a de `%LOCALAPPDATA%` e a de `%APPDATA%`) são apagadas por inteiro. Com **Não**, ficam, e um Fonia instalado depois as reaproveita sem baixar tudo de novo. Se você configurou outra pasta para os modelos (`modelsDir`), ela não é apagada: remova à mão. O programa não grava arquivos de registro (os logs saem na janela).

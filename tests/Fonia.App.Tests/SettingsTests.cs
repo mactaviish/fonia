@@ -214,4 +214,46 @@ public sealed class SettingsTests : IDisposable
         loaded.Error.ShouldBeNull();
         SettingsApplier.Apply(new AppOptions(AtcAirport: "SBCT"), loaded.Settings, new HashSet<string>()).Options.ShouldBe(new AppOptions(AtcAirport: "SBCT"));
     }
+
+    [Fact]
+    public void The_settings_can_turn_the_cases_off_or_ask_for_the_sound_and_choose_the_key()
+    {
+        var settings = new AppSettings { Cases = { Save = false, SaveAudio = true }, Voice = { MarkKey = "F9" } };
+
+        var options = Apply(settings, new AppOptions(AtcAirport: "SBCT", Voice: true));
+
+        options.NoCases.ShouldBeTrue();
+        options.SaveAudio.ShouldBeTrue();
+        options.MarkKey.ShouldBe("F9");
+    }
+
+    [Fact]
+    public void The_command_line_wins_over_the_settings_of_the_cases()
+    {
+        var settings = new AppSettings { Voice = { MarkKey = "F9" } };
+
+        Apply(settings, new AppOptions(AtcAirport: "SBCT", MarkKey: "F10"), "mark-key").MarkKey.ShouldBe("F10");
+    }
+
+    [Fact]
+    public void A_mark_key_the_program_does_not_know_is_refused_with_its_key()
+    {
+        var result = SettingsApplier.Apply(new AppOptions(AtcAirport: "SBCT"), new AppSettings { Voice = { MarkKey = "banana" } }, new HashSet<string>());
+
+        result.Error.ShouldNotBeNull();
+        result.Error.ShouldContain("markKey");
+    }
+
+    [Fact]
+    public void The_cases_are_on_by_default_in_the_template_and_nothing_changes_until_it_is_edited()
+    {
+        var path = Path.Combine(User, "appsettings.json");
+        ConfigCommands.Init(path, new StringWriter(), new StringWriter()).ShouldBe(0);
+
+        var applied = SettingsApplier.Apply(new AppOptions(AtcAirport: "SBCT"), Load().Settings, new HashSet<string>());
+
+        applied.Options.NoCases.ShouldBeFalse();
+        applied.Options.SaveAudio.ShouldBeFalse();
+        File.ReadAllText(path).ShouldContain("\"cases\"");
+    }
 }

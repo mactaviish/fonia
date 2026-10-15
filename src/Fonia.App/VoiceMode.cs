@@ -12,7 +12,8 @@ namespace Fonia.App;
 internal interface IVoiceMode
 {
     /// <returns>The exit code: 0 normal, 1 when the voice could not be started.</returns>
-    Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct);
+    /// <param name="onNewFlight">Called with the first state of another flight the simulator loads while the radio is on; it builds the new start.</param>
+    Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct, Func<AircraftState, CancellationToken, Task<FlightRestart?>>? onNewFlight = null);
 }
 
 /// <summary>
@@ -36,9 +37,12 @@ internal sealed class VoiceMode(
     TextWriter error,
     Random random,
     Func<Frequency?>? com1 = null,
-    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null) : IVoiceMode
+    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null,
+    Func<AirportContext, string, CaseLog?>? cases = null,
+    IPushToTalk? markKey = null,
+    string markKeyName = "") : IVoiceMode
 {
-    public async Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct)
+    public async Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct, Func<AircraftState, CancellationToken, Task<FlightRestart?>>? onNewFlight = null)
     {
         ArgumentNullException.ThrowIfNull(airport);
         ArgumentNullException.ThrowIfNull(flight);
@@ -71,27 +75,77 @@ internal sealed class VoiceMode(
         }
 
         var exchange = new VoiceExchange(transcriber, nlu, engine, phraseology, synthesizer, voices, radio, random);
-        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, new ConsoleVoiceObserver(output, error, station), com1);
+        // What the controller could not follow is kept on the user's disk (and a key marks what it got wrong without knowing).
+        var log = cases?.Invoke(airport, flight.Callsign);
+        IVoiceLoopObserver observer = new ConsoleVoiceObserver(output, error, station);
+
+        if (log is not null)
+        {
+            observer = new CaseRecordingObserver(observer, log, output);
+        }
+
+        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, observer, com1);
 
         // What the telemetry shows (the takeoff) is something the controller may say without being asked; read only once the radio is up.
-        var following = states?.Invoke(ct) is { } stream ? FollowAsync(loop, stream, ct) : Task.CompletedTask;
+        var following = states?.Invoke(ct) is { } stream ? FollowAsync(loop, stream, onNewFlight, log, ct) : Task.CompletedTask;
 
-        // Said only once the microphone and the key are open: whoever reads it may press the key at once.
-        await loop.RunAsync(ct, () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta. Ctrl+C encerra."));
-        await following;
+        var marking = log is not null && markKey is not null;
+
+        if (marking)
+        {
+            markKey!.Pressed += OnMark;
+            markKey.StartWatching();
+        }
+
+        try
+        {
+            // Said only once the microphone and the key are open: whoever reads it may press the key at once.
+            await loop.RunAsync(
+                ct,
+                () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta.{(marking ? $" Se ele entender errado, aperte {markKeyName} para marcar a troca." : string.Empty)} Ctrl+C encerra."));
+            await following;
+        }
+        finally
+        {
+            if (marking)
+            {
+                markKey!.Pressed -= OnMark;
+                markKey.StopWatching();
+            }
+        }
+
         return 0;
+
+        void OnMark(object? sender, EventArgs e) =>
+            output.WriteLine(log!.Mark() ? "  Troca marcada como errada: guardada para melhoria. Obrigado!" : "  Nada para marcar ainda (ou já foi marcada).");
     }
 
-    private static async Task FollowAsync(VoiceLoop loop, IAsyncEnumerable<AircraftState> states, CancellationToken ct)
+    private static async Task FollowAsync(
+        VoiceLoop loop,
+        IAsyncEnumerable<AircraftState> states,
+        Func<AircraftState, CancellationToken, Task<FlightRestart?>>? onNewFlight,
+        CaseLog? log,
+        CancellationToken ct)
     {
-        var detector = new FlightEventDetector();
+        var events = new FlightEventDetector();
+        var changes = new FlightChangeDetector();
         var announcements = new List<Task>();
 
         try
         {
             await foreach (var state in states.WithCancellation(ct))
             {
-                if (detector.Observe(state) is { } flightEvent)
+                // Another flight: the controller, the flight and the events start over with what the simulator shows now.
+                if (onNewFlight is not null && changes.Observe(state) is { } change && await onNewFlight(change.State, ct) is { } restart)
+                {
+                    loop.StartFlight(restart.Airport, restart.Flight);
+                    log?.StartFlight(restart.Airport, restart.Flight.Callsign);
+                    events = new FlightEventDetector();
+                    events.Observe(change.State);
+                    continue;
+                }
+
+                if (events.Observe(state) is { } flightEvent)
                 {
                     // Not awaited: the controller waits for the channel by itself, and the stream must keep being read.
                     announcements.Add(loop.AnnounceAsync(flightEvent, ct));

@@ -3,6 +3,7 @@ using Fonia.Core.Airports;
 using Fonia.Core.Atc;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
+using Fonia.Core.Pipeline;
 using Fonia.Core.Sim;
 using Fonia.Core.Weather;
 
@@ -30,7 +31,10 @@ internal sealed class AtcConsole(
     IVoiceMode? voiceMode = null,
     Func<Frequency?>? liveCom1 = null,
     TimeProvider? timeProvider = null,
-    IMetarSource? metarSource = null)
+    IMetarSource? metarSource = null,
+    Func<AirportContext, string, CaseLog?>? cases = null,
+    Func<double, double, (Airport Airport, double Kilometers)?>? nearestAirport = null,
+    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -87,10 +91,34 @@ internal sealed class AtcConsole(
 
         var flight = new FlightContext(callsign, FlightPhase.Parked, airport.Ident, PendingReadback: null);
 
+        // The simulator may load another flight while the app runs: the airport, the aircraft and the flight start over, with no one asking.
+        var currentContext = context;
+        var currentCallsign = callsign;
+
+        async Task<FlightRestart?> RestartFlight(AircraftState state, CancellationToken token)
+        {
+            var restart = await RestartAsync(state, currentContext, currentCallsign, options, token);
+
+            if (restart is not null)
+            {
+                currentContext = restart.Airport;
+                currentCallsign = restart.Flight.Callsign;
+            }
+
+            return restart;
+        }
+
         if (voiceMode is not null)
         {
-            return await voiceMode.RunAsync(context, flight, ct);
+            return await voiceMode.RunAsync(context, flight, ct, nearestAirport is null ? null : RestartFlight);
         }
+
+        var log = cases?.Invoke(context, callsign);
+        FlightRestart? pending = null;
+        using var stopFollowing = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var following = nearestAirport is not null && states?.Invoke(stopFollowing.Token) is { } stream
+            ? FollowAsync(stream, RestartFlight, restart => Volatile.Write(ref pending, restart), stopFollowing.Token)
+            : Task.CompletedTask;
 
         // What the user set (--com1, or /com1 in the session) wins over what the simulator reports.
         var manualCom1 = options.Com1;
@@ -136,6 +164,23 @@ internal sealed class AtcConsole(
                 continue;
             }
 
+            if (Interlocked.Exchange(ref pending, null) is { } restarted)
+            {
+                context = restarted.Airport;
+                flight = restarted.Flight;
+                callsign = restarted.Flight.Callsign;
+                manualCom1 = options.Com1;
+                log?.StartFlight(context, callsign);
+            }
+
+            if (IsMarkCommand(line))
+            {
+                output.WriteLine(log is null
+                    ? "Os casos não estão sendo guardados (--no-cases)."
+                    : log.Mark() ? "Troca marcada como errada: guardada para melhoria. Obrigado!" : "Nada para marcar ainda (ou já foi marcada).");
+                continue;
+            }
+
             if (IsEventCommand(line))
             {
                 var radio = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
@@ -145,13 +190,96 @@ internal sealed class AtcConsole(
 
             // Who answers is who is on the frequency the radio is on at this moment.
             var onTheFrequency = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
-            var decision = engine.Handle(nlu.Interpret(line, flight), flight, onTheFrequency);
+            var before = flight;
+            var intent = nlu.Interpret(line, flight);
+            var decision = engine.Handle(intent, flight, onTheFrequency);
             flight = decision.NextContext;
 
-            Show(phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency, (timeProvider ?? TimeProvider.System).GetUtcNow())), onTheFrequency);
+            var reply = phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency, (timeProvider ?? TimeProvider.System).GetUtcNow()));
+            Show(reply, onTheFrequency);
+
+            if (log?.Record(new ExchangeResult(line, intent, decision, reply, null, new StageTimings(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero), phraseology.UnitName(onTheFrequency), before)) is { Count: > 0 } reasons)
+            {
+                output.WriteLine($"  (guardado para melhoria: {string.Join(", ", reasons)})");
+            }
         }
 
+        await stopFollowing.CancelAsync();
+        await following;
         return 0;
+    }
+
+    // Reads the states of the simulator and, when the flight in them is another one, builds the new start and hands it over.
+    private static async Task FollowAsync(
+        IAsyncEnumerable<AircraftState> stream,
+        Func<AircraftState, CancellationToken, Task<FlightRestart?>> restartFlight,
+        Action<FlightRestart> hand,
+        CancellationToken ct)
+    {
+        var changes = new FlightChangeDetector();
+
+        try
+        {
+            await foreach (var state in stream.WithCancellation(ct))
+            {
+                if (changes.Observe(state) is { } change && await restartFlight(change.State, ct) is { } restart)
+                {
+                    hand(restart);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The console is closing.
+        }
+    }
+
+    // The simulator loaded another flight: the airport nearest to the aircraft (if there is one near), its weather and the aircraft's
+    // callsign make the new start; the state of the flight goes back to the apron. Returns null when the app cannot tell where it is.
+    private async Task<FlightRestart?> RestartAsync(AircraftState state, AirportContext current, string currentCallsign, AppOptions options, CancellationToken ct)
+    {
+        if (nearestAirport is null)
+        {
+            return null;
+        }
+
+        var callsign = Normalize(state.Registration) ?? currentCallsign;
+        var target = current.Airport;
+        var near = nearestAirport(state.LatitudeDegrees, state.LongitudeDegrees);
+
+        if (near is { } found && found.Kilometers <= StartupWizard.MostKilometersFromAirport)
+        {
+            target = found.Airport;
+        }
+        else
+        {
+            output.WriteLine($"Novo voo detectado, mas nenhum aeroporto por perto: o Fonia continua em {target.Ident}.");
+        }
+
+        var sameAirport = string.Equals(target.Ident, current.Airport.Ident, StringComparison.OrdinalIgnoreCase);
+        AirportContext context;
+
+        try
+        {
+            context = AirportContext.Create(target, sameAirport ? options.Runway : null);
+        }
+        catch (ArgumentException)
+        {
+            context = AirportContext.Create(target);
+        }
+
+        var weather = options.NoMetar ? null : await ReadWeatherAsync(target.Ident, ct);
+
+        if (weather is not null)
+        {
+            context = context.WithWeather(weather.Metar, keepRunway: sameAirport && options.Runway is not null);
+        }
+
+        output.WriteLine();
+        output.WriteLine($"Novo voo detectado no simulador: aeronave {callsign}, {target.Ident}.");
+        WriteHeader(context, callsign, weather, metarSource is not null && !options.NoMetar);
+
+        return new FlightRestart(context, new FlightContext(callsign, FlightPhase.Parked, target.Ident, PendingReadback: null));
     }
 
     // "PR-ABC" and "pr abc" are the same aircraft: the engine and the NLU work with letters and digits in capitals.
@@ -213,7 +341,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/errado\" marca a última troca como mal entendida).");
         }
     }
 
@@ -236,6 +364,8 @@ internal sealed class AtcConsole(
 
         return trimmed.StartsWith("/com1", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 5 || char.IsWhiteSpace(trimmed[5]));
     }
+
+    private static bool IsMarkCommand(string line) => line.Trim().Equals("/errado", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsEventCommand(string line)
     {

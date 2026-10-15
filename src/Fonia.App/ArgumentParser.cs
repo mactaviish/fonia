@@ -45,7 +45,11 @@ internal sealed record AppOptions(
     bool NoMetar = false,
     bool ShowConfig = false,
     bool InitConfig = false,
-    string? OnlyModels = null);
+    string? OnlyModels = null,
+    bool NoCases = false,
+    bool SaveAudio = false,
+    string MarkKey = PushToTalkKey.DefaultMarkName,
+    bool ShowCases = false);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp, bool ShowVersion = false);
@@ -59,7 +63,7 @@ internal static class ArgumentParser
         Uso: fonia [opções]
              fonia                  (sem argumentos, num terminal: pega o indicativo e o aeroporto do simulador, ou pergunta, e conversa por voz)
              fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar]
-             fonia --config | --init-config
+             fonia --config | --init-config | --cases
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
@@ -74,6 +78,13 @@ internal static class ArgumentParser
           --init-config          Cria o seu arquivo de configuração (%APPDATA%\Fonia\appsettings.json) com todas as opções
                                  comentadas, para você editar. Suas preferências (tecla do PTT, microfone, voz, GPU...) ficam
                                  lá e a linha de comando sempre vale mais. Variáveis FONIA_<chave> também valem.
+          --no-cases             Não guarda os casos em que o controlador não entendeu. Por padrão o Fonia guarda, só no seu
+                                 computador (%LOCALAPPDATA%\Fonia\cases, por até 30 dias e 200 MB), o texto, o contexto e o que ele
+                                 respondeu, para melhorar o programa. Nada é enviado. Apague a pasta quando quiser.
+          --save-audio           Com --voice: guarda também o som da sua fala em cada caso (sua voz é dado pessoal: desligado por padrão).
+          --mark-key <tecla>     Com --voice: tecla que marca a última troca como "o controlador entendeu errado" (padrão: ScrollLock).
+                                 No modo texto, "/errado" faz o mesmo.
+          --cases                Mostra onde estão os casos guardados e quantos há por sessão.
           --no-metar             Não busca o METAR na internet (aviationweather.gov, só o código do aeroporto vai pela rede).
                                  Com o METAR o controlador diz o vento e o ajuste de altímetro e a pista em uso é a que o
                                  vento favorece (--runway manda); sem ele, ou sem rede, essas partes ficam de fora. O último
@@ -174,6 +185,9 @@ internal static class ArgumentParser
         string? sttModel = null;
         var sttGpu = false;
         var noMetar = false;
+        var noCases = false;
+        var saveAudio = false;
+        string? markKey = null;
         string? only = null;
         string? speak = null;
         string? speakOut = null;
@@ -232,14 +246,26 @@ internal static class ArgumentParser
                 continue;
             }
 
-            if (name is "--config" or "--init-config")
+            if (name is "--config" or "--init-config" or "--cases")
             {
                 if (args.Length > 1)
                 {
                     return Failure($"{name} não combina com outras opções: use só {name}.");
                 }
 
-                return new ParsedArguments(new AppOptions(ShowConfig: name == "--config", InitConfig: name == "--init-config"), null, ShowHelp: false);
+                return new ParsedArguments(new AppOptions(ShowConfig: name == "--config", InitConfig: name == "--init-config", ShowCases: name == "--cases"), null, ShowHelp: false);
+            }
+
+            if (name == "--no-cases")
+            {
+                noCases = true;
+                continue;
+            }
+
+            if (name == "--save-audio")
+            {
+                saveAudio = true;
+                continue;
             }
 
             if (!name.StartsWith("--", StringComparison.Ordinal))
@@ -247,7 +273,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1" or "--only"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1" or "--only" or "--mark-key"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -323,6 +349,9 @@ internal static class ArgumentParser
                 case "--only":
                     only = value.ToLowerInvariant();
                     break;
+                case "--mark-key":
+                    markKey = ParsePttKey(value, out problem, "--mark-key");
+                    break;
                 case "--audio-out":
                     audioOut = ParseDevice("--audio-out", value, out problem);
                     break;
@@ -345,23 +374,64 @@ internal static class ArgumentParser
 
         var parsed = Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect), new VoiceRaw(voice, audioOut), new DownloadRaw(downloadModels, modelsDir), com1);
 
-        if (parsed.Options is null || (!noMetar && only is null))
+        if (parsed.Options is null)
         {
             return parsed;
         }
 
+        var result = parsed.Options;
+
         if (only is not null)
         {
-            return only is not ("stt" or "tts" or "all")
-                ? Failure($"--only '{only}' não existe. Use stt (reconhecimento de voz), tts (voz do controlador) ou all.")
-                : parsed.Options.DownloadModels
-                    ? new ParsedArguments(parsed.Options with { OnlyModels = only }, null, ShowHelp: false)
-                    : Failure("--only só vale com --download-models.");
+            if (only is not ("stt" or "tts" or "all"))
+            {
+                return Failure($"--only '{only}' não existe. Use stt (reconhecimento de voz), tts (voz do controlador) ou all.");
+            }
+
+            if (!result.DownloadModels)
+            {
+                return Failure("--only só vale com --download-models.");
+            }
+
+            result = result with { OnlyModels = only };
         }
 
-        return parsed.Options.AtcAirport is null
-            ? Failure("--no-metar só vale no modo ATC: use também --atc <ICAO>.")
-            : new ParsedArguments(parsed.Options with { NoMetar = true }, null, ShowHelp: false);
+        if (noMetar)
+        {
+            if (result.AtcAirport is null)
+            {
+                return Failure("--no-metar só vale no modo ATC: use também --atc <ICAO>.");
+            }
+
+            result = result with { NoMetar = true };
+        }
+
+        if (noCases || saveAudio || markKey is not null)
+        {
+            if (result.AtcAirport is null)
+            {
+                return Failure("--no-cases, --save-audio e --mark-key só valem no modo ATC: use também --atc <ICAO>.");
+            }
+
+            if ((saveAudio || markKey is not null) && !result.Voice)
+            {
+                return Failure("--save-audio e --mark-key só valem no modo de voz: use também --voice.");
+            }
+
+            if (noCases && saveAudio)
+            {
+                return Failure("--no-cases e --save-audio não combinam: sem guardar os casos não há o que gravar.");
+            }
+
+            result = result with { NoCases = noCases, SaveAudio = saveAudio, MarkKey = markKey ?? result.MarkKey };
+
+            if (string.Equals(result.MarkKey, result.PttKey, StringComparison.OrdinalIgnoreCase))
+            {
+                return Failure($"--mark-key e --ptt-key não podem ser a mesma tecla ({result.PttKey}).");
+            }
+        }
+
+        return result == parsed.Options ? parsed : new ParsedArguments(result, null, ShowHelp: false);
     }
 
     private sealed record MicRaw(string? TestPath, int? Device, string? Key, bool List);
@@ -679,7 +749,7 @@ internal static class ArgumentParser
         return null;
     }
 
-    internal static string? ParsePttKey(string value, out string? problem)
+    internal static string? ParsePttKey(string value, out string? problem, string option = "--ptt-key")
     {
         problem = null;
 
@@ -688,7 +758,7 @@ internal static class ArgumentParser
             return value;
         }
 
-        problem = $"--ptt-key '{value}' não existe. Exemplos: {string.Join(", ", PushToTalkKey.ExampleNames)} (também letras, números e F1 a F24).";
+        problem = $"{option} '{value}' não existe. Exemplos: {string.Join(", ", PushToTalkKey.ExampleNames)} (também letras, números e F1 a F24).";
         return null;
     }
 

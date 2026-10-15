@@ -295,6 +295,26 @@ ReportGoingAround ("arremetendo")         ->  GoAroundNoted ("ciente")          
 - **Ordem das palavras (Art. 129 e 132):** o circuito diz a autorização antes da pista ("autorizado para o circuito de tráfego, PISTA ..."); o pouso diz a pista antes ("PISTA ..., pouso autorizado"). O vento fecha as duas, quando houver. O QNH do Art. 129 ainda não é dito (sem fonte).
 - Ficam para depois: a aproximação direta ("autorizada aproximação direta ... reporte final"), "número 2 para pouso", toque e arremetida, condições da pista, e o "no solo aos MM" (depois do pouso).
 
+### 14. Casos não entendidos (`Fonia.Core.Pipeline.CaseReasons`, `Fonia.App.CaseLog`)
+
+O que o controlador não conseguiu seguir é guardado **no computador do usuário** para melhorar o app (etapa 1 do item do M5; o envio é a etapa 2, ainda não existe e será opt-in):
+
+- **Quais trocas:** `CaseReasons.Of` (lógica pura, no Core) olha o estado antes da fala, a intenção e a instrução: `nao-entendido` ("repita"), `negativo` (cotejamento corrigido: o piloto ou o reconhecedor errou), `sem-indicativo`, `so-o-indicativo` (só o indicativo enquanto um cotejamento era devido: o reconhecedor provavelmente perdeu o resto). O que o app **achou** que entendeu, mas errou, ele não sabe: o piloto marca com a tecla `ScrollLock` (`--mark-key`, `voice.markKey`) no modo de voz ou `/errado` no modo texto (`marcado`).
+- **Onde:** `%LOCALAPPDATA%\Fonia\cases\<aaaammdd-hhmmss>\cases.jsonl`, uma linha JSON por item: `session` (versão, aeroporto, indicativo), `case` (id, hora, estação, fase antes, o que esperava cotejo, a última fala do controlador, o que o reconhecedor escreveu, a intenção, a instrução, a resposta, os motivos, o áudio) e `mark` (o id marcado) e `flight` (o simulador carregou outro voo: aeroporto e indicativo novos). O `id` conta todas as trocas da sessão. `ExchangeResult` agora leva o estado anterior (`Before`) e o áudio da fala (`Audio`).
+- **O som** da sua fala (`001.wav`, 16 kHz) só é guardado com `--save-audio` / `cases.saveAudio`, desligado por padrão: a voz é dado pessoal. O texto e o contexto são guardados por padrão; `--no-cases` / `cases.save: false` desliga tudo.
+- **Limites:** sessões com mais de 30 dias saem, e a pasta fica em 200 MB (as mais antigas primeiro); só pastas com nome de sessão são tocadas. Falha de disco nunca para o rádio (escrita em melhor esforço). `fonia --cases` mostra a pasta e quantos casos cada sessão tem.
+- **Nada é enviado.** O desinstalador pergunta se apaga a pasta junto com o resto.
+
+### 15. Acompanhar o voo do simulador (`FlightChangeDetector`)
+
+O aeroporto, o indicativo e a fase do voo não são mais fixos na abertura: o app acompanha o simulador e **recomeça sozinho**, sem o usuário fazer nada, quando ele carrega outro voo.
+
+- **Detecção** (Core, lógica pura, `FlightChangeDetector`): compara cada leitura com a anterior. Um **salto de 20 km ou mais** entre duas leituras não é voo; **3 km ou mais depois de um silêncio de 8 s ou mais** é um lugar alcançado por carregamento (o simulador não publica nada enquanto um voo carrega); uma **matrícula diferente** é outra aeronave (matrícula vazia é leitura ainda não assentada e não conta). Uma pausa, sem mudança de lugar, não é nada. A primeira leitura é só a base.
+- **Recomeço:** `FlightRestart` = o aeroporto mais próximo da aeronave (até 15 km, `AirportCatalog.Nearest`), o METAR dele, a pista pelo vento (a pedida em `--runway` só vale no mesmo aeroporto) e o indicativo da matrícula; a fase volta ao pátio. Sem aeroporto por perto, o app avisa e continua no que estava. O cabeçalho é escrito de novo na tela. Os modelos de voz não são recarregados.
+- **Modo de voz:** `VoiceLoop.StartFlight(aeroporto, voo)` troca o controlador e o estado; uma troca que estava em andamento é descartada (geração), para o voo antigo não voltar. O detector de decolagem e pouso recomeça, e o arquivo de casos ganha uma linha `flight`.
+- **Modo texto:** o mesmo, aplicado na próxima linha digitada.
+- **`SimSession`:** quando o simulador não responde no tempo dado ao início (ainda carregando), ela **não desiste de conectar**: o adaptador continua tentando e, quando o voo carrega, o app já o acompanha.
+
 ## Fluxo de uma interação (exemplo)
 
 1. Piloto aperta PTT e diz: "Solo Curitiba, PR-ABC, pátio 1, posição 3, solicita instruções de táxi".

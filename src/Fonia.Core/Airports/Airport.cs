@@ -94,17 +94,8 @@ public sealed record Airport(
     IReadOnlyList<AirportFrequency> Frequencies)
 {
     /// <summary>The distance in kilometers along the great circle from the airport to a position (haversine, a sphere of 6371 km).</summary>
-    public double DistanceKmTo(double latitudeDegrees, double longitudeDegrees)
-    {
-        const double EarthRadiusKm = 6371.0;
-        var lat1 = LatitudeDegrees * Math.PI / 180;
-        var lat2 = latitudeDegrees * Math.PI / 180;
-        var dLat = lat2 - lat1;
-        var dLon = (longitudeDegrees - LongitudeDegrees) * Math.PI / 180;
-        var a = (Math.Sin(dLat / 2) * Math.Sin(dLat / 2)) + (Math.Cos(lat1) * Math.Cos(lat2) * Math.Sin(dLon / 2) * Math.Sin(dLon / 2));
-
-        return 2 * EarthRadiusKm * Math.Asin(Math.Min(1, Math.Sqrt(a)));
-    }
+    public double DistanceKmTo(double latitudeDegrees, double longitudeDegrees) =>
+        Sim.Geo.DistanceKm(LatitudeDegrees, LongitudeDegrees, latitudeDegrees, longitudeDegrees);
 
     /// <summary>The first frequency listed for <paramref name="type"/>, or null if the airport has none.</summary>
     public AirportFrequency? FrequencyOf(AirportFrequencyType type)

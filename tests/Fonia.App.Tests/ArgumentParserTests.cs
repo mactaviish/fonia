@@ -693,4 +693,36 @@ public class ArgumentParserTests
         Error("--only", "stt").ShouldContain("--download-models");
         Error("--atc", "SBCT", "--only", "stt").ShouldContain("--download-models");
     }
+
+    [Fact]
+    public void The_cases_are_kept_by_default_and_can_be_turned_off_or_given_their_sound()
+    {
+        var plain = Ok("--atc", "SBCT", "--voice", "--sim", "mock");
+
+        plain.NoCases.ShouldBeFalse();
+        plain.SaveAudio.ShouldBeFalse();
+        plain.MarkKey.ShouldBe("ScrollLock");
+
+        Ok("--atc", "SBCT", "--callsign", "PRABC", "--no-cases").NoCases.ShouldBeTrue();
+        Ok("--atc", "SBCT", "--voice", "--sim", "mock", "--save-audio").SaveAudio.ShouldBeTrue();
+        Ok("--atc", "SBCT", "--voice", "--sim", "mock", "--mark-key", "F9").MarkKey.ShouldBe("F9");
+    }
+
+    [Fact]
+    public void The_options_of_the_cases_are_refused_where_they_make_no_sense()
+    {
+        Error("--no-cases").ShouldContain("--atc");
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--save-audio").ShouldContain("--voice");
+        Error("--atc", "SBCT", "--callsign", "PRABC", "--mark-key", "F9").ShouldContain("--voice");
+        Error("--atc", "SBCT", "--voice", "--sim", "mock", "--no-cases", "--save-audio").ShouldContain("--no-cases");
+        Error("--atc", "SBCT", "--voice", "--sim", "mock", "--mark-key", "banana").ShouldContain("--mark-key");
+        Error("--atc", "SBCT", "--voice", "--sim", "mock", "--mark-key", "RControl").ShouldContain("mesma tecla");
+    }
+
+    [Fact]
+    public void The_list_of_cases_is_a_mode_of_its_own()
+    {
+        ArgumentParser.Parse(["--cases"]).Options!.ShowCases.ShouldBeTrue();
+        Error("--cases", "--voice").ShouldContain("--cases");
+    }
 }

@@ -12,6 +12,7 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
     private readonly CancellationTokenSource _lifetime = new();
     private SimSource? _source;
     private Task? _drive;
+    private Task? _connecting;
 
     /// <summary>The frequency COM1 is on now, or null before the first state of a loaded flight (or without a radio).</summary>
     public Frequency? Com1 => _source?.Adapter.LatestState?.Com1?.Active;
@@ -46,10 +47,15 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
 
             var first = FirstStateAsync(source.Adapter.StreamAsync(run.Token));
 
-            await source.Adapter.ConnectAsync(run.Token);
+            // Connecting is not tied to this reading: if the simulator is still loading and nothing came in time, the adapter keeps
+            // trying and the app follows the flight as soon as it is there.
+            var connecting = ConnectAsync(source);
+            _connecting = connecting;
 
-            // The work that feeds a mock or a replay lives as long as the session, not as long as this reading.
-            _drive = source.Drive?.Invoke(_lifetime.Token);
+            if (await Task.WhenAny(first, connecting) == connecting)
+            {
+                await connecting;
+            }
 
             return await first;
         }
@@ -63,9 +69,24 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
         }
     }
 
+    // The work that feeds a mock or a replay lives as long as the session, not as long as the first reading.
+    private async Task ConnectAsync(SimSource source)
+    {
+        try
+        {
+            await source.Adapter.ConnectAsync(_lifetime.Token);
+            _drive = source.Drive?.Invoke(_lifetime.Token);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            // The session is closing.
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _lifetime.CancelAsync();
+        await FinishAsync(_connecting);
         await FinishAsync(_drive);
 
         if (_source is not null)
