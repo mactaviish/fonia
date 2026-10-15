@@ -31,6 +31,9 @@ public sealed class AtcEngine : IAtcEngine
             ReportTakingOff when airport.Unit == ServiceUnit.Tower && flight.Phase >= FlightPhase.TakeoffCleared
                 => new AtcDecision(new NoResponse(), flight with { PendingReadback = null, AwaitingCallsign = null }),
             _ when intent.Callsign is null => new AtcDecision(new RequestCallsign(), flight with { AwaitingCallsign = intent }),
+            // The conditions of the aerodrome are given by whoever answers, an AFIS included (it informs).
+            RequestInformation when airport.Unit != ServiceUnit.None
+                => Say(new DepartureInformation(airport.RunwayInUse, airport.Wind, airport.Qnh, airport.TemperatureCelsius, airport.VisibilityMeters), Released(flight)),
             _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight with { AwaitingCallsign = null }),
 
             // On the Torre's frequency the Torre does not do the Solo's job when the airport has a Solo: it says where to call.

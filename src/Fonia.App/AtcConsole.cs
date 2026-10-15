@@ -148,7 +148,7 @@ internal sealed class AtcConsole(
             var decision = engine.Handle(nlu.Interpret(line, flight), flight, onTheFrequency);
             flight = decision.NextContext;
 
-            Show(phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency)), onTheFrequency);
+            Show(phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency, (timeProvider ?? TimeProvider.System).GetUtcNow())), onTheFrequency);
         }
 
         return 0;
@@ -266,7 +266,7 @@ internal sealed class AtcConsole(
 
         var decision = engine.Handle(flightEvent, flight, onTheFrequency);
 
-        if (phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, onTheFrequency)) is { } utterance)
+        if (phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, onTheFrequency, now)) is { } utterance)
         {
             Show(utterance, onTheFrequency);
         }

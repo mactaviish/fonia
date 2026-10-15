@@ -32,6 +32,7 @@ public sealed class PortuguesePhraseology : IPhraseology
             NoOneOnFrequency silent => new Utterance(
                 $"Ninguém responde em {Mhz(silent.Frequency)}. Sintonize uma frequência de {context.Airport.Airport.Ident}: {FrequenciesOf(context.Airport)}.",
                 UtteranceKind.Notice),
+            DepartureInformation information => new Utterance($"{callsign}, {Conditions(information, context.Now)}."),
             CallTheTower tower => new Utterance(
                 $"{UnitName(context.Airport)}: o Solo não trata de chegada neste app: chame a Torre em {Mhz(tower.Frequency)}.",
                 UtteranceKind.Notice),
@@ -82,6 +83,44 @@ public sealed class PortuguesePhraseology : IPhraseology
 
     // The minutes only, digit by digit (Art. 25): "ZERO DOIS".
     private static string Minutes(int minute) => SpokenText.Digits(minute.ToString("00", System.Globalization.CultureInfo.InvariantCulture));
+
+    // Art. 122, I: the runway in use, the wind, the altimeter setting, the temperature, the visibility and the time check, in that order.
+    private static string Conditions(DepartureInformation information, DateTimeOffset? now)
+    {
+        var parts = new List<string>();
+
+        if (information.Runway is { } runway)
+        {
+            parts.Add(SpokenText.Runway(runway));
+        }
+
+        if (information.Wind is { } wind)
+        {
+            parts.Add(SpokenText.Wind(wind));
+        }
+
+        if (information.Qnh is { } qnh && qnh is >= 900 and <= 1099)
+        {
+            parts.Add($"ajuste de altímetro {SpokenText.Qnh(qnh)}");
+        }
+
+        if (information.TemperatureCelsius is { } temperature)
+        {
+            parts.Add($"temperatura {(temperature < 0 ? "MENOS " : string.Empty)}{SpokenText.Digits(Math.Abs(temperature).ToString("00", System.Globalization.CultureInfo.InvariantCulture))}");
+        }
+
+        if (information.VisibilityMeters is { } visibility)
+        {
+            parts.Add($"visibilidade {SpokenText.Visibility(visibility)}");
+        }
+
+        if (now is { } time)
+        {
+            parts.Add($"hora certa {Minutes(time.UtcDateTime.Minute)}");
+        }
+
+        return parts.Count > 0 ? string.Join(", ", parts) : "sem informações disponíveis";
+    }
 
     // "ajuste de altímetro UNO ZERO UNO OITO" (Art. 29), said in full: the abbreviation is no word for the voice.
     private static string AltimeterPart(int? qnh) => qnh is { } hectopascals && hectopascals is >= 900 and <= 1099 ? $", ajuste de altímetro {SpokenText.Qnh(hectopascals)}" : string.Empty;

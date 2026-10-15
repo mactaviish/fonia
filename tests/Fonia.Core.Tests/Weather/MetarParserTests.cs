@@ -110,4 +110,25 @@ public class MetarParserTests
 
         metar.Wind.ShouldBeNull();
     }
+
+    [Theory]
+    [InlineData("SBCT 151200Z 09008KT 9999 SCT030 22/14 Q1018", 9999)]
+    [InlineData("SBCT 151200Z 09008KT 3000 BR BKN008 22/14 Q1018", 3000)]
+    [InlineData("SBCT 151200Z 09008KT 0700 FG VV001 22/14 Q1018", 700)]
+    [InlineData("SBCT 151200Z 09008KT CAVOK 22/14 Q1018", 9999)]
+    [InlineData("SBCT 151200Z VRB03KT 8000 22/14 Q1018", 8000)]
+    public void The_visibility_in_meters_is_read(string raw, int expected)
+    {
+        MetarParser.TryParse(raw, out var metar).ShouldBeTrue();
+
+        metar.VisibilityMeters.ShouldBe(expected);
+    }
+
+    [Fact]
+    public void A_metar_without_a_visibility_in_meters_leaves_it_empty()
+    {
+        MetarParser.TryParse("KJFK 151251Z 28012KT 10SM FEW250 15/06 A2992", out var metar).ShouldBeTrue();
+
+        metar.VisibilityMeters.ShouldBeNull();
+    }
 }

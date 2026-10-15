@@ -17,7 +17,8 @@ public sealed record Utterance(string Text, UtteranceKind Kind = UtteranceKind.R
 
 /// <summary>Who the controller is talking to and where, for the words that depend on it.</summary>
 /// <param name="Callsign">The aircraft's normalized callsign ("PRABC").</param>
-public sealed record PhraseContext(string Callsign, AirportContext Airport);
+/// <param name="Now">The time the controller says it is ("hora certa"); null leaves the time check out. The words need a clock, the decision does not.</param>
+public sealed record PhraseContext(string Callsign, AirportContext Airport, DateTimeOffset? Now = null);
 
 /// <summary>Turns what the ATC engine decided into what the controller says, in one language.</summary>
 public interface IPhraseology

@@ -117,6 +117,25 @@ public static class SpokenText
             : text;
     }
 
+    /// <summary>
+    /// A visibility in meters as the manual says it (Art. 32): digit by digit, "UNO SETE ZERO ZERO METROS", and round thousands with the word
+    /// MIL ("TRÊS MIL METROS"). 9999, which a METAR uses for 10 km or more, is "DEZ QUILÔMETROS OU MAIS".
+    /// </summary>
+    // TODO(fraseologia): "dez quilômetros ou mais" is a proposal for 9999; the manual shows only visibilities in meters.
+    public static string Visibility(int meters)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(meters);
+
+        if (meters >= 9999)
+        {
+            return "DEZ QUILÔMETROS OU MAIS";
+        }
+
+        return meters >= 1000 && meters % 1000 == 0
+            ? $"{Digits((meters / 1000).ToString(CultureInfo.InvariantCulture))} MIL METROS"
+            : $"{Digits(meters.ToString(CultureInfo.InvariantCulture))} METROS";
+    }
+
     /// <summary>The altimeter setting in hPa, digit by digit: 1017 is "UNO ZERO UNO SETE" and 1000 is "UNO MIL".</summary>
     public static string Qnh(int hectopascals)
     {

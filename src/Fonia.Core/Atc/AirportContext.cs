@@ -11,11 +11,13 @@ namespace Fonia.Core.Atc;
 /// <param name="RunwayInUse">The runway end in use ("15"), or null when the airport data has no usable runway.</param>
 /// <param name="Wind">The surface wind when the app knows it (a METAR, the simulator); null when not, and then it is not said.</param>
 /// <param name="Qnh">The altimeter setting in hPa when the app knows it (a METAR); null when not, and then it is not said.</param>
+/// <param name="TemperatureCelsius">The air temperature when the app knows it (a METAR); null when not.</param>
+/// <param name="VisibilityMeters">The prevailing visibility in meters when the app knows it (a METAR; 9999 is 10 km or more); null when not.</param>
 /// <param name="Tuned">
 /// The frequency the pilot's radio is on, when it is known (a simulator reading or the user's choice); null otherwise.
 /// <see cref="Unit"/> is then who answers on it, see <see cref="FrequencyResolver"/>.
 /// </param>
-public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null)
+public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null, int? TemperatureCelsius = null, int? VisibilityMeters = null)
 {
     // Up to five knots the wind is as good as calm for choosing the runway (a light tailwind is accepted): the default stays.
     private const int WindThatChoosesTheRunwayKnots = 6;
@@ -35,6 +37,8 @@ public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? R
         {
             Wind = wind,
             Qnh = metar.QnhHectopascals,
+            TemperatureCelsius = metar.TemperatureCelsius,
+            VisibilityMeters = metar.VisibilityMeters,
             RunwayInUse = keepRunway || wind is null || wind.SpeedKnots < WindThatChoosesTheRunwayKnots ? RunwayInUse : RunwayWithTheWindInTheNose(wind) ?? RunwayInUse,
         };
     }

@@ -89,6 +89,14 @@ public sealed record GoAroundNoted : AtcInstruction;
 public sealed record CallTheTower(Frequency Frequency) : AtcInstruction;
 
 /// <summary>
+/// The answer to "solicita informações de partida" (MCA 100-16, Art. 122): the runway in use, the wind, the altimeter setting, the
+/// temperature, the visibility and the time check. What the airport does not know is null and is not said; the time comes from the clock
+/// of the phraseology, not from the decision.
+/// </summary>
+// TODO(fraseologia): 9999 in a METAR is "10 km or more"; "visibilidade dez quilômetros ou mais" is a proposal, the manual shows only meters.
+public sealed record DepartureInformation(string? Runway, Wind? Wind, int? Qnh, int? TemperatureCelsius, int? VisibilityMeters) : AtcInstruction;
+
+/// <summary>
 /// "No solo aos 02, após livrar a pista chame Solo ...": the Torre tells the aircraft it is on the ground, with the minute it touched down and
 /// the Solo's frequency (MCA 100-16, Art. 133). <paramref name="Solo"/> is null when the airport has no Solo, and then nothing more is said.
 /// </summary>

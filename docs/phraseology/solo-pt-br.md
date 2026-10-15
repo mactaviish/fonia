@@ -69,6 +69,20 @@ A forma sem taxiway (S-TXI-OK-SHORT) é a que o M2 usa: os dados do OurAirports 
 | P-TXI-OK | controle | "GOL 1419, Solo Brasília, táxi autorizado para o ponto de espera da pista 29 esquerda via taxiways Lima 6, Kilo, Uniform e Zulu. Ajuste de altímetro, 1013." |
 | P-TXI-HAND | piloto | "Solo Brasília, GOL 1419, no ponto de espera da pista 29 esquerda." → "GOL 1419, chame a Torre Brasília em 118,1." |
 
+## Informações de partida (Art. 121 e 122)
+
+| ID | Quem | Frase | Fonte |
+|---|---|---|---|
+| S-INF-REQ | piloto | "Tráfego Galeão, GLO 1844, solicita informações de partida." | Art. 121 |
+| S-INF-ANS | controle | "GLO 1844, pista 09, vento 100/8 kt, ajuste de altímetro ou QNH 1012, temperatura 28, RVR 1.000 m, hora certa 17." | Art. 122, I |
+
+- **Ordem da resposta (Art. 122, I):** indicativo, pista em uso, vento, ajuste de altímetro, temperatura, visibilidade (ou RVR) e hora certa (só os minutos, Art. 25).
+- **O Fonia atende o pedido de quem estiver na frequência** (o Solo, a Torre ou o Rádio): o manual põe isso no "Tráfego", que os dados dos aeroportos não têm. O piloto pede como quiser ("condições do aeródromo", "informações meteorológicas", "o QNH", "qual o tempo"): "condições do aeródromo" é do Rádio (Art. 134 a 136, tráfego em rota) mas é o que um piloto diria.
+- **Implementado em 2026-10-15** (`RequestInformation`, `DepartureInformation`, com o METAR): o que o aeroporto não sabe não é dito; sem METAR, só a pista em uso e a hora certa.
+- **Visibilidade (Art. 32):** dígito a dígito ("UNO SETE ZERO ZERO METROS") e milhares redondos com MIL ("TRÊS MIL METROS"). Para 9999 do METAR (10 km ou mais) o manual não tem frase: `TODO(fraseologia)`, "visibilidade DEZ QUILÔMETROS OU MAIS" é uma proposta.
+- **Temperatura:** dois dígitos ("DOIS QUATRO"); abaixo de zero, "MENOS" antes. A forma negativa também é uma proposta.
+- **RVR, nuvens e fenômenos do METAR** ainda não são ditos.
+
 ## Readback ("cotejamento")
 
 **O que deve ser cotejado (Art. 12):** autorização da rota; autorizações e instruções para entrar, pousar, decolar, manter-se a certa distância, cruzar, **taxiar** e regressar em qualquer pista; pista em uso, ajuste de altímetro, código SSR, instruções de nível ou altitude, procedimentos, horários, nomes de fixos, matrícula, frequência, instruções de proa e velocidade, níveis de transição.

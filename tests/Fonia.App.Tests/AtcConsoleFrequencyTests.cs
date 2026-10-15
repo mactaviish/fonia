@@ -437,6 +437,26 @@ public class AtcConsoleFrequencyTests
         result.Output.ShouldNotContain("Sem METAR");
     }
 
+    [Fact]
+    public async Task The_pilot_who_asks_for_the_conditions_hears_the_runway_the_weather_and_the_time_check()
+    {
+        var metar = new FakeMetar(Weather("SBXX 141200Z 28012KT 9999 FEW030 22/14 Q1018"));
+
+        var result = await RunAsync(Atc(), "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicita condições do aeródromo\nsair\n", metar: metar);
+
+        result.Output.ShouldContain(
+            "SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, PISTA DOIS NOVE, VENTO DOIS OITO ZERO GRAUS, UNO DOIS NÓS, ajuste de altímetro UNO ZERO UNO OITO, temperatura DOIS DOIS, visibilidade DEZ QUILÔMETROS OU MAIS, hora certa DOIS MEIA.");
+        result.Output.ShouldNotContain("repita");
+    }
+
+    [Fact]
+    public async Task Without_a_metar_the_conditions_are_the_runway_and_the_time_check()
+    {
+        var result = await RunAsync(Atc(), "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, informações de partida\nsair\n", metar: new FakeMetar(null));
+
+        result.Output.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, PISTA UNO UNO, hora certa DOIS MEIA.");
+    }
+
     // A reader that hands over its lines one at a time and runs an action between them, like a person at a keyboard.
     private sealed class BlockingReader(string[] lines, Action between) : TextReader
     {

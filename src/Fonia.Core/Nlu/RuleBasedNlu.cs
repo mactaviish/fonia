@@ -41,6 +41,11 @@ public sealed class RuleBasedNlu : INlu
     private static readonly string[] LandingStems = ["pouso", "pousar", "circuito", "aproxim"];
     private static readonly string[] GoAroundStems = ["arremet", "perdida"];
 
+    // The conditions of the aerodrome (Art. 121): asking for them needs no request word when the pilot names the information, and
+    // the words that also come up in clearances (the altimeter setting, the weather) need one.
+    private static readonly string[] InformationStems = ["informaco", "condico", "meteorolog", "metar", "atis"];
+    private static readonly string[] WeakInformationStems = ["qnh", "altimetro", "tempo", "clima"];
+
     // A pilot who only says "pronto" is ready for the taxi: it is what the controller asks for after startup and pushback.
     private static readonly string[] ReadyStems = ["pronto", "pronta"];
     private static readonly string[] StandWords = ["box", "pos", "posicao", "stand", "patio", "vaga", "gate"];
@@ -68,6 +73,11 @@ public sealed class RuleBasedNlu : INlu
         var startup = HasAny(rest, StartupStems);
         // "ciente" comes out of the recognizer as "sente" and "siente" too; the short one is no stem because it is inside other words.
         var repeating = HasAny(rest, ReadbackStems) || rest.Contains("sente");
+
+        if (AsksForInformation(rest, repeating))
+        {
+            return new RequestInformation(callsign);
+        }
 
         var departure = DepartureIntent(rest, flight, repeating, callsign);
 
@@ -126,6 +136,19 @@ public sealed class RuleBasedNlu : INlu
         }
 
         return new RequestTaxi(callsign, FindRunway(rest));
+    }
+
+    // "solicito informações de partida" has "partida", "condições do aeródromo" has none of the engine words: what decides is that the pilot
+    // asks for information. Asking for the engine start, the pushback or the taxi in the same breath is asking for that; asking for
+    // instructions to land is the circuit; repeating an instruction is a readback.
+    private static bool AsksForInformation(List<string> rest, bool repeating)
+    {
+        if (repeating || rest.Contains("perna") || rest.Contains("final") || rest.Contains("base") || HasAny(rest, ["acion", "pushback", "push", "tax", "pouso", "pousar", "circuito", "arremet", "perdida", "decol"]))
+        {
+            return false;
+        }
+
+        return HasAny(rest, InformationStems) || (HasAny(rest, WeakInformationStems) && (HasAny(rest, RequestStems) || rest.Contains("qual")));
     }
 
     // What the pilot says at the holding point and on the runway: ready for departure, lined up, taking off. A readback (which

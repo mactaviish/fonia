@@ -144,7 +144,7 @@ public class RuleBasedNluTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("blá blá blá")]
-    [InlineData("qual é o tempo hoje")]
+    [InlineData("qual é o sabor do café hoje")]
     public void What_cannot_be_understood_is_unknown_and_keeps_the_text(string said)
     {
         _nlu.Interpret(said, Parked).ShouldBe(new Unknown(said));
@@ -175,7 +175,7 @@ public class RuleBasedNluTests
 
     [Theory]
     [InlineData("blá blá")]
-    [InlineData("qual é o tempo hoje")]
+    [InlineData("qual é o sabor do café hoje")]
     public void Nonsense_is_not_a_readback_even_with_an_instruction_waiting(string said)
     {
         _nlu.Interpret(said, AwaitingReadback).ShouldBe(new Unknown(said));

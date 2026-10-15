@@ -34,12 +34,21 @@ public static partial class MetarParser
         var variable = false;
         int? temperature = null;
         int? qnh = null;
+        int? visibility = null;
 
         foreach (var token in tokens.Skip(index + 2).TakeWhile(t => t != "RMK"))
         {
             if (WindGroup().Match(token) is { Success: true } w)
             {
                 (wind, variable) = ReadWind(w);
+            }
+            else if (visibility is null && wind is not null | variable && VisibilityGroup().IsMatch(token))
+            {
+                visibility = int.Parse(token, CultureInfo.InvariantCulture);
+            }
+            else if (token == "CAVOK")
+            {
+                visibility ??= 9999;
             }
             else if (TemperatureGroup().Match(token) is { Success: true } t)
             {
@@ -55,7 +64,7 @@ public static partial class MetarParser
             }
         }
 
-        metar = new Metar(tokens[index], wind, temperature, qnh, variable, raw.Trim());
+        metar = new Metar(tokens[index], wind, temperature, qnh, variable, raw.Trim(), visibility);
         return true;
     }
 
@@ -94,6 +103,9 @@ public static partial class MetarParser
 
     [GeneratedRegex(@"^(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?(KT|MPS)$")]
     private static partial Regex WindGroup();
+
+    [GeneratedRegex(@"^\d{4}$")]
+    private static partial Regex VisibilityGroup();
 
     [GeneratedRegex(@"^(M?\d{2})/(?:M?\d{2})?$")]
     private static partial Regex TemperatureGroup();

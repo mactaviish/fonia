@@ -62,5 +62,11 @@ public sealed record ReportGoingAround(string? Callsign) : Intent(Callsign);
 /// <summary>The pilot reports having cleared the runway after landing ("pista livre", "livrando a pista"): Art. 134, I.</summary>
 public sealed record ReportRunwayVacated(string? Callsign) : Intent(Callsign);
 
+/// <summary>
+/// The pilot asks for the conditions of the aerodrome ("solicita informações de partida", "condições do aeródromo", "o QNH"): MCA 100-16,
+/// Art. 121. The answer is the weather and the runway in use.
+/// </summary>
+public sealed record RequestInformation(string? Callsign) : Intent(Callsign);
+
 /// <summary>Speech that could not be interpreted.</summary>
 public sealed record Unknown(string RawText) : Intent((string?)null);
