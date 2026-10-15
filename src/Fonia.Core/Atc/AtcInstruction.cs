@@ -8,8 +8,8 @@ namespace Fonia.Core.Atc;
 /// </summary>
 public abstract record AtcInstruction;
 
-/// <summary>Taxi to the holding point of <paramref name="Runway"/> (no detailed route yet).</summary>
-public sealed record TaxiClearance(string Runway) : AtcInstruction;
+/// <summary>Taxi to the holding point of <paramref name="Runway"/> (no detailed route yet), with the altimeter setting when known (Art. 125).</summary>
+public sealed record TaxiClearance(string Runway, int? Qnh = null) : AtcInstruction;
 
 /// <summary>The pilot's readback did not match; ask again for <paramref name="Expected"/>.</summary>
 public sealed record RequestReadbackCorrection(AtcInstruction Expected) : AtcInstruction;
@@ -68,9 +68,8 @@ public sealed record TakeoffClearance(string Runway, Wind? Wind = null) : AtcIns
 /// <summary>
 /// Cleared to the traffic circuit on <paramref name="Runway"/>, with the wind when known, to report the downwind (MCA 100-16, Art. 129).
 /// </summary>
-// TODO(fraseologia): the manual also says the altimeter setting ("QNH 1015") here; it is left out while the app has no source for it.
-// The other form, "autorizada aproximação direta ... reporte final", is not implemented yet.
-public sealed record CircuitClearance(string Runway, Wind? Wind = null) : AtcInstruction;
+// The altimeter setting is said when there is a METAR. The other form, "autorizada aproximação direta ... reporte final", is not implemented yet.
+public sealed record CircuitClearance(string Runway, Wind? Wind = null, int? Qnh = null) : AtcInstruction;
 
 /// <summary>"Reporte perna base" (Art. 130, II). Art. 12 does not list reports among what must be read back.</summary>
 public sealed record ReportBase : AtcInstruction;

@@ -161,7 +161,7 @@ public sealed class AtcEngine : IAtcEngine
 
         return intent switch
         {
-            RequestLanding => Clearance(new CircuitClearance(runway, airport.Wind), flight, FlightPhase.InCircuit, runway),
+            RequestLanding => Clearance(new CircuitClearance(runway, airport.Wind, airport.Qnh), flight, FlightPhase.InCircuit, runway),
             ReportDownwind => Clearance(new ReportBase(), flight, FlightPhase.OnDownwind, runway),
             ReportBaseLeg => Clearance(new ReportOnFinal(), flight, FlightPhase.OnBase, runway),
             _ => Clearance(new LandingClearance(runway, airport.Wind), flight, FlightPhase.LandingCleared, runway),
@@ -221,7 +221,7 @@ public sealed class AtcEngine : IAtcEngine
             return Say(new NoRunwayAvailable(), flight);
         }
 
-        var clearance = new TaxiClearance(airport.RunwayInUse);
+        var clearance = new TaxiClearance(airport.RunwayInUse, airport.Qnh);
 
         // The taxi clearance is what the manual requires to be read back (Art. 12); startup and pushback are read back too, as in practice.
         return new AtcDecision(clearance, flight with { Phase = FlightPhase.Taxiing, PendingReadback = clearance, LastInstruction = clearance, AssignedRunway = airport.RunwayInUse });
