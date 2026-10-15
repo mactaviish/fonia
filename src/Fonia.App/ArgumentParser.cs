@@ -47,7 +47,7 @@ internal sealed record AppOptions(
     bool InitConfig = false);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
-internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
+internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp, bool ShowVersion = false);
 
 /// <summary>Reads the command line by hand: the options are few and a parsing library would be the heaviest part of the app.</summary>
 internal static class ArgumentParser
@@ -132,6 +132,7 @@ internal static class ArgumentParser
           --duration <segundos>  Encerra sozinho depois desse tempo.
           --log-level <nível>    trace, debug, information, warning (padrão), error, critical ou none.
                                  Os logs vão para a saída de erro.
+          --version              Mostra a versão do programa.
           --help, -h             Mostra esta ajuda.
 
         Ctrl+C encerra com limpeza (a gravação fica válida).
@@ -191,6 +192,11 @@ internal static class ArgumentParser
             if (name is "--help" or "-h" or "/?")
             {
                 return new ParsedArguments(null, null, ShowHelp: true);
+            }
+
+            if (name == "--version")
+            {
+                return new ParsedArguments(null, null, ShowHelp: false, ShowVersion: true);
             }
 
             if (name == "--mic-list")

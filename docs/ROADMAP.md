@@ -77,8 +77,8 @@ Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entr
 - [ ] ATIS com METAR real (cache + fallback). **Feito:** METAR real (`aviationweather.gov`, cache de 30 min, guardado por até 3 h sem rede, `--no-metar`), com vento e ajuste de altímetro nas falas. Informações de partida / condições do aeródromo (Art. 121 e 122): pista, vento, ajuste de altímetro, temperatura, visibilidade e hora certa. **Falta:** o texto falado do ATIS (precisa de fonte da fraseologia), o vento do simulador como fallback
 - [x] Seleção de pista em uso pelo vento (`AirportContext.WithWeather`; `--runway` manda)
 - [x] Configuração em `appsettings.json` (`%APPDATA%\Fonia`, `--config`, `--init-config`, variáveis `FONIA_*`) e abertura sem argumentos que pergunta o aeroporto e conversa por voz (ver ARCHITECTURE 8b). Falta a primeira versão utilizável por outras pessoas: publicação, instalador e documentação de instalação, abaixo
-- [ ] Publicação (`dotnet publish` self-contained) e primeiro instalador Windows
-- [ ] Documentação de instalação
+- [x] Publicação (`tools/publish.ps1`: self-contained win-x64, 156 MB / zip de 61 MB, sem as bibliotecas de outros sistemas), instalador Inno Setup (`installer/fonia.iss`, sem administrador, oferece baixar os modelos) e workflow de release com tag (`release.yml`, rascunho com SHA-256). **O instalador não foi compilado fora do CI** (o Inno Setup não está nesta máquina), e a decisão sobre o `SimConnect.dll` no pacote segue aberta (`docs/decisions/simconnect.md`)
+- [x] Documentação de instalação (`docs/INSTALL.md`)
 
 **Pronto quando:** você faz um voo local completo (partida → táxi → decolagem → circuito → pouso → táxi) falando com o app.
 

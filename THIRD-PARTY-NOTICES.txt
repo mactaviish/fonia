@@ -44,7 +44,15 @@ SimConnect.NET - MIT
   docs/decisions/simconnect.md
 
 Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.Logging.Console - MIT
+Microsoft.Extensions.Configuration.Json, Microsoft.Extensions.Configuration.Binder - MIT
   https://github.com/dotnet/runtime
+
+.NET (o runtime que acompanha o aplicativo publicado, "self-contained") - MIT
+  https://github.com/dotnet/runtime
+
+SimConnect.dll (Microsoft, vem dentro do pacote SimConnect.NET) - sem declaração oficial de redistribuição
+  Está no pacote do aplicativo. A decisão sobre redistribuí-la ou carregá-la da instalação do usuário está em aberto e deve ser
+  tomada antes de publicar o programa: docs/decisions/simconnect.md
 
 
 Dados

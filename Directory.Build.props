@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
+    <!-- The version of the app and of the installer (tools/publish.ps1 reads it from fonia.exe). Change it for a release. -->
+    <Version>0.1.0</Version>
     <Copyright>Copyright 2026 Leonardo Yuri Dalla Corte Brancalione</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 
