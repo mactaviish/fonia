@@ -291,4 +291,13 @@ public sealed class ModelProvisionerTests : IDisposable
         text.Count(c => c == '\r').ShouldBe(2);
         text.ShouldEndWith("\n");
     }
+
+    [Fact]
+    public void The_installer_can_ask_for_one_model_or_both()
+    {
+        ModelNeeds.Selected(null, "D").Select(n => n.File).ShouldBe(ModelCatalog.All);
+        ModelNeeds.Selected("all", "D").Select(n => n.File).ShouldBe(ModelCatalog.All);
+        ModelNeeds.Selected("stt", "D").ShouldBe([new ModelNeed(ModelCatalog.WhisperSmall, "D")]);
+        ModelNeeds.Selected("tts", null).ShouldBe([new ModelNeed(ModelCatalog.KokoroModel, null), new ModelNeed(ModelCatalog.KokoroVoices, null)]);
+    }
 }

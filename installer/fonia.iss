@@ -5,9 +5,10 @@
 ;   iscc /DAppVersion=0.1.0 fonia.iss
 ; O resultado é installer\Output\fonia-setup-0.1.0.exe. Em /DPackageDir= vai outra pasta de publicação, se não for dist\fonia.
 ;
-; Instala só para o usuário (sem pedir administrador) em %LOCALAPPDATA%\Programs\Fonia. Os modelos de voz (~800 MB) não vão
-; dentro: o instalador oferece baixá-los no fim, com "fonia --download-models". Desinstalar remove o programa e deixa os modelos
-; (%LOCALAPPDATA%\Fonia\models) e as configurações (%APPDATA%\Fonia) no lugar, que são do usuário.
+; Instala só para o usuário (sem pedir administrador) em %LOCALAPPDATA%\Programs\Fonia. Os modelos de voz (~850 MB) não vão
+; dentro: o instalador mostra uma caixa de seleção para cada um (marcados, com o aviso de que os dois são necessários) e baixa os
+; marcados com "fonia --download-models" numa janela que mostra o resultado. Desinstalar remove o programa e PERGUNTA se deve
+; remover também o que é do usuário: os modelos, o cache e as lembranças (%LOCALAPPDATA%\Fonia) e as configurações (%APPDATA%\Fonia).
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
@@ -57,10 +58,80 @@ Source: "..\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 ; O programa é de console: sem argumentos ele pergunta o aeroporto e conversa por voz. "cmd /k" mantém a janela aberta se algo falhar.
 Name: "{group}\{#AppName}"; Filename: "{cmd}"; Parameters: "/k """"{app}\{#AppExe}"""""; WorkingDir: "{app}"; Comment: "Conversar por voz com o controle de tráfego aéreo"
 Name: "{group}\{#AppName} - configurações"; Filename: "{cmd}"; Parameters: "/k """"{app}\{#AppExe}"" --init-config & ""{app}\{#AppExe}"" --config"""; WorkingDir: "{app}"; Comment: "Cria e mostra o arquivo de configuração"
-Name: "{group}\{#AppName} - baixar modelos de voz"; Filename: "{cmd}"; Parameters: "/k """"{app}\{#AppExe}"" --download-models"""; WorkingDir: "{app}"; Comment: "Baixa os modelos de voz que faltam (~800 MB)"
+Name: "{group}\{#AppName} - baixar modelos de voz"; Filename: "{cmd}"; Parameters: "/k """"{app}\{#AppExe}"" --download-models"""; WorkingDir: "{app}"; Comment: "Baixa os modelos de voz que faltam (~850 MB)"
 Name: "{group}\Desinstalar {#AppName}"; Filename: "{uninstallexe}"
 
+[Tasks]
+; A página "Selecionar tarefas adicionais" do instalador. Os modelos são grandes e não vão dentro do instalador: são baixados dos donos
+; (Hugging Face e GitHub), conferidos pelo SHA-256 e guardados em %LOCALAPPDATA%\Fonia\models. O programa só funciona com os dois.
+Name: "models_stt"; Description: "Reconhecimento de voz: Whisper small (466 MB)"; GroupDescription: "Modelos de voz (~850 MB, é preciso internet). O Fonia só funciona com os dois: se você desmarcar algum, ele pergunta se deve baixar na primeira vez que for usado."; Flags: checkedonce
+Name: "models_tts"; Description: "Voz do controlador: Kokoro-82M (353 MB)"; Flags: checkedonce
+
 [Run]
-; Os modelos são grandes: o instalador pergunta, e baixar pode ser feito depois pelo atalho. waituntilterminated mantém o assistente
-; na tela enquanto a janela do download trabalha.
-Filename: "{app}\{#AppExe}"; Parameters: "--download-models"; Description: "Baixar agora os modelos de voz (~800 MB, é preciso internet)"; Flags: postinstall skipifsilent waituntilterminated
+; Uma janela mostra o progresso e, no fim, o resultado (inclusive "já estão instalados"), e espera uma tecla: sem isso ela fecharia na hora.
+; Pode ser interrompida e refeita: continua de onde parou. Depois da instalação, o atalho "baixar modelos de voz" faz o mesmo.
+Filename: "{cmd}"; Parameters: "{code:DownloadParameters}"; StatusMsg: "Baixando os modelos de voz..."; Flags: skipifsilent waituntilterminated; Check: AnyModelSelected
+
+[Code]
+function AnyModelSelected: Boolean;
+begin
+  Result := WizardIsTaskSelected('models_stt') or WizardIsTaskSelected('models_tts');
+end;
+
+// cmd /c ""fonia.exe" --download-models [--only stt|tts] & echo. & pause": o cmd tira a primeira e a última aspas.
+function DownloadParameters(Param: String): String;
+var
+  Only: String;
+begin
+  if WizardIsTaskSelected('models_stt') and WizardIsTaskSelected('models_tts') then
+    Only := ''
+  else if WizardIsTaskSelected('models_stt') then
+    Only := ' --only stt'
+  else
+    Only := ' --only tts';
+
+  Result := '/c ""' + ExpandConstant('{app}\{#AppExe}') + '" --download-models' + Only + ' & echo. & pause"';
+end;
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Desinstalar: o programa sai sempre; o que é do usuário (modelos, configurações, cache) só sai se ele disser que sim.
+// Silencioso (/SILENT, /VERYSILENT) não apaga nada, a não ser que se passe /PURGEDATA.
+
+var
+  RemoveUserData: Boolean;
+
+function PurgeRequested: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/PURGEDATA') = 0 then
+      Result := True;
+end;
+
+function InitializeUninstall: Boolean;
+begin
+  Result := True;
+
+  if PurgeRequested then
+    RemoveUserData := True
+  else if not UninstallSilent then
+    RemoveUserData := MsgBox(
+      'Remover também tudo o que o Fonia guardou para você?' + #13#10 + #13#10 +
+      '  - os modelos de voz baixados (~850 MB)' + #13#10 +
+      '  - as suas configurações (appsettings.json)' + #13#10 +
+      '  - o METAR guardado e as últimas respostas (aeroporto e indicativo)' + #13#10 + #13#10 +
+      'Se você escolher "Não", esses arquivos ficam e o próximo Fonia que você instalar os reaproveita, sem baixar de novo.' + #13#10 +
+      'Se você configurou outra pasta para os modelos (modelsDir), ela não é apagada.',
+      mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and RemoveUserData then
+  begin
+    DelTree(ExpandConstant('{localappdata}\Fonia'), True, True, True);
+    DelTree(ExpandConstant('{userappdata}\Fonia'), True, True, True);
+  end;
+end;

@@ -10,7 +10,7 @@ internal static class ModelCommands
     {
         using var http = CreateHttpClient();
         var provisioner = new ModelProvisioner(new ModelDownloader(http), input, output, error, interactive);
-        var needs = ModelNeeds.All(options.ModelsDir);
+        var needs = ModelNeeds.Selected(options.OnlyModels, options.ModelsDir);
 
         if (provisioner.Missing(needs).Count == 0)
         {
