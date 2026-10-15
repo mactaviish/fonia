@@ -89,6 +89,20 @@ public sealed record GoAroundNoted : AtcInstruction;
 /// <summary>The pilot asked the Solo for an arrival, which is the Torre's. A message of the app, not radio: the manual has no phrase for it.</summary>
 public sealed record CallTheTower(Frequency Frequency) : AtcInstruction;
 
+/// <summary>
+/// "No solo aos 02, após livrar a pista chame Solo ...": the Torre tells the aircraft it is on the ground, with the minute it touched down and
+/// the Solo's frequency (MCA 100-16, Art. 133). <paramref name="Solo"/> is null when the airport has no Solo, and then nothing more is said.
+/// </summary>
+// TODO(fraseologia): without a Solo the manual's "taxie via ..., reporte pista livre" needs a taxiway the airport data does not have.
+public sealed record LandedNotice(int Minute, Frequency? Solo) : AtcInstruction;
+
+/// <summary>The Torre passes a flight that cleared the runway to the Solo: "chame Solo ..." (Art. 133). Like the handoff to the Torre, no readback is asked.</summary>
+public sealed record HandoffToGround(Frequency Frequency) : AtcInstruction;
+
+/// <summary>The pilot cleared the runway and is taken to the apron: "taxie para o pátio" (Art. 134, II).</summary>
+// TODO(fraseologia): the manual says "taxie para o pátio 1 via taxiway D"; the airport data has neither the apron nor the taxiways, so both are left out.
+public sealed record TaxiToApron : AtcInstruction;
+
 /// <summary>"Decolado aos 26": the Torre tells the aircraft it is airborne, with the minute it left the ground (MCA 100-16, Art. 127).</summary>
 // TODO(fraseologia): the manual follows it with "chame o Controle ..." (the next unit), which the airport data does not have; the minutes are
 // said even though the first paragraph lets the DECEA waive the time at some aerodromes.

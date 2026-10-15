@@ -287,9 +287,9 @@ public class AtcConsoleFrequencyTests
     [Fact]
     public async Task An_unknown_event_is_refused_with_the_one_that_exists()
     {
-        var result = await RunAsync(Atc(), "/evento pousou\nsair\n");
+        var result = await RunAsync(Atc(), "/evento voou\nsair\n");
 
-        result.Error.ShouldContain("/evento decolou");
+        result.Error.ShouldContain("/evento decolou ou /evento pousou");
     }
 
     [Fact]
@@ -324,6 +324,33 @@ public class AtcConsoleFrequencyTests
         var result = await RunAsync(Atc(), "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, instruções para pouso\nsair\n");
 
         result.Output.ShouldContain("[aviso] SOLO Curitiba: o Solo não trata de chegada neste app: chame a Torre em 119.5.");
+    }
+
+    [Fact]
+    public async Task After_the_landing_the_torre_says_the_minute_and_the_solo_and_the_apron_follows()
+    {
+        var typed = string.Join(
+            '\n',
+            "/com1 119.5",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, instruções para pouso",
+            "autorizado circuito de tráfego pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, final",
+            "pista uno uno, pouso autorizado, Papa Romeo Alfa Bravo Charlie",
+            "/evento pousou",
+            "ciente, chamo o Solo, Papa Romeo Alfa Bravo Charlie",
+            "/com1 118.0",
+            "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, pista livre",
+            "taxi para o pátio, Papa Romeo Alfa Bravo Charlie",
+            "sair\n");
+
+        var result = await RunAsync(Atc(), typed);
+
+        var text = result.Output;
+        text.ShouldContain("TORRE Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, no solo aos DOIS MEIA, após livrar a pista chame Solo Curitiba UNO UNO OITO DECIMAL ZERO.");
+        text.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, taxie para o pátio.");
+        text.ShouldNotContain("repita");
+        text.ShouldNotContain("negativo");
+        result.Error.ShouldBeEmpty();
     }
 
     // A reader that hands over its lines one at a time and runs an action between them, like a person at a keyboard.

@@ -191,3 +191,39 @@ dotnet run tools/speech-spike.cs -- stt --model small --prompt [--runtime vulkan
 ```
 
 Modelos e áudios ficam em `%TEMP%\fonia-speech-spike`, fora do repositório. O programa de medição não faz parte da solução.
+
+### Conjunto de voo (cotejamentos reais, 2026-10-14)
+
+Depois do primeiro teste de voo no MSFS (muitos erros do STT em cotejamentos), o spike ganhou um segundo conjunto de 36 frases de voo (`tools/speech-spike/phrases-voo.txt`: SBCT, PR-FRA, Solo e Torre, do acionamento ao táxi para o pátio). Aqui o resultado não é só a intenção: é **o que o controlador faria** (o tipo da instrução do motor ATC; `NoResponse` é um cotejamento aceito, `RequestReadbackCorrection` é "negativo"), mais a taxa de indicativo reconhecido.
+
+```
+dotnet run tools/speech-spike.cs -- record --phrases phrases-voo.txt               # grava em tools/speech-spike/recordings-voo (fora do git)
+dotnet run tools/speech-spike.cs -- stt --phrases phrases-voo.txt --model small [--prompt] [--ctx] [--runtime vulkan] [--quant q5_0]
+```
+
+`--prompt` usa o prompt do app (vocabulário, estação e indicativo); `--ctx` acrescenta a última fala do controlador. Modelos: `tiny`, `base`, `small`, `medium`, `large-v3-turbo`.
+
+Teste do roteiro com a voz sintética do Windows (só prova o processo, não vale como medida do app), `small`, CPU:
+
+| Prompt | O controlador faria o certo | Indicativo reconhecido | Tempo/frase |
+|---|---|---|---|
+| nenhum | 7/36 (19%) | 0/36 | 2,3 s |
+| do app | 31/36 (86%) | 34/36 | 2,5 s |
+| do app + última fala | 31/36 (86%) | 35/36 | 2,5 s |
+
+O prompt é o que mais pesa; o da última fala não mudou o acerto na voz sintética, e três cotejamentos saíram só com o indicativo (o Whisper tende a omitir o que repete o prompt). Quem decide é a medição com a voz do mantenedor.
+
+Medição com a **voz real** do mantenedor (36 frases de voo gravadas em 2026-10-14, MSFS fechado, RTX 3070 Ti, 10 threads). "Faz o certo" é o que o controlador faria com a frase; todos com o prompt do app:
+
+| Modelo | Última fala | Runtime | Faz o certo | Indicativo | Tempo/frase | Memória |
+|---|---|---|---|---|---|---|
+| small | não | CPU | 32/36 (89%) | 33/36 | 2,06 s | 886 MB |
+| **small** | **sim** | **CPU** | **35/36 (97%)** | **36/36** | **2,08 s** | 900 MB |
+| small | não | Vulkan | 32/36 (89%) | 33/36 | 0,25 s | 618 MB |
+| **small** | **sim** | **Vulkan** | **35/36 (97%)** | **36/36** | **0,24 s** | |
+| medium | sim | Vulkan | 32/36 (89%) | 35/36 | 0,41 s | 1,2 GB |
+| medium | sim | CPU | 32/36 (89%) | 35/36 | 6,3 s | 2,1 GB |
+| large-v3-turbo | sim | Vulkan | 26/36 (72%) | 25/36 | 0,38 s | 1,1 GB |
+| large-v3-turbo | sim | CPU | 26/36 (72%) | 24/36 | 9,3 s | 2,1 GB |
+
+**Decisão:** continua o `small` (MIT), com o prompt do app **e a última fala do controlador**, que levou o acerto de 89% para 97% e o indicativo de 92% para 100% sem custo de tempo. Os modelos maiores não acertam mais neste conjunto (o `large-v3-turbo` escreve "Foxtroch" para Foxtrot e o `medium` não passa de 89%), e na CPU são 3 a 4 vezes mais lentos. O `--stt-gpu` (Vulkan) reduz o `small` de 2,1 s para 0,24 s com o mesmo acerto: fica opcional, porque a GPU é a do simulador. A única falha do `small` com a última fala foi o Whisper escrever só o indicativo no lugar do cotejamento ("Papa Romeo Foxtroot Romeo Alfa.").

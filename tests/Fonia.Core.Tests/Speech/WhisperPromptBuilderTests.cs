@@ -63,4 +63,25 @@ public class WhisperPromptBuilderTests
         prompt.ShouldNotContain("  ");
         prompt.Length.ShouldBeLessThan(400, "the recognizer reads only the last ~224 tokens of a prompt");
     }
+
+    [Fact]
+    public void What_the_controller_last_said_goes_last_written_like_text()
+    {
+        var prompt = WhisperPromptBuilder.Build(new TranscriptionContext(
+            "PR-FRA", "Torre Curitiba", "PAPA ROMEO FOXTROT ROMEO ALFA, PISTA UNO CINCO, autorizado decolagem."));
+
+        prompt.ShouldEndWith("Controlador: Papa Romeo Foxtrot Romeo Alfa, Pista Uno Cinco, autorizado decolagem.", Case.Sensitive);
+        prompt.ShouldNotContain("  ");
+        prompt.Length.ShouldBeLessThan(600);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Without_a_last_transmission_the_prompt_is_the_same_as_before(string? last)
+    {
+        WhisperPromptBuilder.Build(new TranscriptionContext("PR-ABC", "Solo Curitiba", last))
+            .ShouldBe(WhisperPromptBuilder.Build(new TranscriptionContext("PR-ABC", "Solo Curitiba")));
+    }
 }

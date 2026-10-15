@@ -64,3 +64,6 @@ spike-*.log
 # Manuais e outras fontes baixadas para consulta local (o projeto cita o artigo e o link, não redistribui o PDF)
 /*.pdf
 /docs/fontes-locais/
+
+# Spike de voz, frases de voo (dado pessoal, fora do git)
+/tools/speech-spike/recordings-voo/

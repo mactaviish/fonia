@@ -95,6 +95,28 @@ public class ArrivalNluTests
         _nlu.Interpret(said, new FlightContext(Own, FlightPhase.OnDownwind, "SBCT", new ReportBase())).ShouldBeOfType<Readback>();
     }
 
+    // Art. 134, I: "Solo Porto Alegre, TAM 3320, livrando a pista na interseção F."
+    [Theory]
+    [InlineData("Solo Curitiba, PRABC, pista livre")]
+    [InlineData("PRABC livrando a pista")]
+    [InlineData("Torre, Papa Romeo Alfa Bravo Charlie, livrei a pista pela esquerda")]
+    [InlineData("PRABC, pista livre na interseção F")]
+    public void The_pilot_who_cleared_the_runway_is_understood(string said)
+    {
+        var landed = new FlightContext(Own, FlightPhase.Landed, "SBCT", new LandedNotice(2, null));
+
+        _nlu.Interpret(said, landed).ShouldBe(new ReportRunwayVacated(Own));
+    }
+
+    [Theory]
+    [InlineData("após livrar a pista chame Solo Curitiba, Papa Romeo Alfa Bravo Charlie")]
+    [InlineData("ciente, chamo o Solo, Papa Romeo Alfa Bravo Charlie")]
+    [InlineData("ciente, Papa Romeo Alfa Bravo Charlie")]
+    public void The_acknowledgement_of_the_notice_after_landing_is_a_readback_and_not_a_report(string said)
+    {
+        _nlu.Interpret(said, new FlightContext(Own, FlightPhase.Landed, "SBCT", new LandedNotice(2, new Fonia.Core.Sim.Frequency(118000)))).ShouldBeOfType<Readback>();
+    }
+
     [Fact]
     public void Without_the_callsign_the_report_has_no_callsign()
     {

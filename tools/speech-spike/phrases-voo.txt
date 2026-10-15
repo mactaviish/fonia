@@ -1,0 +1,62 @@
+# Frases de voo (SBCT, aeronave PR-FRA) para comparar modelos de reconhecimento de voz. Formato: id | contexto | esperado | texto
+#
+# contexto: o que o controlador acabou de dizer e em que frequência o piloto está
+#   parked    Solo, nada pendente                         taxi-done  Solo, o piloto já taxiou até o ponto de espera
+#   startup   Solo, "acionamento aprovado, chame pronto"  pushback   Solo, "autorizado pushback e acionamento"
+#   taxi      Solo, "autorizado táxi para o ponto de espera da pista uno cinco"
+#   handed    Solo passou o voo à Torre ("chame Torre Curitiba ...")
+#   departure Torre, o piloto no ponto de espera, sem nada pendente
+#   lineup    Torre, "pista uno cinco, alinhe e mantenha"
+#   takeoff   Torre, "pista uno cinco, autorizado decolagem"
+#   airborne  Torre, "decolado aos zero zero" (o piloto responde "ciente")
+#   inbound   Torre, o piloto voltando para pouso, sem nada pendente
+#   circuit   Torre, "autorizado para o circuito de tráfego, pista uno cinco, reporte perna do vento"
+#   downwind  Torre, "reporte perna base"
+#   base      Torre, "reporte na final"
+#   landing   Torre, "pista uno cinco, pouso autorizado"
+#   landed    Torre, "no solo aos zero dois, após livrar a pista chame Solo Curitiba ..."
+#   vacated   Solo, o piloto acabou de livrar a pista
+#   apron     Solo, "taxie para o pátio"
+# esperado: o que o controlador deve fazer com o que o piloto disse (o tipo da instrução do motor). NoResponse é um cotejamento
+#   aceito ou um aviso reconhecido, em silêncio; RequestReadbackCorrection é "negativo"; SayAgainRequest é "repita".
+#
+# Fale como num voo de verdade: natural, às vezes curto, às vezes com "bom dia" ou "ok". O indicativo é PR-FRA, dito letra por letra
+# (Papa Romeo Foxtrot Romeo Alfa) ou abreviado (Foxtrot Romeo Alfa). Pista sempre dígito a dígito: UNO CINCO, nunca "quinze".
+# O texto de cada linha é o que a frase diz; troque as palavras do seu jeito, desde que diga a mesma coisa.
+
+01 | parked    | StartupApproved         | Solo Curitiba, Papa Romeo Foxtrot Romeo Alfa, solicito acionamento
+02 | parked    | PushbackApproved        | Solo Curitiba, Foxtrot Romeo Alfa, solicito pushback e acionamento
+03 | parked    | TaxiClearance           | Papa Romeo Foxtrot Romeo Alfa, pronto para o táxi
+04 | startup   | NoResponse              | Acionamento aprovado, chamo pronto para o táxi, Papa Romeo Foxtrot Romeo Alfa
+05 | pushback  | NoResponse              | Autorizado pushback e acionamento, Foxtrot Romeo Alfa
+06 | taxi      | NoResponse              | Autorizado táxi para o ponto de espera da pista uno cinco, Papa Romeo Foxtrot Romeo Alfa
+07 | taxi      | NoResponse              | Táxi para o ponto de espera pista uno cinco, Foxtrot Romeo Alfa
+08 | taxi-done | HandoffToTower          | Solo Curitiba, Papa Romeo Foxtrot Romeo Alfa, no ponto de espera da pista uno cinco
+09 | handed    | NoResponse              | Chamando Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa
+10 | departure | LineUpAndWait           | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, no ponto de espera da pista uno cinco, pronto para decolagem
+11 | departure | LineUpAndWait           | Torre, Foxtrot Romeo Alfa, pronto para partida
+12 | lineup    | NoResponse              | Alinhe e mantenha pista uno cinco, Papa Romeo Foxtrot Romeo Alfa
+13 | lineup    | TakeoffClearance        | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, alinhado
+14 | takeoff   | NoResponse              | Autorizado decolagem pista uno cinco, Papa Romeo Foxtrot Romeo Alfa
+15 | takeoff   | NoResponse              | Foxtrot Romeo Alfa, pista uno cinco, autorizado decolagem
+16 | takeoff   | NoResponse                 | Decolando, Papa Romeo Foxtrot Romeo Alfa
+17 | airborne  | NoResponse              | Ciente, Papa Romeo Foxtrot Romeo Alfa
+18 | airborne  | NoResponse              | Foxtrot Romeo Alfa, ciente da decolagem
+19 | inbound   | CircuitClearance        | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, cinco milhas ao sul, instruções para pouso
+20 | inbound   | CircuitClearance        | Torre, Foxtrot Romeo Alfa, solicito pouso
+21 | circuit   | NoResponse              | Autorizado para o circuito de tráfego, pista uno cinco, reporto perna do vento, Papa Romeo Foxtrot Romeo Alfa
+22 | circuit   | NoResponse              | Circuito de tráfego pista uno cinco, Foxtrot Romeo Alfa
+23 | circuit   | ReportBase              | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, perna do vento
+24 | downwind  | NoResponse              | Reporto perna base, Papa Romeo Foxtrot Romeo Alfa
+25 | downwind  | ReportOnFinal           | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, perna base
+26 | base      | NoResponse              | Reporto na final, Papa Romeo Foxtrot Romeo Alfa
+27 | base      | LandingClearance        | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, final
+28 | base      | LandingClearance        | Foxtrot Romeo Alfa, na final, pista uno cinco
+29 | landing   | NoResponse              | Pista uno cinco, pouso autorizado, Papa Romeo Foxtrot Romeo Alfa
+30 | landing   | NoResponse              | Autorizado pouso pista uno cinco, Foxtrot Romeo Alfa
+31 | landing   | GoAroundNoted           | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, arremetendo
+32 | landed    | NoResponse              | Ciente, chamo o Solo, Papa Romeo Foxtrot Romeo Alfa
+33 | landed    | HandoffToGround         | Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, pista livre
+34 | vacated   | TaxiToApron             | Solo Curitiba, Papa Romeo Foxtrot Romeo Alfa, livrando a pista
+35 | apron     | NoResponse              | Taxi para o pátio, Papa Romeo Foxtrot Romeo Alfa
+36 | taxi      | RequestReadbackCorrection | Táxi para o ponto de espera pista dois nove, Papa Romeo Foxtrot Romeo Alfa

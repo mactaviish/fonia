@@ -24,15 +24,17 @@ public sealed class RuleBasedNlu : INlu
 
     // The pilot is repeating what the controller said, or acknowledging it.
     private static readonly string[] ReadbackStems =
-        ["autorizad", "aprovad", "ciente", "copiad", "coteja", "chame", "chamo", "chamar", "report", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
+        ["autorizad", "aprovad", "ciente", "cient", "sient", "copiad", "coteja", "chame", "chamo", "chamar", "chamand", "report", "repart", "portar", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
 
     private static readonly string[] PushbackStems = ["pushback", "push", "empurr", "recu"];
-    private static readonly string[] StartupStems = ["acion", "partida", "start", "ligar", "ligand", "motor"];
+    // "cionament" because the recognizer glues "solicito acionamento" into "solicitocionamento".
+    private static readonly string[] StartupStems = ["acion", "cionament", "partida", "start", "ligar", "ligand", "motor"];
     private static readonly string[] TaxiStems = ["tax"];
 
     // The departure (MCA 100-16, Art. 126). "partida" is also the engine start of the Solo, so it counts only after the taxi.
-    private static readonly string[] DepartureStems = ["decol"];
-    private static readonly string[] LinedUpStems = ["alinhad", "alinhei"];
+    // "colag" because the recognizer often writes "de colagem" in two words.
+    private static readonly string[] DepartureStems = ["decol", "colag"];
+    private static readonly string[] LinedUpStems = ["alinhad", "alinhei", "alinad"];
     private static readonly string[] LineUpStems = ["alinh"];
 
     // The arrival (MCA 100-16, Art. 128 to 132, 136).
@@ -64,7 +66,8 @@ public sealed class RuleBasedNlu : INlu
 
         var pushback = HasAny(rest, PushbackStems);
         var startup = HasAny(rest, StartupStems);
-        var repeating = HasAny(rest, ReadbackStems);
+        // "ciente" comes out of the recognizer as "sente" and "siente" too; the short one is no stem because it is inside other words.
+        var repeating = HasAny(rest, ReadbackStems) || rest.Contains("sente");
 
         var departure = DepartureIntent(rest, flight, repeating, callsign);
 
@@ -160,6 +163,12 @@ public sealed class RuleBasedNlu : INlu
             return null;
         }
 
+        // "pista livre", "livrando a pista", "livrei a pista" (the instruction "após livrar a pista" is a readback and was left above).
+        if (HasAny(rest, ["livr"]) && rest.Contains("pista"))
+        {
+            return new ReportRunwayVacated(callsign);
+        }
+
         if (HasAny(rest, GoAroundStems))
         {
             return new ReportGoingAround(callsign);
@@ -170,7 +179,8 @@ public sealed class RuleBasedNlu : INlu
             return new ReportDownwind(callsign);
         }
 
-        if (rest.Contains("base"))
+        // "pernabase": the recognizer glues the two words.
+        if (rest.Contains("base") || rest.Contains("pernabase"))
         {
             return new ReportBaseLeg(callsign);
         }
@@ -218,6 +228,7 @@ public sealed class RuleBasedNlu : INlu
         TaxiClearance => taxi,
         StartupApproved => startup,
         PushbackApproved => pushback || startup,
+        TaxiToApron => taxi,
         _ => false,
     };
 
@@ -235,6 +246,9 @@ public sealed class RuleBasedNlu : INlu
 
     /// <summary>True when the words mention landing ("pouso autorizado", "autorizado pousar").</summary>
     internal static bool MentionsLanding(IReadOnlyList<string> tokens) => HasAny(tokens, ["pous"]);
+
+    /// <summary>True when the words mention the apron ("taxie para o pátio").</summary>
+    internal static bool MentionsApron(IReadOnlyList<string> tokens) => HasAny(tokens, ["patio"]);
 
     /// <summary>True when the words mention pushback.</summary>
     internal static bool MentionsPushback(IReadOnlyList<string> tokens) => HasAny(tokens, PushbackStems);
@@ -328,16 +342,21 @@ public sealed class RuleBasedNlu : INlu
     {
         found = false;
 
-        for (var start = 0; start < tokens.Count; start++)
+        // The exact callsign, or its abbreviation, wherever it is; and only if there is none, the callsign with a letter wrong, missing or
+        // extra, which is the recognizer's slip and not another aircraft.
+        foreach (var matches in new Func<string, string, bool>[] { SpokenText.IsSameCallsign, SpokenText.IsCloseCallsign })
         {
-            for (var length = Math.Min(LongestCallsignInTokens, tokens.Count - start); length >= 1; length--)
+            for (var start = 0; start < tokens.Count; start++)
             {
-                var candidate = string.Join(' ', tokens.Skip(start).Take(length));
-
-                if (SpokenText.IsSameCallsign(candidate, callsign))
+                for (var length = Math.Min(LongestCallsignInTokens, tokens.Count - start); length >= 1; length--)
                 {
-                    found = true;
-                    return [.. tokens.Take(start), .. tokens.Skip(start + length)];
+                    var candidate = string.Join(' ', tokens.Skip(start).Take(length));
+
+                    if (matches(candidate, callsign))
+                    {
+                        found = true;
+                        return [.. tokens.Take(start), .. tokens.Skip(start + length)];
+                    }
                 }
             }
         }

@@ -34,7 +34,27 @@ public static class WhisperPromptBuilder
         }
 
         prompt.Append(' ').Append(RunwayExample);
+
+        // The pilot is most likely reading back what the controller just said: with those words in the prompt the recognizer writes them
+        // right ("decolagem", not "de colagem"). It goes last, the closest to the speech.
+        if (!string.IsNullOrWhiteSpace(context.LastTransmission))
+        {
+            prompt.Append(" Controlador: ").Append(AsText(context.LastTransmission.Trim()));
+        }
+
         return prompt.ToString();
+    }
+
+    // "PAPA ROMEO, PISTA UNO CINCO, alinhe e mantenha." to "Papa Romeo, Pista Uno Cinco, alinhe e mantenha.": the words the manual
+    // shouts (numbers, letters, callsigns) are written like text.
+    private static string AsText(string spoken) =>
+        string.Join(' ', spoken.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(word => IsShouted(word) ? Capitalize(word) : word));
+
+    private static bool IsShouted(string word)
+    {
+        var letters = word.Where(char.IsLetter).ToList();
+
+        return letters.Count > 1 && letters.All(char.IsUpper);
     }
 
     /// <summary>"PAPA ROMEO" to "Papa Romeo": prompts are written like text, not shouted like the manual.</summary>

@@ -35,6 +35,11 @@ public sealed class PortuguesePhraseology : IPhraseology
             CallTheTower tower => new Utterance(
                 $"{UnitName(context.Airport)}: o Solo não trata de chegada neste app: chame a Torre em {Mhz(tower.Frequency)}.",
                 UtteranceKind.Notice),
+            // Art. 133: "no solo aos 02, após livrar a pista chame Solo ..." (the name of the Solo is the practice of VATSIM Brasil, as for the Torre).
+            LandedNotice { Solo: { } solo } landed => new Utterance(
+                $"{callsign}, no solo aos {Minutes(landed.Minute)}, após livrar a pista chame Solo {context.Airport.Airport.SpokenName} {SpokenText.Frequency(solo)}."),
+            LandedNotice landed => new Utterance($"{callsign}, no solo aos {Minutes(landed.Minute)}."),
+            HandoffToGround ground => new Utterance($"{callsign}, chame Solo {context.Airport.Airport.SpokenName} {SpokenText.Frequency(ground.Frequency)}."),
             CallTheSolo solo => new Utterance(
                 $"{UnitName(context.Airport)}: a Torre não trata de acionamento, pushback nem táxi neste app: chame o Solo em {Mhz(solo.Frequency)}.",
                 UtteranceKind.Notice),
@@ -67,11 +72,17 @@ public sealed class PortuguesePhraseology : IPhraseology
         LandingClearance landing => $"{SpokenText.Runway(landing.Runway)}, pouso autorizado{WindPart(landing.Wind)}.",
         GoAroundNoted => "ciente.",
 
+        // Art. 134, II: "taxie para o pátio" (without the apron and the taxiway).
+        TaxiToApron => "taxie para o pátio.",
+
         // Art. 127: the minutes only, digit by digit (Art. 25).
-        AirborneNotice airborne => $"decolado aos {SpokenText.Digits(airborne.Minute.ToString("00", System.Globalization.CultureInfo.InvariantCulture))}.",
+        AirborneNotice airborne => $"decolado aos {Minutes(airborne.Minute)}.",
         TakeoffClearance takeoff => $"{SpokenText.Runway(takeoff.Runway)}, autorizado decolagem{(takeoff.Wind is { } wind ? $", {SpokenText.Wind(wind)}" : string.Empty)}.",
         _ => throw new ArgumentOutOfRangeException(nameof(instruction), instruction, "There is no phrase for this instruction."),
     };
+
+    // The minutes only, digit by digit (Art. 25): "ZERO DOIS".
+    private static string Minutes(int minute) => SpokenText.Digits(minute.ToString("00", System.Globalization.CultureInfo.InvariantCulture));
 
     private static string WindPart(Sim.Wind? wind) => wind is { } known ? $", {SpokenText.Wind(known)}" : string.Empty;
 
