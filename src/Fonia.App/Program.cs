@@ -65,32 +65,6 @@ if (parsed.Error is not null)
 
 var options = parsed.Options!;
 
-using var asking = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) =>
-{
-    e.Cancel = true;
-    asking.Cancel();
-};
-
-// Opened without arguments on a terminal: ask for the airport and go into the voice mode.
-if (StartupWizard.ShouldAsk(args, terminal))
-{
-    var chosen = await StartupWizard.RunAsync(
-        Console.In,
-        Console.Out,
-        AirportCatalog.Load(),
-        settings.Settings.Airport ?? LastAirportStore.Default.Read(),
-        LastAirportStore.Default.Remember,
-        asking.Token);
-
-    if (chosen is null)
-    {
-        return 0;
-    }
-
-    options = chosen;
-}
-
 var applied = SettingsApplier.Apply(options, settings.Settings, ArgumentParser.OptionsGiven(args));
 
 if (applied.Error is not null)
@@ -141,11 +115,37 @@ if (options.SpeakText is not null)
 var interactive = !Console.IsOutputRedirected;
 var sourceFactory = new SimSourceFactory(loggerFactory, TimeProvider.System);
 
+// The connection to the simulator lives as long as the console: it gives the registration (and the airport, at the start) and then the
+// radio, at every line.
+await using var session = new SimSession(sourceFactory, TimeProvider.System, TimeSpan.FromSeconds(10), Console.Error.WriteLine);
+
+// Opened without arguments on a terminal: the callsign and the airport come from the simulator, and what it cannot give is asked.
+if (StartupWizard.ShouldAsk(args, terminal))
+{
+    var catalog = AirportCatalog.Load();
+    var chosen = await StartupWizard.RunAsync(
+        Console.In,
+        Console.Out,
+        catalog,
+        new WizardDefaults(settings.Settings.Airport ?? LastValueStore.Airport.Read(), settings.Settings.Callsign ?? LastValueStore.Callsign.Read()),
+        async ct => await session.ReadFirstStateAsync(options, TimeSpan.FromSeconds(5), ct) is { } state
+            ? new SimulatorFix(state.Registration, state.LatitudeDegrees, state.LongitudeDegrees)
+            : null,
+        catalog.Nearest,
+        LastValueStore.Airport.Remember,
+        LastValueStore.Callsign.Remember,
+        cancellation.Token);
+
+    if (chosen is null)
+    {
+        return 0;
+    }
+
+    options = options with { AtcAirport = chosen.AtcAirport, Voice = true, Callsign = chosen.Callsign };
+}
+
 if (options.AtcAirport is not null)
 {
-    // The connection to the simulator lives as long as the console: it gives the registration and then the radio, at every line.
-    await using var session = new SimSession(sourceFactory, TimeProvider.System, TimeSpan.FromSeconds(10), Console.Error.WriteLine);
-
     VoiceModeHandle? voice = null;
 
     if (options.Voice)

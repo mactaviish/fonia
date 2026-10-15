@@ -56,7 +56,7 @@ internal static class ArgumentParser
         Fonia: estado da aeronave em tempo real, vindo do simulador, e ATC por texto.
 
         Uso: fonia [opções]
-             fonia                  (sem argumentos, num terminal: pergunta o aeroporto e conversa por voz)
+             fonia                  (sem argumentos, num terminal: pega o indicativo e o aeroporto do simulador, ou pergunta, e conversa por voz)
              fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar]
              fonia --config | --init-config
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]

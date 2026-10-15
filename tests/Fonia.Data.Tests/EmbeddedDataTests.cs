@@ -126,4 +126,35 @@ public class EmbeddedDataTests
 
         unexplained.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void The_nearest_airport_to_the_apron_of_curitiba_is_curitiba()
+    {
+        var found = AirportCatalog.Load().Nearest(-25.5285, -49.1758);
+
+        found.ShouldNotBeNull();
+        found.Value.Airport.Ident.ShouldBe("SBCT");
+        found.Value.Kilometers.ShouldBeLessThan(2);
+    }
+
+    [Fact]
+    public void In_the_middle_of_the_ocean_the_nearest_airport_is_far()
+    {
+        var found = AirportCatalog.Load().Nearest(-30, -20);
+
+        found.ShouldNotBeNull();
+        found.Value.Kilometers.ShouldBeGreaterThan(500);
+    }
+
+    [Fact]
+    public void A_helipad_or_a_closed_field_is_not_where_an_airplane_starts()
+    {
+        var catalog = AirportCatalog.Load();
+
+        foreach (var airport in catalog.Airports.Where(a => a.Type is AirportType.Heliport or AirportType.Closed or AirportType.SeaplaneBase).Take(20))
+        {
+            catalog.Nearest(airport.LatitudeDegrees, airport.LongitudeDegrees)!.Value.Airport.Type
+                .ShouldNotBeOneOf(AirportType.Heliport, AirportType.Closed, AirportType.SeaplaneBase);
+        }
+    }
 }

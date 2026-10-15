@@ -23,11 +23,18 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
     /// Connects, waits for the first state of a loaded flight and returns the registration ("PR-ABC"), keeping the connection
     /// open. Returns null if no state came within the time allowed.
     /// </summary>
-    public async Task<string?> ReadCallsignAsync(AppOptions options, CancellationToken ct)
+    public async Task<string?> ReadCallsignAsync(AppOptions options, CancellationToken ct) =>
+        (await ReadFirstStateAsync(options, timeout, ct))?.Registration;
+
+    /// <summary>
+    /// Connects and waits up to <paramref name="wait"/> for the first state of a loaded flight, keeping the connection open: the
+    /// registration and the position are what the start-up needs. Returns null if no state came in time (no simulator, or no flight yet).
+    /// </summary>
+    public async Task<AircraftState?> ReadFirstStateAsync(AppOptions options, TimeSpan wait, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        using var limit = new CancellationTokenSource(timeout, timeProvider);
+        using var limit = new CancellationTokenSource(wait, timeProvider);
         using var run = CancellationTokenSource.CreateLinkedTokenSource(ct, limit.Token, _lifetime.Token);
 
         var source = sourceFactory.Create(options, replay: null);
@@ -35,7 +42,7 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
 
         try
         {
-            progress($"Lendo o indicativo no simulador ({source.Description})...");
+            progress($"Procurando o simulador ({source.Description})...");
 
             var first = FirstStateAsync(source.Adapter.StreamAsync(run.Token));
 
@@ -44,7 +51,7 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
             // The work that feeds a mock or a replay lives as long as the session, not as long as this reading.
             _drive = source.Drive?.Invoke(_lifetime.Token);
 
-            return (await first)?.Registration;
+            return await first;
         }
         catch (OperationCanceledException) when (limit.IsCancellationRequested && !ct.IsCancellationRequested)
         {

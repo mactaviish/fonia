@@ -120,4 +120,32 @@ public class SimSessionTests
             await Task.Delay(5, Ct);
         }
     }
+
+    [Fact]
+    public async Task It_gives_the_first_state_with_the_registration_and_the_position_for_the_start_up_to_use()
+    {
+        await using var session = MockSession();
+
+        var state = await session.ReadFirstStateAsync(new AppOptions(Source: SimSourceKind.Mock, AtcAirport: "SBCT"), TimeSpan.FromSeconds(30), Ct);
+
+        state.ShouldNotBeNull();
+        state.Registration.ShouldBe("PR-ABC");
+        state.LatitudeDegrees.ShouldBe(-25.5285, 0.001);
+        session.Com1.ShouldBe(Frequency.FromMhz(121.9));
+    }
+
+    [Fact]
+    public async Task A_simulator_that_never_answers_is_given_up_on_after_the_time_it_was_given()
+    {
+        var sim = new MockSimAdapter(TimeProvider.System);
+        await using var session = new SimSession(
+            new DelegateFactory(() => new SimSource(sim, Drive: null, EndsWhenDriveCompletes: false, Description: "mock")),
+            TimeProvider.System,
+            TimeSpan.FromSeconds(30),
+            _ => { });
+
+        var state = await session.ReadFirstStateAsync(new AppOptions(), TimeSpan.FromMilliseconds(200), Ct);
+
+        state.ShouldBeNull();
+    }
 }
