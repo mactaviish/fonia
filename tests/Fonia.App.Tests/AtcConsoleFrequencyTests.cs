@@ -49,7 +49,7 @@ public class AtcConsoleFrequencyTests
         [Runway("15", "33", 6000), Runway("11", "29", 9000)],
         [new AirportFrequency(AirportFrequencyType.Ground, new Frequency(118000), "Ground"), new AirportFrequency(AirportFrequencyType.Tower, new Frequency(119500), "Tower")]);
 
-    private static async Task<(int Code, string Output, string Error)> RunAsync(AppOptions options, string typed, Func<Frequency?>? live = null, IMetarSource? metar = null, Func<AirportContext, string, CaseLog?>? cases = null)
+    private static async Task<(int Code, string Output, string Error)> RunAsync(AppOptions options, string typed, Func<Frequency?>? live = null, IMetarSource? metar = null, Func<AirportContext, string, CaseLog?>? cases = null, Func<AircraftState?>? aircraft = null)
     {
         var output = new StringWriter(new StringBuilder()) { NewLine = "\n" };
         var error = new StringWriter(new StringBuilder()) { NewLine = "\n" };
@@ -66,7 +66,8 @@ public class AtcConsoleFrequencyTests
             liveCom1: live,
             timeProvider: new Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 10, 14, 12, 26, 31, TimeSpan.Zero)),
             metarSource: metar,
-            cases: cases);
+            cases: cases,
+            liveAircraft: aircraft);
 
         var code = await console.RunAsync(options, Ct);
 
@@ -526,5 +527,17 @@ public class AtcConsoleFrequencyTests
         var result = await RunAsync(Atc(), "/errado\nsair\n");
 
         result.Output.ShouldContain("--no-cases");
+    }
+
+    [Fact]
+    public async Task A_pilot_already_rolling_for_the_takeoff_is_not_asked_to_read_the_clearance_back_again()
+    {
+        var rolling = new AircraftState(DateTimeOffset.UtcNow, -25.5, -49.1, 3000, 0, 80, 110, true, null, null, 1200, "PR-ABC", "C172");
+
+        var plain = await RunAsync(Atc(), ToTheTakeoffClearance + "autorizado decolagem\nsair\n");
+        var onTheRoll = await RunAsync(Atc(), ToTheTakeoffClearance + "autorizado decolagem\nsair\n", aircraft: () => rolling);
+
+        plain.Output.ShouldContain("negativo");
+        onTheRoll.Output.ShouldNotContain("negativo");
     }
 }

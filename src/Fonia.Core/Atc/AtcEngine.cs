@@ -25,7 +25,7 @@ public sealed class AtcEngine : IAtcEngine
             Unknown => Say(new SayAgainRequest(), flight),
             CallsignOnly called => Called(called, flight, airport),
             SayAgain => Repeat(flight),
-            Readback readback => CheckReadback(readback, flight),
+            Readback readback => CheckReadback(readback, flight, airport),
 
             // The pilot rolling for takeoff needs no answer, with or without the callsign.
             ReportTakingOff when airport.Unit == ServiceUnit.Tower && flight.Phase >= FlightPhase.TakeoffCleared
@@ -239,7 +239,7 @@ public sealed class AtcEngine : IAtcEngine
             : Say(new SayAgainRequest(), flight);
     }
 
-    private static AtcDecision CheckReadback(Readback readback, FlightContext flight)
+    private static AtcDecision CheckReadback(Readback readback, FlightContext flight, AirportContext airport)
     {
         if (flight.PendingReadback is not { } expected)
         {
@@ -253,10 +253,23 @@ public sealed class AtcEngine : IAtcEngine
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }
 
-        var heard = SpokenTokens.Tokenize(readback.Text);
+        // The aircraft is already doing what was cleared (rolling for the takeoff, taxiing, landed): it was heard, and nagging about the
+        // words of the readback would only get in the way.
+        if (Situation.AlreadyDoing(expected, flight.Aircraft))
+        {
+            return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
+        }
 
-        // The callsign is part of the readback (Art. 12 lists the registration; the practice ends the readback with it).
-        if ((readback.Callsign is not null || readback.CallsignTail) && IsCorrect(expected, heard))
+        var heard = SpokenTokens.Tokenize(readback.Text);
+        var callsignHeard = readback.Callsign is not null || readback.CallsignTail;
+        var correct = IsCorrect(expected, heard);
+
+        // What the simulator shows can stand for what the recognizer lost: with the callsign, an aircraft lined up on the runway (or on final)
+        // has heard the clearance, whichever words or runway were written; and a readback that is right is accepted without the callsign
+        // when the aircraft is where the clearance says.
+        var confirmed = Situation.Confirms(expected, flight.Aircraft, airport);
+
+        if ((callsignHeard && (correct || confirmed)) || (correct && confirmed))
         {
             return new AtcDecision(new NoResponse(), flight with { PendingReadback = null });
         }

@@ -40,7 +40,8 @@ internal sealed class VoiceMode(
     Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null,
     Func<AirportContext, string, CaseLog?>? cases = null,
     IPushToTalk? markKey = null,
-    string markKeyName = "") : IVoiceMode
+    string markKeyName = "",
+    Func<AircraftState?>? aircraft = null) : IVoiceMode
 {
     public async Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct, Func<AircraftState, CancellationToken, Task<FlightRestart?>>? onNewFlight = null)
     {
@@ -84,7 +85,7 @@ internal sealed class VoiceMode(
             observer = new CaseRecordingObserver(observer, log, output);
         }
 
-        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, observer, com1);
+        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, observer, com1, aircraft);
 
         // What the telemetry shows (the takeoff) is something the controller may say without being asked; read only once the radio is up.
         var following = states?.Invoke(ct) is { } stream ? FollowAsync(loop, stream, onNewFlight, log, ct) : Task.CompletedTask;

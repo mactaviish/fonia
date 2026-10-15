@@ -38,7 +38,8 @@ public sealed class VoiceLoop(
     AirportContext airport,
     FlightContext flight,
     IVoiceLoopObserver observer,
-    Func<Frequency?>? com1 = null)
+    Func<Frequency?>? com1 = null,
+    Func<AircraftState?>? aircraft = null)
 {
     private int _busy;
     private Task _current = Task.CompletedTask;
@@ -70,7 +71,8 @@ public sealed class VoiceLoop(
     {
         lock (_flightGate)
         {
-            return (_generation, _airport, _flight);
+            // What the simulator shows of the aircraft now goes with the flight, so that a readback is judged by the situation.
+            return (_generation, _airport, aircraft?.Invoke() is { } shown ? _flight with { Aircraft = shown } : _flight);
         }
     }
 

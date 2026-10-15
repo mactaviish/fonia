@@ -302,7 +302,14 @@ O cotejamento mostra que a autorização foi ouvida; o app exige **o necessário
 
 - **o indicativo** (ou o fim dele, as duas últimas letras, com o resto do cotejamento certo) e **a palavra da ação**: "alinh" (alinhe e mantenha), "decol" (decolagem), "pous" (pouso), "circuito", "tax"/"autoriz" (táxi), "acion" (acionamento), "pushback", "pátio";
 - **a pista é opcional**, mas **se for dita e estiver errada, é "negativo"**: esse é o erro que importa. Os números do ajuste de altímetro não são tomados por pista;
-- sem a ação ("ciente", só a pista, só o indicativo) o cotejamento não vale e o controlador repete a instrução; sem o indicativo, idem.
+- sem a ação ("ciente", só a pista, só o indicativo) o cotejamento não vale **por si só** e o controlador repete a instrução; sem o indicativo, idem. Mas a **situação do voo** pode suprir o que o reconhecedor perdeu (abaixo).
+
+**A situação do voo** (`Situation`, lógica pura sobre `FlightContext.Aircraft`, que o app preenche a cada fala com o último estado do simulador; sem simulador vale só o critério acima):
+
+- **Já está fazendo o que foi autorizado:** aeronave rolando (30 kt ou mais no solo) ou no ar com a decolagem ou o "alinhe e mantenha" pendentes; no solo com o pouso pendente (já pousou); taxiando (3 kt ou mais) com o táxi pendente. O cotejamento deixa de importar: o controlador fica em silêncio, qualquer que tenha sido a fala (ninguém deve ser cobrado no meio da corrida de decolagem).
+- **Está onde a autorização diz:** no solo, parada, com o rumo a até 30° do rumo magnético da pista (alinhe e mantenha, decolagem), ou no ar a até 30 km do aeroporto (circuito, pouso). Aí, **com o indicativo**, qualquer cotejamento vale ("ciente", a pista errada de quem ouviu mal: o que importa é onde a aeronave está), e um cotejamento certo vale **sem o indicativo**.
+- **O que não se vê na posição** fica no critério da fala: a pista de um táxi, por exemplo, só se confere pelo que o piloto diz.
+- Fora disso, igual: sem simulador, ou com a aeronave longe do que foi autorizado, a pista dita errada ainda é "negativo".
 
 ### 14. Casos não entendidos (`Fonia.Core.Pipeline.CaseReasons`, `Fonia.App.CaseLog`)
 

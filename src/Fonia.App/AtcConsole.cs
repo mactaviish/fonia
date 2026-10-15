@@ -34,7 +34,8 @@ internal sealed class AtcConsole(
     IMetarSource? metarSource = null,
     Func<AirportContext, string, CaseLog?>? cases = null,
     Func<double, double, (Airport Airport, double Kilometers)?>? nearestAirport = null,
-    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null)
+    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null,
+    Func<AircraftState?>? liveAircraft = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -190,6 +191,9 @@ internal sealed class AtcConsole(
 
             // Who answers is who is on the frequency the radio is on at this moment.
             var onTheFrequency = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
+            // What the simulator shows now goes with the flight, so that a readback is judged by the situation.
+            flight = liveAircraft?.Invoke() is { } shown ? flight with { Aircraft = shown } : flight;
+
             var before = flight;
             var intent = nlu.Interpret(line, flight);
             var decision = engine.Handle(intent, flight, onTheFrequency);

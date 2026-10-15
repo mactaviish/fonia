@@ -17,6 +17,9 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
     /// <summary>The frequency COM1 is on now, or null before the first state of a loaded flight (or without a radio).</summary>
     public Frequency? Com1 => _source?.Adapter.LatestState?.Com1?.Active;
 
+    /// <summary>The latest state of the aircraft, or null before the first state of a loaded flight (or without a simulator).</summary>
+    public AircraftState? Latest => _source?.Adapter.LatestState;
+
     /// <summary>The snapshots of the aircraft from now on, or null when there is no connection (the callsign was given, so none was opened).</summary>
     public IAsyncEnumerable<AircraftState>? States(CancellationToken ct) => _source?.Adapter.StreamAsync(ct);
 
