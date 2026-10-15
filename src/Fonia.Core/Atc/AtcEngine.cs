@@ -271,21 +271,36 @@ public sealed class AtcEngine : IAtcEngine
         instruction is HandoffToTower or HandoffToGround or ReportBase or ReportOnFinal or AirborneNotice or LandedNotice;
 
     // The taxi readback must have the runway; the startup and pushback ones must say what was approved.
+    // A readback is right when it has the action of the instruction and, if it names a runway, the right one. In practice the pilot at the
+    // holding point of a runway does not repeat which one ("alinhe e mantenha, PRFRA"): the callsign and the action are what shows that
+    // the clearance was heard. A runway that is named and is wrong is still "negativo": that is the mistake that matters.
     private static bool IsCorrect(AtcInstruction expected, IReadOnlyList<string> heard) => expected switch
     {
-        TaxiClearance taxi => RuleBasedNlu.FindRunwayInReadback(heard) is { } runway && RunwayDesignator.AreSame(runway, taxi.Runway),
+        TaxiClearance taxi => StatedRunway(heard) is { } runway
+            ? RunwayDesignator.AreSame(runway, taxi.Runway)
+            : RuleBasedNlu.MentionsTaxi(heard) || RuleBasedNlu.MentionsAuthorization(heard),
         StartupApproved => RuleBasedNlu.MentionsStartup(heard),
         PushbackApproved pushback => RuleBasedNlu.MentionsPushback(heard) && (!pushback.WithStartup || RuleBasedNlu.MentionsStartup(heard)),
-        LineUpAndWait lineUp => RuleBasedNlu.MentionsLineUp(heard) && SaysRunway(heard, lineUp.Runway),
-        TakeoffClearance takeoff => RuleBasedNlu.MentionsTakeoff(heard) && SaysRunway(heard, takeoff.Runway),
+        LineUpAndWait lineUp => RuleBasedNlu.MentionsLineUp(heard) && RunwayAgrees(heard, lineUp.Runway),
+        TakeoffClearance takeoff => RuleBasedNlu.MentionsTakeoff(heard) && RunwayAgrees(heard, takeoff.Runway),
         TaxiToApron => RuleBasedNlu.MentionsApron(heard),
-        CircuitClearance circuit => RuleBasedNlu.MentionsCircuit(heard) && SaysRunway(heard, circuit.Runway),
-        LandingClearance landing => RuleBasedNlu.MentionsLanding(heard) && SaysRunway(heard, landing.Runway),
+        CircuitClearance circuit => RuleBasedNlu.MentionsCircuit(heard) && RunwayAgrees(heard, circuit.Runway),
+        LandingClearance landing => RuleBasedNlu.MentionsLanding(heard) && RunwayAgrees(heard, landing.Runway),
         _ => true,
     };
 
-    private static bool SaysRunway(IReadOnlyList<string> heard, string runway) =>
-        RuleBasedNlu.FindRunwayInReadback(heard) is { } said && RunwayDesignator.AreSame(said, runway);
+    // No runway in the readback is no disagreement; a runway that is there must be the one of the instruction.
+    private static bool RunwayAgrees(IReadOnlyList<string> heard, string runway) =>
+        StatedRunway(heard) is not { } said || RunwayDesignator.AreSame(said, runway);
+
+    // The runway the pilot named: after the word "pista", or, without it, the first number that is a runway; but not the numbers of the
+    // altimeter setting that the clearance may also have ("ajuste de altímetro uno zero uno quatro" is not runway 14).
+    private static string? StatedRunway(IReadOnlyList<string> heard)
+    {
+        var named = RuleBasedNlu.FindRunway(heard);
+
+        return named is not null || heard.Any(t => t is "altimetro" or "qnh") ? named : RuleBasedNlu.FindRunwayInReadback(heard);
+    }
 
     // Answers without moving the flight on. A "REPITA" is not remembered: if the pilot asks to say it again, what is
     // repeated is the last instruction.

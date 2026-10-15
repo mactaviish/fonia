@@ -266,6 +266,12 @@ public sealed class RuleBasedNlu : INlu
         _ => false,
     };
 
+    /// <summary>True when the words mention the taxi ("táxi", "taxiando").</summary>
+    internal static bool MentionsTaxi(IReadOnlyList<string> tokens) => HasAny(tokens, TaxiStems);
+
+    /// <summary>True when the words say the clearance was granted ("autorizado", "autorizada").</summary>
+    internal static bool MentionsAuthorization(IReadOnlyList<string> tokens) => HasAny(tokens, ["autoriz"]);
+
     /// <summary>True when the words mention starting the engines ("acionamento", "partida").</summary>
     internal static bool MentionsStartup(IReadOnlyList<string> tokens) => HasAny(tokens, StartupStems);
 

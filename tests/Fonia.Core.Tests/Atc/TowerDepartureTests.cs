@@ -85,7 +85,6 @@ public class TowerDepartureTests
 
     [Theory]
     [InlineData("alinhe e mantenha pista uno cinco", "wrong runway")]
-    [InlineData("alinhe e mantenha", "no runway")]
     [InlineData("pista uno uno", "no instruction")]
     [InlineData("ciente", "nothing")]
     public void A_wrong_or_incomplete_line_up_readback_is_corrected_and_stays_pending(string said, string why)
@@ -160,8 +159,8 @@ public class TowerDepartureTests
 
     [Theory]
     [InlineData("autorizado decolagem pista uno cinco")]
-    [InlineData("autorizado decolagem")]
     [InlineData("pista uno uno")]
+    [InlineData("ciente")]
     public void A_wrong_takeoff_readback_is_corrected_and_stays_pending(string said)
     {
         var cleared = Handle(new ReportLinedUp(Own, null), Handed).NextContext;

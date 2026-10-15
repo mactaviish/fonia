@@ -127,7 +127,6 @@ public class AtcEngineTests
     [InlineData("autorizado taxi pista uno cinco")]
     [InlineData("autorizado taxi pista uno uno esquerda")]
     [InlineData("ciente")]
-    [InlineData("autorizado taxi")]
     public void A_wrong_or_incomplete_taxi_readback_is_corrected_and_still_pending(string said)
     {
         var cleared = _engine.Handle(new RequestTaxi(Own, null), Parked, Solo).NextContext;
