@@ -40,6 +40,29 @@ public sealed class AirportCatalog : IAirportCatalog
         return Create(airports, runways, frequencies, names);
     }
 
+    /// <summary>
+    /// The airport nearest to a position and how far it is, among the ones an airplane can start from (not heliports, seaplane bases or
+    /// closed fields); null only when the catalog has none.
+    /// </summary>
+    public (Airport Airport, double Kilometers)? Nearest(double latitudeDegrees, double longitudeDegrees)
+    {
+        Airport? best = null;
+        var bestKm = double.MaxValue;
+
+        foreach (var airport in Airports.Where(a => a.Type is AirportType.Large or AirportType.Medium or AirportType.Small))
+        {
+            var km = airport.DistanceKmTo(latitudeDegrees, longitudeDegrees);
+
+            if (km < bestKm)
+            {
+                best = airport;
+                bestKm = km;
+            }
+        }
+
+        return best is null ? null : (best, bestKm);
+    }
+
     /// <summary>Loads from four CSV streams (airports, runways, frequencies, names), in the OurAirports layout.</summary>
     /// <exception cref="DataFormatException">A file is not valid CSV (for example, empty).</exception>
     public static AirportCatalog Create(Stream airports, Stream runways, Stream frequencies, Stream names)

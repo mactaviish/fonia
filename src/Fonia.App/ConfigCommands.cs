@@ -8,10 +8,10 @@ internal static class ConfigCommands
         // O que você digita na linha de comando (por exemplo --ptt-key F8) vale mais do que este arquivo.
         // Este arquivo é do seu usuário (%APPDATA%\Fonia): uma atualização do programa não o apaga.
         {
-          // Aeroporto sugerido ao abrir o programa sem argumentos (código ICAO).
+          // Aeroporto sugerido ao abrir o programa sem argumentos, quando o simulador não o informa (código ICAO).
           // "airport": "SBCT",
 
-          // Indicativo da aeronave, se você não quiser ler a matrícula do simulador.
+          // Indicativo da aeronave: sugerido quando o simulador não está aberto; com --callsign, vale também no modo ATC.
           // "callsign": "PR-ABC",
 
           // trace, debug, information, warning, error, critical ou none.

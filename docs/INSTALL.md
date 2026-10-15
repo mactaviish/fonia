@@ -22,7 +22,7 @@ O Fonia é um aplicativo de ATC por voz para o Microsoft Flight Simulator 2020: 
 ## Primeiro uso
 
 1. Abra o MSFS e **carregue um voo** parado em um aeroporto (por exemplo, no pátio de Curitiba, SBCT).
-2. Abra o **Fonia** no menu Iniciar. Ele pergunta o **aeroporto** (código ICAO, por exemplo `SBCT`; da próxima vez sugere o último) e carrega os modelos.
+2. Abra o **Fonia** no menu Iniciar. Ele procura o simulador: com o voo carregado, pega sozinho o **indicativo** (a matrícula da aeronave) e o **aeroporto** onde você está, e carrega os modelos. Se o MSFS não estiver aberto (ou o voo ainda não carregou), ele avisa e **pergunta o aeroporto** (código ICAO, por exemplo `SBCT`) **e o indicativo** (por exemplo `PR-ABC`), sugerindo o que você usou da última vez. Assim dá para testar sem o simulador, só sem leitura do rádio COM1.
 3. Quando aparecer *"Pronto. Segure RControl, fale e solte"*, **segure o Ctrl direito**, fale e solte. O controlador responde em voz alta e o texto do que ele entendeu aparece na janela.
 4. **Sintonize o rádio COM1 do MSFS** na frequência certa: quem responde depende dela (o programa mostra as frequências do aeroporto ao abrir). Solo para acionamento e táxi, Torre para decolar e pousar. Em uma frequência que não é do aeroporto, ninguém responde e o programa avisa.
 
