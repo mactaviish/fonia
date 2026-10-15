@@ -49,7 +49,7 @@ public class AtcConsoleFrequencyTests
         [Runway("15", "33", 6000), Runway("11", "29", 9000)],
         [new AirportFrequency(AirportFrequencyType.Ground, new Frequency(118000), "Ground"), new AirportFrequency(AirportFrequencyType.Tower, new Frequency(119500), "Tower")]);
 
-    private static async Task<(int Code, string Output, string Error)> RunAsync(AppOptions options, string typed, Func<Frequency?>? live = null, IMetarSource? metar = null)
+    private static async Task<(int Code, string Output, string Error)> RunAsync(AppOptions options, string typed, Func<Frequency?>? live = null, IMetarSource? metar = null, Func<AirportContext, string, CaseLog?>? cases = null)
     {
         var output = new StringWriter(new StringBuilder()) { NewLine = "\n" };
         var error = new StringWriter(new StringBuilder()) { NewLine = "\n" };
@@ -65,7 +65,8 @@ public class AtcConsoleFrequencyTests
             interactive: false,
             liveCom1: live,
             timeProvider: new Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 10, 14, 12, 26, 31, TimeSpan.Zero)),
-            metarSource: metar);
+            metarSource: metar,
+            cases: cases);
 
         var code = await console.RunAsync(options, Ct);
 
@@ -476,5 +477,54 @@ public class AtcConsoleFrequencyTests
 
             return lines[_next++];
         }
+    }
+
+    private static Func<AirportContext, string, CaseLog?> CasesIn(string root, out Func<CaseLog?> made)
+    {
+        CaseLog? log = null;
+        made = () => log;
+
+        return (airport, callsign) => log = new CaseLog(root, TimeProvider.System, new PortuguesePhraseology(), airport, callsign, saveAudio: false);
+    }
+
+    [Fact]
+    public async Task What_the_controller_could_not_follow_is_kept_and_a_slash_command_marks_a_mistake()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fonia-console-cases-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            var cases = CasesIn(root, out var made);
+
+            var result = await RunAsync(
+                Atc(),
+                "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento\nblá blá blá\n/errado\n/errado\nsair\n",
+                cases: cases);
+
+            result.Output.ShouldContain("guardado para melhoria: nao-entendido");
+            result.Output.ShouldContain("Troca marcada como errada");
+            result.Output.ShouldContain("Nada para marcar ainda");
+            made()!.Cases.ShouldBe(1);
+
+            var lines = File.ReadAllLines(Path.Combine(made()!.SessionDirectory, "cases.jsonl"));
+            lines.Length.ShouldBe(3, "session, case and mark");
+            lines[1].ShouldContain("blá blá blá");
+            lines[2].ShouldContain("\"type\":\"mark\"");
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Without_the_log_the_mark_command_says_why_nothing_was_kept()
+    {
+        var result = await RunAsync(Atc(), "/errado\nsair\n");
+
+        result.Output.ShouldContain("--no-cases");
     }
 }

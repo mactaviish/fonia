@@ -179,4 +179,77 @@ public sealed class VoiceModeTests : IDisposable
         await run;
         _player.Played.ShouldBeEmpty();
     }
+
+    [Fact]
+    public async Task What_was_not_understood_is_kept_and_the_mark_key_marks_a_mistake_and_is_released_at_the_end()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fonia-voice-cases-" + Guid.NewGuid().ToString("N"));
+        var mark = new FakeKey();
+        CaseLog? log = null;
+
+        try
+        {
+            var mode = new VoiceMode(
+                _microphone,
+                _key,
+                new WarmableTranscriber("blá blá blá"),
+                _synthesizer,
+                _player,
+                new RuleBasedNlu(),
+                new AtcEngine(),
+                new PortuguesePhraseology(),
+                new VoiceSelector(VoiceCatalog.Default, "pf_dora", new Random(1)),
+                RadioIntensity.Off,
+                "RControl",
+                _output,
+                _error,
+                new Random(1),
+                cases: (airport, callsign) => log = new CaseLog(root, TimeProvider.System, new PortuguesePhraseology(), airport, callsign, saveAudio: true),
+                markKey: mark,
+                markKeyName: "ScrollLock");
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            var run = mode.RunAsync(Solo, Parked, stop.Token);
+
+            await WaitForAsync(_output.ToString, "Pronto");
+            _output.ToString().ShouldContain("aperte ScrollLock");
+            mark.Started.ShouldBeTrue();
+
+            _key.Press();
+            _microphone.Feed(800);
+            _key.Release();
+            await WaitForAsync(_output.ToString, "guardado para melhoria: nao-entendido");
+
+            mark.Press();
+            await WaitForAsync(_output.ToString, "Troca marcada como errada");
+
+            await stop.CancelAsync();
+            (await run).ShouldBe(0);
+            mark.Started.ShouldBeFalse();
+
+            log!.Cases.ShouldBe(1);
+            Directory.GetFiles(log.SessionDirectory, "*.wav").ShouldHaveSingleItem();
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Without_the_cases_there_is_no_mark_key_and_no_hint_about_it()
+    {
+        var mark = new FakeKey();
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var run = Create(new WarmableTranscriber("x")).RunAsync(Solo, Parked, stop.Token);
+
+        await WaitForAsync(_output.ToString, "Pronto");
+        await stop.CancelAsync();
+        await run;
+
+        _output.ToString().ShouldNotContain("marcar");
+        mark.Started.ShouldBeFalse();
+    }
 }

@@ -66,6 +66,10 @@ Para ver os microfones e alto-falantes e escolher outro: `fonia --mic-list`, dep
 
 Os registros mais detalhados saem com `--log-level information` (ou `debug`).
 
+## O que o Fonia guarda sobre os seus voos
+
+Para melhorar, o Fonia guarda **no seu computador** (nunca envia) as trocas em que o controlador não entendeu: o texto que o reconhecedor escreveu, em que fase do voo foi e o que o controlador respondeu, em `%LOCALAPPDATA%\Fonia\cases`. **O som da sua voz não é guardado**, a não ser que você ligue `--save-audio` (ou `"saveAudio": true` no arquivo de configuração). Quando o controlador entender errado sem saber (por exemplo, autorizar o que você não pediu), aperte **ScrollLock** para marcar a troca; no modo texto, digite `/errado`. `fonia --cases` mostra a pasta e quantos casos há. Os casos com mais de 30 dias são apagados sozinhos, e a pasta não passa de 200 MB. Para desligar, `--no-cases` (ou `"save": false` na seção `cases`). Se um dia você quiser nos ajudar, o conteúdo dessa pasta é o que você poderia mandar; hoje não existe envio automático.
+
 ## Desinstalar
 
 Pelo menu Iniciar (**Desinstalar Fonia**) ou em *Configurações > Aplicativos*. O programa sai sempre (o .NET e as bibliotecas vão dentro dele, então não sobra dependência). O desinstalador **pergunta** se você quer remover também o que o Fonia guardou para você, e a resposta padrão é **Não**:
@@ -74,6 +78,7 @@ Pelo menu Iniciar (**Desinstalar Fonia**) ou em *Configurações > Aplicativos*.
 |---|---|
 | os modelos de voz baixados (~850 MB) | `%LOCALAPPDATA%\Fonia\models` |
 | o METAR guardado e as últimas respostas (aeroporto e indicativo) | `%LOCALAPPDATA%\Fonia\cache` e `last-*.txt`, na mesma pasta |
+| os casos em que o controlador não entendeu (e o som, se você deixou) | `%LOCALAPPDATA%\Fonia\cases` |
 | as suas configurações | `%APPDATA%\Fonia\appsettings.json` |
 
 Com **Sim**, as duas pastas `Fonia` (a de `%LOCALAPPDATA%` e a de `%APPDATA%`) são apagadas por inteiro. Com **Não**, ficam, e um Fonia instalado depois as reaproveita sem baixar tudo de novo. Se você configurou outra pasta para os modelos (`modelsDir`), ela não é apagada: remova à mão. O programa não grava arquivos de registro (os logs saem na janela).

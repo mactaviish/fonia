@@ -32,6 +32,12 @@ if (parsed.Options is { ShowConfig: true })
     return 2;
 }
 
+if (parsed.Options is { ShowCases: true })
+{
+    CaseLog.List(CaseLog.DefaultRoot, Console.Out);
+    return 0;
+}
+
 if (parsed.Options is { InitConfig: true })
 {
     return ConfigCommands.Init(SettingsLoader.UserFile, Console.Out, Console.Error);
@@ -146,11 +152,20 @@ if (StartupWizard.ShouldAsk(args, terminal))
 
 if (options.AtcAirport is not null)
 {
+    // What the controller could not follow is kept on this computer (never sent), to improve the app: --no-cases turns it off.
+    Func<AirportContext, string, CaseLog?>? cases = null;
+
+    if (!options.NoCases)
+    {
+        CaseLog.Prune(CaseLog.DefaultRoot, TimeProvider.System, TimeSpan.FromDays(30), 200L * 1024 * 1024);
+        cases = (airport, callsign) => new CaseLog(CaseLog.DefaultRoot, TimeProvider.System, new PortuguesePhraseology(), airport, callsign, options.SaveAudio);
+    }
+
     VoiceModeHandle? voice = null;
 
     if (options.Voice)
     {
-        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, () => options.Com1 ?? session.Com1, session.States, cancellation.Token);
+        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, () => options.Com1 ?? session.Com1, session.States, cases, cancellation.Token);
 
         if (voice is null)
         {
@@ -182,7 +197,8 @@ if (options.AtcAirport is not null)
         interactive: !Console.IsInputRedirected && interactive,
         voiceMode: voice?.Mode,
         liveCom1: () => session.Com1,
-        metarSource: metar);
+        metarSource: metar,
+        cases: cases);
 
     return await atc.RunAsync(options, cancellation.Token);
 }

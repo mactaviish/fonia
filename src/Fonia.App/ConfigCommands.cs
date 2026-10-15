@@ -21,6 +21,9 @@ internal static class ConfigCommands
             // Tecla do push-to-talk: RControl (padrão), LControl, RShift, RAlt, CapsLock, Space, ScrollLock, Insert, F8, Mouse4, Mouse5...
             // "pttKey": "RControl",
 
+            // Tecla que marca a última troca como "o controlador entendeu errado" (padrão: ScrollLock). Só vale quando os casos são guardados.
+            // "markKey": "ScrollLock",
+
             // Microfone e alto-falante, como numerados por "fonia --mic-list". -1 é o padrão do Windows.
             // "micDevice": -1,
             // "audioOut": -1,
@@ -36,6 +39,15 @@ internal static class ConfigCommands
 
             // Pasta dos modelos de voz (padrão: %LOCALAPPDATA%\Fonia\models).
             // "modelsDir": "D:\\Fonia\\modelos"
+          },
+
+          "cases": {
+            // O Fonia guarda no SEU computador (nunca envia) o que o controlador não entendeu, para melhorar o programa:
+            // %LOCALAPPDATA%\Fonia\cases. false desliga.
+            // "save": true,
+
+            // true guarda também o som da sua fala em cada caso (sua voz é dado pessoal: desligado por padrão).
+            // "saveAudio": false
           },
 
           "weather": {
@@ -71,11 +83,14 @@ internal static class ConfigCommands
         Add(set, "voice.micDevice", settings.Voice.MicDevice);
         Add(set, "voice.audioOut", settings.Voice.AudioOut);
         Add(set, "voice.ttsVoice", settings.Voice.TtsVoice);
+        Add(set, "voice.markKey", settings.Voice.MarkKey);
         Add(set, "voice.radioEffect", settings.Voice.RadioEffect);
         Add(set, "voice.sttGpu", settings.Voice.SttGpu);
         Add(set, "voice.sttModel", settings.Voice.SttModel);
         Add(set, "voice.modelsDir", settings.Voice.ModelsDir);
         Add(set, "weather.metar", settings.Weather.Metar);
+        Add(set, "cases.save", settings.Cases.Save);
+        Add(set, "cases.saveAudio", settings.Cases.SaveAudio);
 
         if (set.Count == 0)
         {

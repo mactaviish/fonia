@@ -39,7 +39,27 @@ internal static class SettingsApplier
             result = result with { NoMetar = true };
         }
 
+        if (settings.Cases.Save == false && !given.Contains("no-cases"))
+        {
+            result = result with { NoCases = true };
+        }
+
+        if (settings.Cases.SaveAudio == true && !given.Contains("save-audio"))
+        {
+            result = result with { SaveAudio = true };
+        }
+
         var voice = settings.Voice;
+
+        if (voice.MarkKey is { } markKey && !given.Contains("mark-key"))
+        {
+            result = result with { MarkKey = ArgumentParser.ParsePttKey(markKey, out problem, "--mark-key") ?? result.MarkKey };
+
+            if (problem is not null)
+            {
+                return Refuse("voice.markKey", problem);
+            }
+        }
 
         if (voice.PttKey is { } key && !given.Contains("ptt-key"))
         {

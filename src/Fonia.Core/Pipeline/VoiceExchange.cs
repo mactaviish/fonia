@@ -23,7 +23,18 @@ public sealed record StageTimings(TimeSpan Transcription, TimeSpan Understanding
 /// <param name="Reply">What the controller says, or null when the controller says nothing (a correct readback).</param>
 /// <param name="Speech">The controller's voice, or null when there is nothing to say aloud (no reply, or a message of the app).</param>
 /// <param name="Station">Who answered, as called on the radio ("SOLO Curitiba"): it depends on the frequency the pilot was on.</param>
-public sealed record ExchangeResult(string Heard, Intent Intent, AtcDecision Decision, Utterance? Reply, SynthesizedSpeech? Speech, StageTimings Timings, string Station = "");
+/// <param name="Before">The flight before the pilot spoke (what waited for a readback), to tell afterwards what the exchange was.</param>
+/// <param name="Audio">What the pilot said, as recorded, so that a case can be kept with its sound (only when the user allows).</param>
+public sealed record ExchangeResult(
+    string Heard,
+    Intent Intent,
+    AtcDecision Decision,
+    Utterance? Reply,
+    SynthesizedSpeech? Speech,
+    StageTimings Timings,
+    string Station = "",
+    FlightContext? Before = null,
+    RecordedSpeech? Audio = null);
 
 /// <summary>What came out of an event of the flight that the controller speaks about on their own.</summary>
 /// <param name="Decision">What the ATC engine decided, with the flight afterwards.</param>
@@ -108,7 +119,7 @@ public sealed class VoiceExchange(
         // Only what the controller says on the radio is voiced; a message of the app is just shown.
         if (reply is not { Kind: UtteranceKind.Radio })
         {
-            return new ExchangeResult(transcript.Text, intent, decision, reply, null, new StageTimings(transcribed, understood, TimeSpan.Zero, TimeSpan.Zero), station);
+            return new ExchangeResult(transcript.Text, intent, decision, reply, null, new StageTimings(transcribed, understood, TimeSpan.Zero, TimeSpan.Zero), station, flight, speech);
         }
 
         started = _time.GetTimestamp();
@@ -119,6 +130,6 @@ public sealed class VoiceExchange(
         var onTheRadio = new SynthesizedSpeech(RadioEffect.Apply(voice.Samples, voice.SampleRate, radio, random), voice.SampleRate);
         var effect = _time.GetElapsedTime(started);
 
-        return new ExchangeResult(transcript.Text, intent, decision, reply, onTheRadio, new StageTimings(transcribed, understood, synthesized, effect), station);
+        return new ExchangeResult(transcript.Text, intent, decision, reply, onTheRadio, new StageTimings(transcribed, understood, synthesized, effect), station, flight, speech);
     }
 }

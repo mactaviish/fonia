@@ -3,6 +3,7 @@ using Fonia.Core.Airports;
 using Fonia.Core.Atc;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
+using Fonia.Core.Pipeline;
 using Fonia.Core.Sim;
 using Fonia.Core.Weather;
 
@@ -30,7 +31,8 @@ internal sealed class AtcConsole(
     IVoiceMode? voiceMode = null,
     Func<Frequency?>? liveCom1 = null,
     TimeProvider? timeProvider = null,
-    IMetarSource? metarSource = null)
+    IMetarSource? metarSource = null,
+    Func<AirportContext, string, CaseLog?>? cases = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -92,6 +94,8 @@ internal sealed class AtcConsole(
             return await voiceMode.RunAsync(context, flight, ct);
         }
 
+        var log = cases?.Invoke(context, callsign);
+
         // What the user set (--com1, or /com1 in the session) wins over what the simulator reports.
         var manualCom1 = options.Com1;
 
@@ -136,6 +140,14 @@ internal sealed class AtcConsole(
                 continue;
             }
 
+            if (IsMarkCommand(line))
+            {
+                output.WriteLine(log is null
+                    ? "Os casos não estão sendo guardados (--no-cases)."
+                    : log.Mark() ? "Troca marcada como errada: guardada para melhoria. Obrigado!" : "Nada para marcar ainda (ou já foi marcada).");
+                continue;
+            }
+
             if (IsEventCommand(line))
             {
                 var radio = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
@@ -145,10 +157,18 @@ internal sealed class AtcConsole(
 
             // Who answers is who is on the frequency the radio is on at this moment.
             var onTheFrequency = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
-            var decision = engine.Handle(nlu.Interpret(line, flight), flight, onTheFrequency);
+            var before = flight;
+            var intent = nlu.Interpret(line, flight);
+            var decision = engine.Handle(intent, flight, onTheFrequency);
             flight = decision.NextContext;
 
-            Show(phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency, (timeProvider ?? TimeProvider.System).GetUtcNow())), onTheFrequency);
+            var reply = phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency, (timeProvider ?? TimeProvider.System).GetUtcNow()));
+            Show(reply, onTheFrequency);
+
+            if (log?.Record(new ExchangeResult(line, intent, decision, reply, null, new StageTimings(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero), phraseology.UnitName(onTheFrequency), before)) is { Count: > 0 } reasons)
+            {
+                output.WriteLine($"  (guardado para melhoria: {string.Join(", ", reasons)})");
+            }
         }
 
         return 0;
@@ -213,7 +233,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/errado\" marca a última troca como mal entendida).");
         }
     }
 
@@ -236,6 +256,8 @@ internal sealed class AtcConsole(
 
         return trimmed.StartsWith("/com1", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 5 || char.IsWhiteSpace(trimmed[5]));
     }
+
+    private static bool IsMarkCommand(string line) => line.Trim().Equals("/errado", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsEventCommand(string line)
     {

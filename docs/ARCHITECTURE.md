@@ -295,6 +295,16 @@ ReportGoingAround ("arremetendo")         ->  GoAroundNoted ("ciente")          
 - **Ordem das palavras (Art. 129 e 132):** o circuito diz a autorização antes da pista ("autorizado para o circuito de tráfego, PISTA ..."); o pouso diz a pista antes ("PISTA ..., pouso autorizado"). O vento fecha as duas, quando houver. O QNH do Art. 129 ainda não é dito (sem fonte).
 - Ficam para depois: a aproximação direta ("autorizada aproximação direta ... reporte final"), "número 2 para pouso", toque e arremetida, condições da pista, e o "no solo aos MM" (depois do pouso).
 
+### 14. Casos não entendidos (`Fonia.Core.Pipeline.CaseReasons`, `Fonia.App.CaseLog`)
+
+O que o controlador não conseguiu seguir é guardado **no computador do usuário** para melhorar o app (etapa 1 do item do M5; o envio é a etapa 2, ainda não existe e será opt-in):
+
+- **Quais trocas:** `CaseReasons.Of` (lógica pura, no Core) olha o estado antes da fala, a intenção e a instrução: `nao-entendido` ("repita"), `negativo` (cotejamento corrigido: o piloto ou o reconhecedor errou), `sem-indicativo`, `so-o-indicativo` (só o indicativo enquanto um cotejamento era devido: o reconhecedor provavelmente perdeu o resto). O que o app **achou** que entendeu, mas errou, ele não sabe: o piloto marca com a tecla `ScrollLock` (`--mark-key`, `voice.markKey`) no modo de voz ou `/errado` no modo texto (`marcado`).
+- **Onde:** `%LOCALAPPDATA%\Fonia\cases\<aaaammdd-hhmmss>\cases.jsonl`, uma linha JSON por item: `session` (versão, aeroporto, indicativo), `case` (id, hora, estação, fase antes, o que esperava cotejo, a última fala do controlador, o que o reconhecedor escreveu, a intenção, a instrução, a resposta, os motivos, o áudio) e `mark` (o id marcado). O `id` conta todas as trocas da sessão. `ExchangeResult` agora leva o estado anterior (`Before`) e o áudio da fala (`Audio`).
+- **O som** da sua fala (`001.wav`, 16 kHz) só é guardado com `--save-audio` / `cases.saveAudio`, desligado por padrão: a voz é dado pessoal. O texto e o contexto são guardados por padrão; `--no-cases` / `cases.save: false` desliga tudo.
+- **Limites:** sessões com mais de 30 dias saem, e a pasta fica em 200 MB (as mais antigas primeiro); só pastas com nome de sessão são tocadas. Falha de disco nunca para o rádio (escrita em melhor esforço). `fonia --cases` mostra a pasta e quantos casos cada sessão tem.
+- **Nada é enviado.** O desinstalador pergunta se apaga a pasta junto com o resto.
+
 ## Fluxo de uma interação (exemplo)
 
 1. Piloto aperta PTT e diz: "Solo Curitiba, PR-ABC, pátio 1, posição 3, solicita instruções de táxi".

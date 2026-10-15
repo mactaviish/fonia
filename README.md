@@ -104,6 +104,8 @@ Para conversar com o controlador por texto (ATC do M2, sem áudio): você digita
 
 **Instalação e primeiro uso:** [`docs/INSTALL.md`](docs/INSTALL.md).
 
+**O que o Fonia guarda:** só no seu computador, o que o controlador não entendeu (texto e contexto; o som da voz só com `--save-audio`), para melhorar o programa. `fonia --cases` mostra, `--no-cases` desliga, e em `docs/INSTALL.md` está tudo explicado. A tecla ScrollLock marca uma troca em que ele entendeu errado.
+
 **Configuração:** as preferências (tecla do PTT, microfone, voz do controlador, GPU, aeroporto sugerido...) ficam em `%APPDATA%\Fonia\appsettings.json`. `fonia --init-config` cria o arquivo com tudo comentado e `fonia --config` mostra o que está valendo; o que você digita na linha de comando sempre vale mais. Sem argumentos, num terminal, `fonia` pega o indicativo e o aeroporto do simulador (se estiver aberto com um voo) ou pergunta os dois, e conversa por voz (o antigo modo de ler o MSFS é `fonia --sim msfs`).
 
 ```bash

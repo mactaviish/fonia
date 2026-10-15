@@ -19,6 +19,8 @@ internal sealed class AppSettings
 
     public WeatherSettings Weather { get; } = new();
 
+    public CasesSettings Cases { get; } = new();
+
     internal sealed class VoiceSettings
     {
         /// <summary>The push-to-talk key (<c>--ptt-key</c>), such as "RControl" or "F8".</summary>
@@ -32,6 +34,9 @@ internal sealed class AppSettings
 
         /// <summary>pf_dora, pm_alex or "aleatoria" (<c>--tts-voice</c>).</summary>
         public string? TtsVoice { get; set; }
+
+        /// <summary>The key that marks the last exchange as misunderstood (<c>--mark-key</c>), "ScrollLock" by default.</summary>
+        public string? MarkKey { get; set; }
 
         /// <summary>desligado, leve, media or forte (<c>--radio-effect</c>).</summary>
         public string? RadioEffect { get; set; }
@@ -50,5 +55,14 @@ internal sealed class AppSettings
     {
         /// <summary>false turns the METAR off (<c>--no-metar</c>).</summary>
         public bool? Metar { get; set; }
+    }
+
+    internal sealed class CasesSettings
+    {
+        /// <summary>false stops keeping the exchanges the controller could not follow (<c>--no-cases</c>).</summary>
+        public bool? Save { get; set; }
+
+        /// <summary>true also keeps the sound of the pilot with each case (<c>--save-audio</c>), always on this computer only.</summary>
+        public bool? SaveAudio { get; set; }
     }
 }

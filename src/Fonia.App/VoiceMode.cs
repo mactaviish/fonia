@@ -36,7 +36,10 @@ internal sealed class VoiceMode(
     TextWriter error,
     Random random,
     Func<Frequency?>? com1 = null,
-    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null) : IVoiceMode
+    Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null,
+    Func<AirportContext, string, CaseLog?>? cases = null,
+    IPushToTalk? markKey = null,
+    string markKeyName = "") : IVoiceMode
 {
     public async Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct)
     {
@@ -71,15 +74,49 @@ internal sealed class VoiceMode(
         }
 
         var exchange = new VoiceExchange(transcriber, nlu, engine, phraseology, synthesizer, voices, radio, random);
-        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, new ConsoleVoiceObserver(output, error, station), com1);
+        // What the controller could not follow is kept on the user's disk (and a key marks what it got wrong without knowing).
+        var log = cases?.Invoke(airport, flight.Callsign);
+        IVoiceLoopObserver observer = new ConsoleVoiceObserver(output, error, station);
+
+        if (log is not null)
+        {
+            observer = new CaseRecordingObserver(observer, log, output);
+        }
+
+        var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, observer, com1);
 
         // What the telemetry shows (the takeoff) is something the controller may say without being asked; read only once the radio is up.
         var following = states?.Invoke(ct) is { } stream ? FollowAsync(loop, stream, ct) : Task.CompletedTask;
 
-        // Said only once the microphone and the key are open: whoever reads it may press the key at once.
-        await loop.RunAsync(ct, () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta. Ctrl+C encerra."));
-        await following;
+        var marking = log is not null && markKey is not null;
+
+        if (marking)
+        {
+            markKey!.Pressed += OnMark;
+            markKey.StartWatching();
+        }
+
+        try
+        {
+            // Said only once the microphone and the key are open: whoever reads it may press the key at once.
+            await loop.RunAsync(
+                ct,
+                () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta.{(marking ? $" Se ele entender errado, aperte {markKeyName} para marcar a troca." : string.Empty)} Ctrl+C encerra."));
+            await following;
+        }
+        finally
+        {
+            if (marking)
+            {
+                markKey!.Pressed -= OnMark;
+                markKey.StopWatching();
+            }
+        }
+
         return 0;
+
+        void OnMark(object? sender, EventArgs e) =>
+            output.WriteLine(log!.Mark() ? "  Troca marcada como errada: guardada para melhoria. Obrigado!" : "  Nada para marcar ainda (ou já foi marcada).");
     }
 
     private static async Task FollowAsync(VoiceLoop loop, IAsyncEnumerable<AircraftState> states, CancellationToken ct)
