@@ -16,6 +16,8 @@
          Microsoft.ML.OnnxRuntime: MIT, runs the Kokoro voice model on the CPU (its native library ships in the package).
          See docs/decisions/speech.md. -->
     <PackageVersion Include="SimConnect.NET" Version="0.2.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
     <PackageVersion Include="NAudio.WinMM" Version="2.2.1" />

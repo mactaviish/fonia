@@ -12,7 +12,37 @@ using Microsoft.Extensions.Logging;
 Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 Console.InputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
+var settings = SettingsLoader.Load(AppContext.BaseDirectory, Path.GetDirectoryName(SettingsLoader.UserFile)!, SettingsLoader.ProcessEnvironment());
+
+// A terminal in both directions: only then can the app ask the user something, or rewrite a line of progress.
+var terminal = !Console.IsInputRedirected && !Console.IsOutputRedirected;
+
 var parsed = ArgumentParser.Parse(args);
+
+if (parsed.Options is { ShowConfig: true })
+{
+    ConfigCommands.Show(settings, Console.Out);
+
+    if (settings.Error is null)
+    {
+        return 0;
+    }
+
+    Console.Error.WriteLine($"fonia: {settings.Error}");
+    return 2;
+}
+
+if (parsed.Options is { InitConfig: true })
+{
+    return ConfigCommands.Init(SettingsLoader.UserFile, Console.Out, Console.Error);
+}
+
+if (settings.Error is not null)
+{
+    Console.Error.WriteLine($"fonia: {settings.Error}");
+    Console.Error.WriteLine("Corrija o arquivo, ou veja \"fonia --config\".");
+    return 2;
+}
 
 if (parsed.ShowHelp)
 {
@@ -29,6 +59,42 @@ if (parsed.Error is not null)
 
 var options = parsed.Options!;
 
+using var asking = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    asking.Cancel();
+};
+
+// Opened without arguments on a terminal: ask for the airport and go into the voice mode.
+if (StartupWizard.ShouldAsk(args, terminal))
+{
+    var chosen = await StartupWizard.RunAsync(
+        Console.In,
+        Console.Out,
+        AirportCatalog.Load(),
+        settings.Settings.Airport ?? LastAirportStore.Default.Read(),
+        LastAirportStore.Default.Remember,
+        asking.Token);
+
+    if (chosen is null)
+    {
+        return 0;
+    }
+
+    options = chosen;
+}
+
+var applied = SettingsApplier.Apply(options, settings.Settings, ArgumentParser.OptionsGiven(args));
+
+if (applied.Error is not null)
+{
+    Console.Error.WriteLine($"fonia: {applied.Error}");
+    return 2;
+}
+
+options = applied.Options;
+
 // Logs go to the error output so that the state shown on the standard output stays clean.
 using var loggerFactory = LoggerFactory.Create(builder => builder
     .SetMinimumLevel(options.LogLevel)
@@ -40,9 +106,6 @@ Console.CancelKeyPress += (_, e) =>
     e.Cancel = true; // let the app end cleanly: the recording stays valid and the connection is closed
     cancellation.Cancel();
 };
-
-// A terminal in both directions: only then can the app ask the user something, or rewrite a line of progress.
-var terminal = !Console.IsInputRedirected && !Console.IsOutputRedirected;
 
 if (options.DownloadModels)
 {

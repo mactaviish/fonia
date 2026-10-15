@@ -146,7 +146,7 @@ public class DepartureInformationTests
     [InlineData(9999, "visibilidade DEZ QUILÔMETROS OU MAIS")]
     public void The_visibility_is_said_as_the_manual_says_distances_in_meters(int meters, string expected)
     {
-        Speak(new DepartureInformation("15", null, null, null, meters), Plain).ShouldContain(expected, Case.Sensitive);
+        Speak(new DepartureInformation("15", null, null, null, meters), Plain)!.ShouldContain(expected, Case.Sensitive);
     }
 
     [Theory]
@@ -155,7 +155,7 @@ public class DepartureInformationTests
     [InlineData(-2, "temperatura MENOS ZERO DOIS")]
     public void The_temperature_is_two_digits_and_minus_when_it_is_below_zero(int degrees, string expected)
     {
-        Speak(new DepartureInformation("15", null, null, degrees, null), Plain).ShouldContain(expected, Case.Sensitive);
+        Speak(new DepartureInformation("15", null, null, degrees, null), Plain)!.ShouldContain(expected, Case.Sensitive);
     }
 
     [Fact]
