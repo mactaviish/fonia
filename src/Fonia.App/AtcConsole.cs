@@ -4,6 +4,7 @@ using Fonia.Core.Atc;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
 using Fonia.Core.Sim;
+using Fonia.Core.Weather;
 
 namespace Fonia.App;
 
@@ -28,7 +29,8 @@ internal sealed class AtcConsole(
     bool interactive,
     IVoiceMode? voiceMode = null,
     Func<Frequency?>? liveCom1 = null,
-    TimeProvider? timeProvider = null)
+    TimeProvider? timeProvider = null,
+    IMetarSource? metarSource = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -57,6 +59,13 @@ internal sealed class AtcConsole(
             return 2;
         }
 
+        var weather = options.NoMetar ? null : await ReadWeatherAsync(airport.Ident, ct);
+
+        if (weather is not null)
+        {
+            context = context.WithWeather(weather.Metar, keepRunway: options.Runway is not null);
+        }
+
         string? callsign;
 
         try
@@ -74,7 +83,7 @@ internal sealed class AtcConsole(
             return 1;
         }
 
-        WriteHeader(context, callsign);
+        WriteHeader(context, callsign, options.NoMetar ? null : weather, metarSource is not null && !options.NoMetar);
 
         var flight = new FlightContext(callsign, FlightPhase.Parked, airport.Ident, PendingReadback: null);
 
@@ -139,7 +148,7 @@ internal sealed class AtcConsole(
             var decision = engine.Handle(nlu.Interpret(line, flight), flight, onTheFrequency);
             flight = decision.NextContext;
 
-            Show(phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency)), onTheFrequency);
+            Show(phraseology.Speak(decision.Instruction, new PhraseContext(callsign, onTheFrequency, (timeProvider ?? TimeProvider.System).GetUtcNow())), onTheFrequency);
         }
 
         return 0;
@@ -153,7 +162,28 @@ internal sealed class AtcConsole(
         return letters.Length == 0 ? null : letters;
     }
 
-    private void WriteHeader(AirportContext context, string callsign)
+    // The METAR is an extra: the radio works without it, so it waits a few seconds at most and any failure is just "no METAR".
+    private async Task<MetarReading?> ReadWeatherAsync(string icao, CancellationToken ct)
+    {
+        if (metarSource is null)
+        {
+            return null;
+        }
+
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(TimeSpan.FromSeconds(8));
+
+        try
+        {
+            return await metarSource.GetAsync(icao, limit.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return null;
+        }
+    }
+
+    private void WriteHeader(AirportContext context, string callsign, MetarReading? weather, bool weatherWasAsked)
     {
         var airport = context.Airport;
 
@@ -161,6 +191,15 @@ internal sealed class AtcConsole(
         output.WriteLine(context.Unit == ServiceUnit.None
             ? "Sem serviço de controle neste aeródromo: ninguém responde."
             : $"Responde: {phraseology.UnitName(context)}. Pista em uso: {context.RunwayInUse ?? "nenhuma nos dados"}.");
+
+        if (weather is not null)
+        {
+            output.WriteLine(DescribeWeather(weather));
+        }
+        else if (weatherWasAsked)
+        {
+            output.WriteLine("Sem METAR (sem rede ou sem dados): o vento e o ajuste de altímetro ficam de fora das falas.");
+        }
 
         var frequencies = new[] { AirportFrequencyType.Ground, AirportFrequencyType.Tower, AirportFrequencyType.Afis }
             .Select(type => airport.FrequencyOf(type) is { } f ? $"{type} {f.Frequency.MHz.ToString("0.0##", CultureInfo.InvariantCulture)}" : null)
@@ -177,6 +216,19 @@ internal sealed class AtcConsole(
             output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso).");
         }
     }
+
+    // "METAR SBCT 152000Z 23003KT ... (observado às 20:00Z); pista em uso pelo vento: 15."
+    private string DescribeWeather(MetarReading weather)
+    {
+        var age = (timeProvider ?? TimeProvider.System).GetUtcNow() - weather.ObservedAt;
+        var when = $"observado às {weather.ObservedAt.UtcDateTime:HH:mm}Z, há {FormatAge(age)}{(weather.Stale ? ", guardado: sem rede" : string.Empty)}";
+
+        return $"{weather.Metar.Raw.Replace("METAR ", string.Empty, StringComparison.Ordinal)} ({when}).";
+    }
+
+    private static string FormatAge(TimeSpan age) => age < TimeSpan.FromMinutes(1)
+        ? "instantes"
+        : age < TimeSpan.FromHours(1) ? $"{(int)age.TotalMinutes} min" : $"{(int)age.TotalHours} h {age.Minutes} min";
 
     private static bool IsRadioCommand(string line)
     {
@@ -214,7 +266,7 @@ internal sealed class AtcConsole(
 
         var decision = engine.Handle(flightEvent, flight, onTheFrequency);
 
-        if (phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, onTheFrequency)) is { } utterance)
+        if (phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, onTheFrequency, now)) is { } utterance)
         {
             Show(utterance, onTheFrequency);
         }

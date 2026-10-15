@@ -74,8 +74,8 @@ Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entr
 
 - [ ] Posição Torre: alinhar, autorização de decolagem, autorização de pouso. A fraseologia está catalogada em `docs/phraseology/torre-pt-br.md` (MCA 100-16/2025, Art. 126 a 134). **Feito:** alinhar e decolar, com cotejamento exigido (`LineUpAndWait`, `TakeoffClearance`, `SpokenText.Wind`). Fala proativa pela telemetria: "decolado aos MM" (`FlightEventDetector`, `AirborneNotice`). Circuito e pouso: autorização para o circuito, reportes de perna do vento, base e final, autorização de pouso, arremetida (`CircuitClearance`, `LandingClearance`). Depois do pouso: "no solo aos MM, após livrar a pista chame Solo ..." pela telemetria (`TouchedDown`, `LandedNotice`), "pista livre" e "taxie para o pátio". **Falta:** "chame o Controle ..." (sem dados de Controle), pátio e taxiway nos dados, aproximação direta
 - [x] Transferência de frequência entre posições (Solo → Torre) conforme o COM1 do simulador: quem responde vem da frequência do rádio (`FrequencyResolver`, `--com1`, `/com1`, COM1 ao vivo com `--sim`); o relato "no ponto de espera" faz o Solo mandar chamar a Torre. A Torre ainda não fala (avisos), vem nas próximas tarefas
-- [ ] ATIS com METAR real (cache + fallback)
-- [ ] Seleção de pista em uso pelo vento
+- [ ] ATIS com METAR real (cache + fallback). **Feito:** METAR real (`aviationweather.gov`, cache de 30 min, guardado por até 3 h sem rede, `--no-metar`), com vento e ajuste de altímetro nas falas. Informações de partida / condições do aeródromo (Art. 121 e 122): pista, vento, ajuste de altímetro, temperatura, visibilidade e hora certa. **Falta:** o texto falado do ATIS (precisa de fonte da fraseologia), o vento do simulador como fallback
+- [x] Seleção de pista em uso pelo vento (`AirportContext.WithWeather`; `--runway` manda)
 - [ ] Configuração em `appsettings.json`; primeira versão utilizável por outras pessoas
 - [ ] Publicação (`dotnet publish` self-contained) e primeiro instalador Windows
 - [ ] Documentação de instalação
@@ -92,6 +92,10 @@ Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entr
 - [ ] NLU com LLM opcional para fala fora do padrão
 - [ ] Integração com SimBrief (plano de voo)
 - [ ] Interface gráfica (WPF, WinUI 3 ou Avalonia)
+- [ ] **Casos não entendidos, para melhorar o app.** Quando o controlador diz "repita", "negativo" ou pede o indicativo, ou o usuário marca "isso foi errado" (o app entendeu mal sem saber), o caso é guardado: o texto que o reconhecedor escreveu, o contexto (fase, última fala do controlador, frequência), o que o NLU entendeu e o que o motor decidiu, e, só com o consentimento do usuário, o áudio. Ideia do mantenedor em 2026-10-15, vinda do teste de voo que levou o acerto dos cotejamentos de 89% para 97% (`docs/decisions/speech.md`): os usuários não serão os desenvolvedores, então os casos precisam chegar até nós.
+  - **Etapa 1, local:** `%LOCALAPPDATA%\Fonia\casos`, um `.jsonl` por sessão e os WAVs ao lado, com limite de tamanho e de idade; comando para marcar um erro; o spike (`tools/speech-spike.cs`) lê a pasta e mede o efeito de uma mudança sobre os casos reais. Fora do git.
+  - **Etapa 2, envio:** opt-in explícito (desligado por padrão), com o usuário vendo o que será enviado antes, um identificador aleatório por instalação (sem nome nem e-mail) e a opção de apagar. A **voz é dado pessoal** (LGPD): finalidade e consentimento claros no primeiro uso, texto e contexto separados do áudio (o texto vale sozinho). **Destino a decidir:** repositório de dados privado, issue automática (só texto) ou um endpoint próprio; áudio não vai para um repositório público.
+  - **Etapa 3, retorno:** os casos revisados viram frases de teste e entram no conjunto de avaliação (`phrases-voo.txt`).
 
 ## Backlog / ideias
 

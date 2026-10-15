@@ -31,6 +31,9 @@ public sealed class AtcEngine : IAtcEngine
             ReportTakingOff when airport.Unit == ServiceUnit.Tower && flight.Phase >= FlightPhase.TakeoffCleared
                 => new AtcDecision(new NoResponse(), flight with { PendingReadback = null, AwaitingCallsign = null }),
             _ when intent.Callsign is null => new AtcDecision(new RequestCallsign(), flight with { AwaitingCallsign = intent }),
+            // The conditions of the aerodrome are given by whoever answers, an AFIS included (it informs).
+            RequestInformation when airport.Unit != ServiceUnit.None
+                => Say(new DepartureInformation(airport.RunwayInUse, airport.Wind, airport.Qnh, airport.TemperatureCelsius, airport.VisibilityMeters), Released(flight)),
             _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight with { AwaitingCallsign = null }),
 
             // On the Torre's frequency the Torre does not do the Solo's job when the airport has a Solo: it says where to call.
@@ -161,7 +164,7 @@ public sealed class AtcEngine : IAtcEngine
 
         return intent switch
         {
-            RequestLanding => Clearance(new CircuitClearance(runway, airport.Wind), flight, FlightPhase.InCircuit, runway),
+            RequestLanding => Clearance(new CircuitClearance(runway, airport.Wind, airport.Qnh), flight, FlightPhase.InCircuit, runway),
             ReportDownwind => Clearance(new ReportBase(), flight, FlightPhase.OnDownwind, runway),
             ReportBaseLeg => Clearance(new ReportOnFinal(), flight, FlightPhase.OnBase, runway),
             _ => Clearance(new LandingClearance(runway, airport.Wind), flight, FlightPhase.LandingCleared, runway),
@@ -221,7 +224,7 @@ public sealed class AtcEngine : IAtcEngine
             return Say(new NoRunwayAvailable(), flight);
         }
 
-        var clearance = new TaxiClearance(airport.RunwayInUse);
+        var clearance = new TaxiClearance(airport.RunwayInUse, airport.Qnh);
 
         // The taxi clearance is what the manual requires to be read back (Art. 12); startup and pushback are read back too, as in practice.
         return new AtcDecision(clearance, flight with { Phase = FlightPhase.Taxiing, PendingReadback = clearance, LastInstruction = clearance, AssignedRunway = airport.RunwayInUse });

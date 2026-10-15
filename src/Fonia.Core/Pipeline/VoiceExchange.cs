@@ -65,7 +65,7 @@ public sealed class VoiceExchange(
 
         var station = phraseology.UnitName(airport);
         var decision = engine.Handle(flightEvent, flight, airport);
-        var reply = phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, airport));
+        var reply = phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, airport, _time.GetUtcNow()));
 
         if (reply is not { Kind: UtteranceKind.Radio })
         {
@@ -102,7 +102,7 @@ public sealed class VoiceExchange(
         started = _time.GetTimestamp();
         var intent = nlu.Interpret(transcript.Text, flight);
         var decision = engine.Handle(intent, flight, airport);
-        var reply = phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, airport));
+        var reply = phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, airport, _time.GetUtcNow()));
         var understood = _time.GetElapsedTime(started);
 
         // Only what the controller says on the radio is voiced; a message of the app is just shown.

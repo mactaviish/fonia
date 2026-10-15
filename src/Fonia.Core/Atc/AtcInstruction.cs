@@ -8,8 +8,8 @@ namespace Fonia.Core.Atc;
 /// </summary>
 public abstract record AtcInstruction;
 
-/// <summary>Taxi to the holding point of <paramref name="Runway"/> (no detailed route yet).</summary>
-public sealed record TaxiClearance(string Runway) : AtcInstruction;
+/// <summary>Taxi to the holding point of <paramref name="Runway"/> (no detailed route yet), with the altimeter setting when known (Art. 125).</summary>
+public sealed record TaxiClearance(string Runway, int? Qnh = null) : AtcInstruction;
 
 /// <summary>The pilot's readback did not match; ask again for <paramref name="Expected"/>.</summary>
 public sealed record RequestReadbackCorrection(AtcInstruction Expected) : AtcInstruction;
@@ -68,9 +68,8 @@ public sealed record TakeoffClearance(string Runway, Wind? Wind = null) : AtcIns
 /// <summary>
 /// Cleared to the traffic circuit on <paramref name="Runway"/>, with the wind when known, to report the downwind (MCA 100-16, Art. 129).
 /// </summary>
-// TODO(fraseologia): the manual also says the altimeter setting ("QNH 1015") here; it is left out while the app has no source for it.
-// The other form, "autorizada aproximação direta ... reporte final", is not implemented yet.
-public sealed record CircuitClearance(string Runway, Wind? Wind = null) : AtcInstruction;
+// The altimeter setting is said when there is a METAR. The other form, "autorizada aproximação direta ... reporte final", is not implemented yet.
+public sealed record CircuitClearance(string Runway, Wind? Wind = null, int? Qnh = null) : AtcInstruction;
 
 /// <summary>"Reporte perna base" (Art. 130, II). Art. 12 does not list reports among what must be read back.</summary>
 public sealed record ReportBase : AtcInstruction;
@@ -88,6 +87,14 @@ public sealed record GoAroundNoted : AtcInstruction;
 
 /// <summary>The pilot asked the Solo for an arrival, which is the Torre's. A message of the app, not radio: the manual has no phrase for it.</summary>
 public sealed record CallTheTower(Frequency Frequency) : AtcInstruction;
+
+/// <summary>
+/// The answer to "solicita informações de partida" (MCA 100-16, Art. 122): the runway in use, the wind, the altimeter setting, the
+/// temperature, the visibility and the time check. What the airport does not know is null and is not said; the time comes from the clock
+/// of the phraseology, not from the decision.
+/// </summary>
+// TODO(fraseologia): 9999 in a METAR is "10 km or more"; "visibilidade dez quilômetros ou mais" is a proposal, the manual shows only meters.
+public sealed record DepartureInformation(string? Runway, Wind? Wind, int? Qnh, int? TemperatureCelsius, int? VisibilityMeters) : AtcInstruction;
 
 /// <summary>
 /// "No solo aos 02, após livrar a pista chame Solo ...": the Torre tells the aircraft it is on the ground, with the minute it touched down and

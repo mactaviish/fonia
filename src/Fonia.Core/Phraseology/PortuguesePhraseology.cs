@@ -32,6 +32,7 @@ public sealed class PortuguesePhraseology : IPhraseology
             NoOneOnFrequency silent => new Utterance(
                 $"Ninguém responde em {Mhz(silent.Frequency)}. Sintonize uma frequência de {context.Airport.Airport.Ident}: {FrequenciesOf(context.Airport)}.",
                 UtteranceKind.Notice),
+            DepartureInformation information => new Utterance($"{callsign}, {Conditions(information, context.Now)}."),
             CallTheTower tower => new Utterance(
                 $"{UnitName(context.Airport)}: o Solo não trata de chegada neste app: chame a Torre em {Mhz(tower.Frequency)}.",
                 UtteranceKind.Notice),
@@ -58,15 +59,14 @@ public sealed class PortuguesePhraseology : IPhraseology
         // The manual has no combined phrase; this is the practice of VATSIM Brasil (P-ACN-PSH-OK).
         PushbackApproved { WithStartup: true } => "autorizado pushback e acionamento, chame pronto para o táxi.",
 
-        // MCA 100-16 Art. 125, II, without the taxiway: the airport data has none. Without the altimeter setting too:
-        // TODO(fraseologia): say the QNH ("ajuste de altímetro") when there is a source for it.
-        TaxiClearance taxi => $"autorizado táxi para o ponto de espera da {SpokenText.Runway(taxi.Runway)}.",
+        // MCA 100-16 Art. 125, II, without the taxiway: the airport data has none. The altimeter setting comes when there is a METAR.
+        TaxiClearance taxi => $"autorizado táxi para o ponto de espera da {SpokenText.Runway(taxi.Runway)}{AltimeterPart(taxi.Qnh)}.",
 
         // MCA 100-16 Art. 126, II: the runway, the clearance and then the wind. "Alinhe e mantenha" is composed from the manual's
         // examples (see LineUpAndWait). Art. 50: "decolagem" only in the clearance (or its cancellation).
         LineUpAndWait lineUp => $"{SpokenText.Runway(lineUp.Runway)}, alinhe e mantenha.",
         // Art. 129 to 132: the circuit clearance says the clearance first and then the runway; the landing, the runway first. Both end with the wind.
-        CircuitClearance circuit => $"autorizado para o circuito de tráfego, {SpokenText.Runway(circuit.Runway)}{WindPart(circuit.Wind)}, reporte perna do vento.",
+        CircuitClearance circuit => $"autorizado para o circuito de tráfego, {SpokenText.Runway(circuit.Runway)}{WindPart(circuit.Wind)}{AltimeterPart(circuit.Qnh)}, reporte perna do vento.",
         ReportBase => "reporte perna base.",
         ReportOnFinal => "reporte na final.",
         LandingClearance landing => $"{SpokenText.Runway(landing.Runway)}, pouso autorizado{WindPart(landing.Wind)}.",
@@ -83,6 +83,47 @@ public sealed class PortuguesePhraseology : IPhraseology
 
     // The minutes only, digit by digit (Art. 25): "ZERO DOIS".
     private static string Minutes(int minute) => SpokenText.Digits(minute.ToString("00", System.Globalization.CultureInfo.InvariantCulture));
+
+    // Art. 122, I: the runway in use, the wind, the altimeter setting, the temperature, the visibility and the time check, in that order.
+    private static string Conditions(DepartureInformation information, DateTimeOffset? now)
+    {
+        var parts = new List<string>();
+
+        if (information.Runway is { } runway)
+        {
+            parts.Add(SpokenText.Runway(runway));
+        }
+
+        if (information.Wind is { } wind)
+        {
+            parts.Add(SpokenText.Wind(wind));
+        }
+
+        if (information.Qnh is { } qnh && qnh is >= 900 and <= 1099)
+        {
+            parts.Add($"ajuste de altímetro {SpokenText.Qnh(qnh)}");
+        }
+
+        if (information.TemperatureCelsius is { } temperature)
+        {
+            parts.Add($"temperatura {(temperature < 0 ? "MENOS " : string.Empty)}{SpokenText.Digits(Math.Abs(temperature).ToString("00", System.Globalization.CultureInfo.InvariantCulture))}");
+        }
+
+        if (information.VisibilityMeters is { } visibility)
+        {
+            parts.Add($"visibilidade {SpokenText.Visibility(visibility)}");
+        }
+
+        if (now is { } time)
+        {
+            parts.Add($"hora certa {Minutes(time.UtcDateTime.Minute)}");
+        }
+
+        return parts.Count > 0 ? string.Join(", ", parts) : "sem informações disponíveis";
+    }
+
+    // "ajuste de altímetro UNO ZERO UNO OITO" (Art. 29), said in full: the abbreviation is no word for the voice.
+    private static string AltimeterPart(int? qnh) => qnh is { } hectopascals && hectopascals is >= 900 and <= 1099 ? $", ajuste de altímetro {SpokenText.Qnh(hectopascals)}" : string.Empty;
 
     private static string WindPart(Sim.Wind? wind) => wind is { } known ? $", {SpokenText.Wind(known)}" : string.Empty;
 

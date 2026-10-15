@@ -13,7 +13,7 @@ namespace Fonia.Core.Speech;
 public static class WhisperPromptBuilder
 {
     private const string Vocabulary =
-        "Comunicação de rádio aeronáutica em português. Solo, Torre, pushback, acionamento, táxi, pista, ponto de espera, alinhe e mantenha, decolagem, pronto para partida, alinhado, circuito de tráfego, perna do vento, perna base, final, pouso, arremetendo, QNH.";
+        "Comunicação de rádio aeronáutica em português. Solo, Torre, pushback, acionamento, táxi, pista, ponto de espera, alinhe e mantenha, decolagem, pronto para partida, informações de partida, condições do aeródromo, alinhado, circuito de tráfego, perna do vento, perna base, final, pouso, arremetendo, QNH.";
 
     private const string RunwayExample = "Pista uno cinco.";
 

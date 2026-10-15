@@ -90,6 +90,17 @@ if (options.AtcAirport is not null)
     }
 
     await using var voiceResources = voice;
+
+    // The weather is an extra: the METAR of the airport from aviationweather.gov (only the ICAO code goes out), kept on disk for a while.
+    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(6) };
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("Fonia (+https://github.com/mactaviish/fonia)");
+    var metar = new CachedMetarSource(
+        new AviationWeatherMetarSource(http),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Fonia", "cache", "metar"),
+        TimeProvider.System,
+        freshFor: TimeSpan.FromMinutes(30),
+        staleFor: TimeSpan.FromHours(3));
+
     var atc = new AtcConsole(
         AirportCatalog.Load(),
         new RuleBasedNlu(),
@@ -101,7 +112,8 @@ if (options.AtcAirport is not null)
         session.ReadCallsignAsync,
         interactive: !Console.IsInputRedirected && interactive,
         voiceMode: voice?.Mode,
-        liveCom1: () => session.Com1);
+        liveCom1: () => session.Com1,
+        metarSource: metar);
 
     return await atc.RunAsync(options, cancellation.Token);
 }

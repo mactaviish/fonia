@@ -5,6 +5,7 @@ using Fonia.Core.Atc;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
 using Fonia.Core.Sim;
+using Fonia.Core.Weather;
 
 namespace Fonia.App.Tests;
 
@@ -48,7 +49,7 @@ public class AtcConsoleFrequencyTests
         [Runway("15", "33", 6000), Runway("11", "29", 9000)],
         [new AirportFrequency(AirportFrequencyType.Ground, new Frequency(118000), "Ground"), new AirportFrequency(AirportFrequencyType.Tower, new Frequency(119500), "Tower")]);
 
-    private static async Task<(int Code, string Output, string Error)> RunAsync(AppOptions options, string typed, Func<Frequency?>? live = null)
+    private static async Task<(int Code, string Output, string Error)> RunAsync(AppOptions options, string typed, Func<Frequency?>? live = null, IMetarSource? metar = null)
     {
         var output = new StringWriter(new StringBuilder()) { NewLine = "\n" };
         var error = new StringWriter(new StringBuilder()) { NewLine = "\n" };
@@ -63,7 +64,8 @@ public class AtcConsoleFrequencyTests
             (_, _) => Task.FromResult<string?>(null),
             interactive: false,
             liveCom1: live,
-            timeProvider: new Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 10, 14, 12, 26, 31, TimeSpan.Zero)));
+            timeProvider: new Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 10, 14, 12, 26, 31, TimeSpan.Zero)),
+            metarSource: metar);
 
         var code = await console.RunAsync(options, Ct);
 
@@ -351,6 +353,108 @@ public class AtcConsoleFrequencyTests
         text.ShouldNotContain("repita");
         text.ShouldNotContain("negativo");
         result.Error.ShouldBeEmpty();
+    }
+
+    private sealed class FakeMetar(MetarReading? reading) : IMetarSource
+    {
+        public int Calls { get; private set; }
+
+        public Task<MetarReading?> GetAsync(string icao, CancellationToken ct)
+        {
+            Calls++;
+            return Task.FromResult(reading);
+        }
+    }
+
+    private static MetarReading Weather(string raw, bool stale = false)
+    {
+        MetarParser.TryParse(raw, out var metar).ShouldBeTrue();
+        return new MetarReading(metar, new DateTimeOffset(2026, 10, 14, 12, 0, 0, TimeSpan.Zero), stale);
+    }
+
+    [Fact]
+    public async Task The_metar_is_shown_and_the_runway_in_use_is_the_one_the_wind_favours()
+    {
+        var metar = new FakeMetar(Weather("SBXX 141200Z 28012KT 9999 FEW030 22/14 Q1018"));
+
+        var result = await RunAsync(Atc(), "sair\n", metar: metar);
+
+        result.Output.ShouldContain("SBXX 141200Z 28012KT 9999 FEW030 22/14 Q1018 (observado às 12:00Z, há 26 min).");
+        result.Output.ShouldContain("Pista em uso: 29.");
+    }
+
+    [Fact]
+    public async Task The_clearances_say_the_wind_and_the_altimeter_setting_from_the_metar()
+    {
+        var typed = string.Join(
+            '\n',
+            "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicito acionamento",
+            "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
+            "sair\n");
+
+        var result = await RunAsync(Atc(), typed, metar: new FakeMetar(Weather("SBXX 141200Z 28012KT 9999 FEW030 22/14 Q1018")));
+
+        result.Output.ShouldContain("autorizado táxi para o ponto de espera da PISTA DOIS NOVE, ajuste de altímetro UNO ZERO UNO OITO.");
+    }
+
+    [Fact]
+    public async Task A_runway_the_user_asked_for_is_kept_over_the_wind()
+    {
+        var options = Atc() with { Runway = "11" };
+
+        var result = await RunAsync(options, "sair\n", metar: new FakeMetar(Weather("SBXX 141200Z 28012KT 9999 22/14 Q1018")));
+
+        result.Output.ShouldContain("Pista em uso: 11.");
+    }
+
+    [Fact]
+    public async Task A_metar_from_the_cache_says_so()
+    {
+        var result = await RunAsync(Atc(), "sair\n", metar: new FakeMetar(Weather("SBXX 141200Z 28012KT 9999 22/14 Q1018", stale: true)));
+
+        result.Output.ShouldContain("guardado: sem rede");
+    }
+
+    [Fact]
+    public async Task Without_a_metar_the_radio_works_and_the_user_is_told_why_the_wind_is_missing()
+    {
+        var result = await RunAsync(Atc(), "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, pronto para o táxi\nsair\n", metar: new FakeMetar(null));
+
+        result.Output.ShouldContain("Sem METAR");
+        result.Output.ShouldContain("autorizado táxi para o ponto de espera da PISTA UNO UNO.");
+        result.Output.ShouldNotContain("altímetro UNO");
+    }
+
+    [Fact]
+    public async Task With_no_metar_the_source_is_not_even_asked()
+    {
+        var metar = new FakeMetar(Weather("SBXX 141200Z 28012KT 9999 22/14 Q1018"));
+
+        var result = await RunAsync(Atc() with { NoMetar = true }, "sair\n", metar: metar);
+
+        metar.Calls.ShouldBe(0);
+        result.Output.ShouldNotContain("METAR");
+        result.Output.ShouldNotContain("Sem METAR");
+    }
+
+    [Fact]
+    public async Task The_pilot_who_asks_for_the_conditions_hears_the_runway_the_weather_and_the_time_check()
+    {
+        var metar = new FakeMetar(Weather("SBXX 141200Z 28012KT 9999 FEW030 22/14 Q1018"));
+
+        var result = await RunAsync(Atc(), "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, solicita condições do aeródromo\nsair\n", metar: metar);
+
+        result.Output.ShouldContain(
+            "SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, PISTA DOIS NOVE, VENTO DOIS OITO ZERO GRAUS, UNO DOIS NÓS, ajuste de altímetro UNO ZERO UNO OITO, temperatura DOIS DOIS, visibilidade DEZ QUILÔMETROS OU MAIS, hora certa DOIS MEIA.");
+        result.Output.ShouldNotContain("repita");
+    }
+
+    [Fact]
+    public async Task Without_a_metar_the_conditions_are_the_runway_and_the_time_check()
+    {
+        var result = await RunAsync(Atc(), "Solo Curitiba, Papa Romeo Alfa Bravo Charlie, informações de partida\nsair\n", metar: new FakeMetar(null));
+
+        result.Output.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, PISTA UNO UNO, hora certa DOIS MEIA.");
     }
 
     // A reader that hands over its lines one at a time and runs an action between them, like a person at a keyboard.

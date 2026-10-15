@@ -41,7 +41,8 @@ internal sealed record AppOptions(
     int AudioOut = -1,
     bool DownloadModels = false,
     string? ModelsDir = null,
-    Fonia.Core.Sim.Frequency? Com1 = null);
+    Fonia.Core.Sim.Frequency? Com1 = null,
+    bool NoMetar = false);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp);
@@ -53,7 +54,7 @@ internal static class ArgumentParser
         Fonia: estado da aeronave em tempo real, vindo do simulador, e ATC por texto.
 
         Uso: fonia [opções]
-             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>]
+             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar]
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
@@ -64,6 +65,10 @@ internal static class ArgumentParser
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
                                  aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
           --runway <pista>       Pista em uso (ex.: 15, 33L). Padrão: a mais longa do aeroporto.
+          --no-metar             Não busca o METAR na internet (aviationweather.gov, só o código do aeroporto vai pela rede).
+                                 Com o METAR o controlador diz o vento e o ajuste de altímetro e a pista em uso é a que o
+                                 vento favorece (--runway manda); sem ele, ou sem rede, essas partes ficam de fora. O último
+                                 METAR fica guardado em %LOCALAPPDATA%\Fonia\cache e vale por até 3 horas sem rede.
           --com1 <MHz>           Frequência do rádio (COM1), por exemplo 118.55: quem responde é a unidade do aeroporto
                                  que usa essa frequência (Solo, Torre ou Rádio), e em outra ninguém responde. Com o
                                  simulador (--sim) a frequência vem do COM1 dele, ao vivo. No modo texto, "/com1 118.55"
@@ -146,6 +151,7 @@ internal static class ArgumentParser
         string? sttDir = null;
         string? sttModel = null;
         var sttGpu = false;
+        var noMetar = false;
         string? speak = null;
         string? speakOut = null;
         string? ttsVoice = null;
@@ -189,6 +195,12 @@ internal static class ArgumentParser
             if (name == "--stt-gpu")
             {
                 sttGpu = true;
+                continue;
+            }
+
+            if (name == "--no-metar")
+            {
+                noMetar = true;
                 continue;
             }
 
@@ -290,7 +302,16 @@ internal static class ArgumentParser
             }
         }
 
-        return Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect), new VoiceRaw(voice, audioOut), new DownloadRaw(downloadModels, modelsDir), com1);
+        var parsed = Validate(source, replay, record, speed, duration, logLevel, atc, runway, callsign, new MicRaw(micTest, micDevice, pttKey, listMics), new SttRaw(transcribe, sttDir, sttModel, sttGpu), new TtsRaw(speak, speakOut, ttsVoice, ttsDir, radioEffect), new VoiceRaw(voice, audioOut), new DownloadRaw(downloadModels, modelsDir), com1);
+
+        if (!noMetar || parsed.Options is null)
+        {
+            return parsed;
+        }
+
+        return parsed.Options.AtcAirport is null
+            ? Failure("--no-metar só vale no modo ATC: use também --atc <ICAO>.")
+            : new ParsedArguments(parsed.Options with { NoMetar = true }, null, ShowHelp: false);
     }
 
     private sealed record MicRaw(string? TestPath, int? Device, string? Key, bool List);
