@@ -17,8 +17,11 @@ public sealed record RequestPushback(string? Callsign, bool WithStartup, string?
 
 public sealed record RequestTaxi(string? Callsign, string? Runway) : Intent(Callsign);
 
-/// <summary>Pilot read back an instruction; <paramref name="Text"/> is the normalized readback.</summary>
-public sealed record Readback(string? Callsign, string Text) : Intent(Callsign);
+/// <summary>
+/// Pilot read back an instruction; <paramref name="Text"/> is the normalized readback. <paramref name="CallsignTail"/> is true when the
+/// callsign was not recognized but the readback ends with its last two letters ("... Romeo Alfa"): the recognizer wrote the start badly.
+/// </summary>
+public sealed record Readback(string? Callsign, string Text, bool CallsignTail = false) : Intent(Callsign);
 
 public sealed record SayAgain(string? Callsign) : Intent(Callsign);
 

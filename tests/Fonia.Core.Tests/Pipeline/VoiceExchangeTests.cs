@@ -190,7 +190,7 @@ public class VoiceExchangeTests
     [Fact]
     public async Task The_recognizer_is_told_what_the_controller_last_said_so_that_the_readback_is_written_right()
     {
-        var transcriber = new FakeTranscriber(_time, _ => "autorizado decolagem pista uno um");
+        var transcriber = new FakeTranscriber(_time, _ => "autorizado decolagem pista uno uno");
         var exchange = Create(transcriber, new FakeSynthesizer(_time));
         var lineUp = new TakeoffClearance("11");
 

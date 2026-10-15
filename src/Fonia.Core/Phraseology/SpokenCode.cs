@@ -167,9 +167,9 @@ public static class SpokenCode
                 continue;
             }
 
-            foreach (var length in new[] { word.Length, word.Length - 1, word.Length + 1 })
+            foreach (var length in new[] { word.Length, word.Length - 1, word.Length + 1, word.Length - 2, word.Length + 2 })
             {
-                if (length <= rest.Length && WithinOneEdit(rest[..length], word))
+                if (length <= rest.Length && Resembles(rest[..length], word))
                 {
                     letters.Append(letter);
 
@@ -184,6 +184,32 @@ public static class SpokenCode
         }
 
         return false;
+    }
+
+    // One slip for the words of six letters or more; two for the ones of seven or more that start the same three letters ("foxroj",
+    // "foxtroch" for foxtrot): the recognizer writes the callsign worse the longer the word is.
+    private static bool Resembles(string heard, string word) =>
+        WithinOneEdit(heard, word)
+        || (word.Length >= 7 && heard.Length >= 3 && heard.StartsWith(word[..3], StringComparison.Ordinal) && heard != word && EditDistance(heard, word) <= 2);
+
+    private static int EditDistance(string a, string b)
+    {
+        var previous = Enumerable.Range(0, b.Length + 1).ToArray();
+
+        for (var i = 1; i <= a.Length; i++)
+        {
+            var current = new int[b.Length + 1];
+            current[0] = i;
+
+            for (var j = 1; j <= b.Length; j++)
+            {
+                current[j] = Math.Min(Math.Min(previous[j] + 1, current[j - 1] + 1), previous[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1));
+            }
+
+            previous = current;
+        }
+
+        return previous[b.Length];
     }
 
     // True when the words differ by one letter changed, added or removed (but are not the same).
