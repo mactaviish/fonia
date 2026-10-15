@@ -185,8 +185,10 @@ if (options.AtcAirport is not null)
         freshFor: TimeSpan.FromMinutes(30),
         staleFor: TimeSpan.FromHours(3));
 
+    var airports = AirportCatalog.Load();
+
     var atc = new AtcConsole(
-        AirportCatalog.Load(),
+        airports,
         new RuleBasedNlu(),
         new AtcEngine(),
         new PortuguesePhraseology(),
@@ -198,7 +200,9 @@ if (options.AtcAirport is not null)
         voiceMode: voice?.Mode,
         liveCom1: () => session.Com1,
         metarSource: metar,
-        cases: cases);
+        cases: cases,
+        nearestAirport: airports.Nearest,
+        states: session.States);
 
     return await atc.RunAsync(options, cancellation.Token);
 }

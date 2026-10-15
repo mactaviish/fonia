@@ -270,4 +270,19 @@ public sealed class CaseLogTests : IDisposable
 
         output.ToString().ShouldContain("Nenhum caso");
     }
+
+    [Fact]
+    public void A_new_flight_is_a_line_in_the_same_file_and_what_was_said_before_is_not_marked_in_it()
+    {
+        var log = Create();
+        log.Record(NotUnderstood());
+
+        log.StartFlight(Solo, "PT-XYZ");
+
+        log.Mark().ShouldBeFalse();
+        var lines = Lines(log);
+        lines[^1].GetProperty("type").GetString().ShouldBe("flight");
+        lines[^1].GetProperty("airport").GetString().ShouldBe("SBCT");
+        lines[^1].GetProperty("callsign").GetString().ShouldBe("PT-XYZ");
+    }
 }

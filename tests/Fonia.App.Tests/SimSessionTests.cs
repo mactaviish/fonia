@@ -148,4 +148,28 @@ public class SimSessionTests
 
         state.ShouldBeNull();
     }
+
+    [Fact]
+    public async Task A_simulator_that_answers_after_the_time_given_is_still_followed()
+    {
+        var sim = new MockSimAdapter(TimeProvider.System);
+        await using var session = new SimSession(
+            new DelegateFactory(() => new SimSource(sim, Drive: null, EndsWhenDriveCompletes: false, Description: "mock")),
+            TimeProvider.System,
+            TimeSpan.FromSeconds(30),
+            _ => { });
+
+        (await session.ReadFirstStateAsync(new AppOptions(), TimeSpan.FromMilliseconds(200), Ct)).ShouldBeNull();
+
+        // The flight finishes loading afterwards.
+        using var follow = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var states = session.States(follow.Token)!.GetAsyncEnumerator(follow.Token);
+        var next = states.MoveNextAsync().AsTask();
+        sim.SetState(MockAircraft.TaxiSequence(1)[0]);
+
+        (await next).ShouldBeTrue();
+        states.Current.Registration.ShouldBe("PR-ABC");
+        session.Com1.ShouldBe(Frequency.FromMhz(121.9));
+        await follow.CancelAsync();
+    }
 }

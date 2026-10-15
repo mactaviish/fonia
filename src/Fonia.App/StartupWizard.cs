@@ -1,4 +1,5 @@
 using Fonia.Core.Airports;
+using Fonia.Core.Atc;
 
 namespace Fonia.App;
 
@@ -39,6 +40,9 @@ internal sealed class LastValueStore(string path)
     }
 }
 
+/// <summary>The airport and the flight the app goes on with after the simulator loaded another flight.</summary>
+internal sealed record FlightRestart(AirportContext Airport, FlightContext Flight);
+
 /// <summary>What the simulator says about the flight that is loaded: the registration of the aircraft and where it is.</summary>
 internal sealed record SimulatorFix(string Registration, double LatitudeDegrees, double LongitudeDegrees);
 
@@ -58,7 +62,7 @@ internal static class StartupWizard
     private const int MaximumCallsignLength = 10;
 
     // The aircraft is "at" an airport if it is this near: on the apron or the runway, not flying over the countryside.
-    private const double MostKilometersFromAirport = 15;
+    internal const double MostKilometersFromAirport = 15;
 
     public static bool ShouldAsk(string[] args, bool terminal) => args.Length == 0 && terminal;
 

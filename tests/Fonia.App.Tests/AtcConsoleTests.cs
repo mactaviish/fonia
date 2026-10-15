@@ -293,7 +293,7 @@ public class AtcConsoleTests
     {
         public List<(AirportContext Airport, FlightContext Flight)> Calls { get; } = [];
 
-        public Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct)
+        public Task<int> RunAsync(AirportContext airport, FlightContext flight, CancellationToken ct, Func<AircraftState, CancellationToken, Task<FlightRestart?>>? onNewFlight = null)
         {
             Calls.Add((airport, flight));
             return Task.FromResult(exitCode);

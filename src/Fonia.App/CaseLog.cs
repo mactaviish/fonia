@@ -32,8 +32,8 @@ internal sealed class CaseLog
     private readonly Lock _gate = new();
     private readonly TimeProvider _time;
     private readonly IPhraseology _phraseology;
-    private readonly AirportContext _airport;
-    private readonly string _callsign;
+    private AirportContext _airport;
+    private string _callsign;
     private readonly bool _saveAudio;
     private readonly DateTimeOffset _startedAt;
     private int _lastId;
@@ -99,6 +99,25 @@ internal sealed class CaseLog
             }
 
             return reasons;
+        }
+    }
+
+    /// <summary>The simulator loaded another flight: what comes next is of this airport and aircraft. The session goes on in the same file.</summary>
+    public void StartFlight(AirportContext airport, string callsign)
+    {
+        ArgumentNullException.ThrowIfNull(airport);
+
+        lock (_gate)
+        {
+            _airport = airport;
+            _callsign = callsign;
+
+            // What was said in the old flight is not marked as wrong in the new one.
+            _last = null;
+            _lastKept = false;
+            _lastMarked = false;
+
+            Write(new FlightLine("flight", _time.GetUtcNow(), airport.Airport.Ident, callsign));
         }
     }
 
@@ -331,4 +350,6 @@ internal sealed class CaseLog
         string? Audio);
 
     private sealed record MarkLine(string Type, int Id, DateTimeOffset At);
+
+    private sealed record FlightLine(string Type, DateTimeOffset At, string Airport, string Callsign);
 }
