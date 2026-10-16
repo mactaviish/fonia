@@ -70,3 +70,6 @@ spike-*.log
 
 # Saída da publicação (tools/publish.ps1)
 /dist/
+
+# Mapas de aeroportos capturados do simulador (dado do cenario do usuario, nao vai para o git)
+/tools/layouts/
