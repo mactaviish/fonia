@@ -258,7 +258,7 @@ ReportTakingOff ("decolando")             ->  em silêncio
 
 - A **pista** é a que o Solo autorizou no táxi (`FlightContext.AssignedRunway`), ou a pista em uso se não houver. "No ponto de espera" na frequência da Torre vale como pedido de partida; o piloto que já diz "alinhado" recebe a autorização de decolagem direto.
 - O **NLU** separa o pedido de partida do cotejamento pelas palavras (quem repete diz "autorizado", "alinhe e mantenha" com a pista) e pela fase do voo: "partida" é a partida dos motores antes do táxi e a partida para decolar depois dele.
-- **Cotejamento exigido, com o indicativo e a pista**, nas duas instruções (Art. 12: entrar na pista e decolar): sem a palavra ("alinh", "decol") ou com a pista errada, "negativo" e a versão certa.
+- **Cotejamento exigido** nas duas instruções (Art. 12: entrar na pista e decolar), no critério da seção "Cotejamento" abaixo: o indicativo e a palavra da ação ("alinh", "decol"); a pista é opcional, mas dita errada dá "negativo".
 - **Art. 50:** "decolagem" só aparece na autorização de decolagem (ou no seu cancelamento), nunca em "alinhe e mantenha".
 - O **vento** vem do `AirportContext.Wind` e é dito no fim da autorização (`SpokenText.Wind`, Art. 31); sem fonte de vento (ainda não há METAR nem leitura do simulador) a frase sai sem ele.
 - Na frequência do **Solo**, "pronto para partida", "alinhado" e "decolando" não são atendidos: o Solo passa o voo para a Torre, como no relato do ponto de espera.
@@ -291,10 +291,25 @@ ReportGoingAround ("arremetendo")         ->  GoAroundNoted ("ciente")          
 
 - O piloto pode chamar de **qualquer fase** (inclusive com o app aberto já no ar): quem relata uma perna sem o controlador ter pedido recebe o que a perna pede, e a fase nunca volta (`Clearance` só sobe de fase, exceto o novo circuito).
 - A **pista** é a em uso; depois do circuito, a que foi dada (`FlightContext.AssignedRunway`).
-- **Cotejamento exigido** (Art. 12: "entrar" e "pousar") do circuito (palavra "circuito" + pista) e do pouso (palavra "pouso"/"pousar" + pista), com o indicativo. Os pedidos de reporte são aceitos em silêncio, como a passagem de frequência.
+- **Cotejamento exigido** (Art. 12: "entrar" e "pousar") do circuito (palavra "circuito") e do pouso ("pouso"/"pousar"), com o indicativo, no critério da seção "Cotejamento" abaixo. Os pedidos de reporte são aceitos em silêncio, como a passagem de frequência.
 - Na frequência do **Solo**, a chegada vira o aviso `CallTheTower` ("chame a Torre em 119.5"), como a Torre faz com o Solo.
 - **Ordem das palavras (Art. 129 e 132):** o circuito diz a autorização antes da pista ("autorizado para o circuito de tráfego, PISTA ..."); o pouso diz a pista antes ("PISTA ..., pouso autorizado"). O vento fecha as duas, quando houver. O QNH do Art. 129 ainda não é dito (sem fonte).
 - Ficam para depois: a aproximação direta ("autorizada aproximação direta ... reporte final"), "número 2 para pouso", toque e arremetida, condições da pista, e o "no solo aos MM" (depois do pouso).
+
+### Cotejamento (regra de 2026-10-15)
+
+O cotejamento mostra que a autorização foi ouvida; o app exige **o necessário para isso, não a frase inteira**. O manual (Art. 12) manda cotejar a instrução, mas na prática o piloto que está no ponto de espera da pista não repete qual é a pista ("alinhe e mantenha, PR-FRA"). O critério, por instrução, em `AtcEngine.IsCorrect`:
+
+- **o indicativo** (ou o fim dele, as duas últimas letras, com o resto do cotejamento certo) e **a palavra da ação**: "alinh" (alinhe e mantenha), "decol" (decolagem), "pous" (pouso), "circuito", "tax"/"autoriz" (táxi), "acion" (acionamento), "pushback", "pátio";
+- **a pista é opcional**, mas **se for dita e estiver errada, é "negativo"**: esse é o erro que importa. Os números do ajuste de altímetro não são tomados por pista;
+- sem a ação ("ciente", só a pista, só o indicativo) o cotejamento não vale **por si só** e o controlador repete a instrução; sem o indicativo, idem. Mas a **situação do voo** pode suprir o que o reconhecedor perdeu (abaixo).
+
+**A situação do voo** (`Situation`, lógica pura sobre `FlightContext.Aircraft`, que o app preenche a cada fala com o último estado do simulador; sem simulador vale só o critério acima):
+
+- **Já está fazendo o que foi autorizado:** aeronave rolando (30 kt ou mais no solo) ou no ar com a decolagem ou o "alinhe e mantenha" pendentes; no solo com o pouso pendente (já pousou); taxiando (3 kt ou mais) com o táxi pendente. O cotejamento deixa de importar: o controlador fica em silêncio, qualquer que tenha sido a fala (ninguém deve ser cobrado no meio da corrida de decolagem).
+- **Está onde a autorização diz:** no solo, parada, com o rumo a até 30° do rumo magnético da pista (alinhe e mantenha, decolagem), ou no ar a até 30 km do aeroporto (circuito, pouso). Aí, **com o indicativo**, qualquer cotejamento vale ("ciente", a pista errada de quem ouviu mal: o que importa é onde a aeronave está), e um cotejamento certo vale **sem o indicativo**.
+- **O que não se vê na posição** fica no critério da fala: a pista de um táxi, por exemplo, só se confere pelo que o piloto diz.
+- Fora disso, igual: sem simulador, ou com a aeronave longe do que foi autorizado, a pista dita errada ainda é "negativo".
 
 ### 14. Casos não entendidos (`Fonia.Core.Pipeline.CaseReasons`, `Fonia.App.CaseLog`)
 

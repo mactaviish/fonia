@@ -165,7 +165,7 @@ if (options.AtcAirport is not null)
 
     if (options.Voice)
     {
-        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, () => options.Com1 ?? session.Com1, session.States, cases, cancellation.Token);
+        voice = await VoiceCommands.TryCreateAsync(options, Console.In, Console.Out, Console.Error, terminal, () => options.Com1 ?? session.Com1, session.States, cases, () => session.Latest, cancellation.Token);
 
         if (voice is null)
         {
@@ -202,7 +202,8 @@ if (options.AtcAirport is not null)
         metarSource: metar,
         cases: cases,
         nearestAirport: airports.Nearest,
-        states: session.States);
+        states: session.States,
+        liveAircraft: () => session.Latest);
 
     return await atc.RunAsync(options, cancellation.Token);
 }

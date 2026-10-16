@@ -33,12 +33,12 @@ public class FlightOfOctober15Tests
     [Theory]
     [InlineData("Alinhe e mantenha, Foxtroot Romeo Alfa.")]
     [InlineData("Alinhe e mantenha o Foxtrot Romeo Alfa.")]
-    public void A_line_up_readback_without_the_runway_is_corrected_and_not_taken_for_a_call(string said)
+    public void A_line_up_readback_without_the_runway_is_taken_and_not_answered_as_a_call(string said)
     {
         var decision = Say(said, Flight(FlightPhase.LineUpCleared, new LineUpAndWait("15")), OnTower);
 
-        decision.Instruction.ShouldBeOfType<RequestReadbackCorrection>();
-        decision.NextContext.PendingReadback.ShouldBe(new LineUpAndWait("15"));
+        decision.Instruction.ShouldBeOfType<NoResponse>();
+        decision.NextContext.PendingReadback.ShouldBeNull();
     }
 
     [Fact]

@@ -45,10 +45,10 @@ public class RecognitionToleranceTests
     }
 
     [Fact]
-    public void A_takeoff_readback_without_the_runway_is_still_corrected()
+    public void A_takeoff_readback_without_the_runway_is_taken_because_the_pilot_is_on_it()
     {
         Say("Autorizado de colagem, o Papa Romeo Foxtroat Romeo Alfa.", Flight(FlightPhase.TakeoffCleared, new TakeoffClearance(Runway)), OnTower)
-            .Instruction.ShouldBeOfType<RequestReadbackCorrection>();
+            .Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
