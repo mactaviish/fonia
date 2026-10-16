@@ -36,6 +36,9 @@ public sealed class CaseLogTests : IDisposable
         {
             Directory.Delete(_root, true);
         }
+
+        // The test of the failing disk puts a file where the folder should be.
+        File.Delete(_root);
     }
 
     private CaseLog Create(bool saveAudio = false) => new(_root, _time, new PortuguesePhraseology(), Solo, "PR-FRA", saveAudio);
