@@ -82,21 +82,6 @@ Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entr
 
 **Pronto quando:** você faz um voo local completo (partida → táxi → decolagem → circuito → pouso → táxi) falando com o app.
 
-## M6: Solo realista (o mapa do aeródromo)
-
-Ideia do mantenedor em 2026-10-15, vinda do voo de teste em SBCT: o Solo manda "táxi para o ponto de espera da pista 15" sem dizer a taxiway, e a rota de Curitiba atravessa outra pista, o que exige autorização. **Decisão** (`docs/decisions/airport-layout.md`): o mapa vem do **próprio simulador** (SimConnect, API de instalações), guardado só no computador do usuário; **sem o mapa o app funciona como hoje**, dizendo a pista correta. Cada etapa que toca o simulador precisa de teste do mantenedor no MSFS (não dá para rodar aqui); os testes automáticos usam layouts sintéticos.
-
-- [ ] **L0. Spike do mapa** (precisa do MSFS): `fonia --dump-layout <ICAO>` lê do simulador as pistas (cabeceiras), taxiways (com nome), pontos de espera e estacionamentos e grava um JSON em `%LOCALAPPDATA%\Fonia\layouts`. Responde: o que o SimConnect.NET expõe das instalações, o que muda no MSFS 2024, quanto custa pedir um aeroporto (SBCT, SBGR), o que vem de cenário de terceiros sem taxiway, como achar os pontos de espera. **Pronto quando** você roda em SBCT e o JSON tem as taxiways e as duas pistas com nome e posição.
-- [ ] **L1. Modelo e leitura** (Core): `AirportLayout` (pistas com cabeceiras, grafo de táxi com nome, estacionamentos), leitura e gravação em JSON, cache por aeroporto. **Pronto quando** um layout sintético (duas pistas, uma taxiway que cruza uma delas) ida e volta pelo JSON sem perder nada.
-- [ ] **L2. Fonte no simulador** (`Fonia.Sim.Msfs`, `IAirportLayoutSource`): o adaptador do MSFS pede o layout do aeroporto, com reconexão e tempo limite; o mock devolve layouts de teste; o app pede ao abrir (e ao seguir um voo novo). Sem layout, nada muda.
-- [ ] **L3. Rota** (`TaxiRouter`, Core, lógica pura): menor caminho da posição da aeronave ao ponto de espera da pista em uso, com a lista de taxiways, as **travessias de pista** e os pontos de espera. **Pronto quando**, no layout sintético, a rota até a 15 passa pela taxiway e acusa a travessia da 11/29; e uma rota que não se acha (grafo cortado, nomes faltando) devolve "sem rota", nunca uma rota inventada.
-- [ ] **L4. Fraseologia e estados do táxi**: "via taxiway A, B", "mantenha posição fora da pista 11", o relato no ponto de espera da travessia (distinto do ponto de espera da decolagem), a **autorização de cruzar** (a frase exata ainda não tem referência: `TODO(fraseologia)`, preciso do mantenedor) e o "pista livre" depois de cruzar; cotejamento do "mantenha posição". Sem rota, a frase de hoje.
-- [ ] **L5. Acompanhar pela telemetria**: onde a aeronave está na rota, quando chegou ao ponto de espera, quando saiu da pista, e a confirmação do que o piloto relata (como a decolagem e o pouso). Se a aeronave sai da rota, o controlador reorienta ou volta ao comportamento de hoje.
-- [ ] **L6. Depois do pouso**: "taxie para o pátio 1 via taxiway D" (Art. 134) com a rota e o estacionamento do mapa, no lugar do "taxie para o pátio" de hoje; "pista livre" detectado pela posição.
-- [ ] **L7. Depois**: partida de interseção, mais de um ponto de espera por pista, pistas paralelas (15L e 15R), sentido do táxi de volta, outros simuladores (X-Plane) e outras fontes (OSM/ODbL, só com o aval do mantenedor).
-
-**Pronto quando:** em Curitiba, o piloto pede táxi do pátio e ouve a rota completa, para no ponto de espera antes da pista que a rota atravessa, pede e recebe a autorização de cruzar, segue até a cabeceira da 15, e tudo isso funciona também sem o mapa (só com a pista correta).
-
 ## M5: Expansão
 
 - [ ] Aproximação / Centro e handoffs
@@ -111,6 +96,21 @@ Ideia do mantenedor em 2026-10-15, vinda do voo de teste em SBCT: o Solo manda "
   - **Etapa 1, local (feita em 2026-10-15):** `%LOCALAPPDATA%\Fonia\cases`, um `.jsonl` por sessão e, com `--save-audio`, os WAVs ao lado, 30 dias e 200 MB; a tecla `ScrollLock` (ou `/errado`) marca o que o app entendeu mal; `fonia --cases` lista (ver ARCHITECTURE 14). **Falta** o spike (`tools/speech-spike.cs`) ler a pasta e medir o efeito de uma mudança sobre os casos reais. Fora do git.
   - **Etapa 2, envio:** opt-in explícito (desligado por padrão), com o usuário vendo o que será enviado antes, um identificador aleatório por instalação (sem nome nem e-mail) e a opção de apagar. A **voz é dado pessoal** (LGPD): finalidade e consentimento claros no primeiro uso, texto e contexto separados do áudio (o texto vale sozinho). **Destino a decidir:** repositório de dados privado, issue automática (só texto) ou um endpoint próprio; áudio não vai para um repositório público.
   - **Etapa 3, retorno:** os casos revisados viram frases de teste e entram no conjunto de avaliação (`phrases-voo.txt`).
+
+## M6: Solo realista (o mapa do aeródromo)
+
+Ideia do mantenedor em 2026-10-15, vinda do voo de teste em SBCT: o Solo manda "táxi para o ponto de espera da pista 15" sem dizer a taxiway, e a rota de Curitiba atravessa outra pista, o que exige autorização. **Decisão** (`docs/decisions/airport-layout.md`): o mapa vem do **próprio simulador** (SimConnect, API de instalações), guardado só no computador do usuário; **sem o mapa o app funciona como hoje**, dizendo a pista correta. Cada etapa que toca o simulador precisa de teste do mantenedor no MSFS (não dá para rodar aqui); os testes automáticos usam layouts sintéticos.
+
+- [ ] **L0. Spike do mapa** (precisa do MSFS): `fonia --dump-layout <ICAO>` lê do simulador as pistas (cabeceiras), taxiways (com nome), pontos de espera e estacionamentos e grava um JSON em `%LOCALAPPDATA%\Fonia\layouts`. Responde: o que o SimConnect.NET expõe das instalações, o que muda no MSFS 2024, quanto custa pedir um aeroporto (SBCT, SBGR), o que vem de cenário de terceiros sem taxiway, como achar os pontos de espera. **Pronto quando** você roda em SBCT e o JSON tem as taxiways e as duas pistas com nome e posição.
+- [ ] **L1. Modelo e leitura** (Core): `AirportLayout` (pistas com cabeceiras, grafo de táxi com nome, estacionamentos), leitura e gravação em JSON, cache por aeroporto. **Pronto quando** um layout sintético (duas pistas, uma taxiway que cruza uma delas) ida e volta pelo JSON sem perder nada.
+- [ ] **L2. Fonte no simulador** (`Fonia.Sim.Msfs`, `IAirportLayoutSource`): o adaptador do MSFS pede o layout do aeroporto, com reconexão e tempo limite; o mock devolve layouts de teste; o app pede ao abrir (e ao seguir um voo novo). Sem layout, nada muda.
+- [ ] **L3. Rota** (`TaxiRouter`, Core, lógica pura): menor caminho da posição da aeronave ao ponto de espera da pista em uso, com a lista de taxiways, as **travessias de pista** e os pontos de espera. **Pronto quando**, no layout sintético, a rota até a 15 passa pela taxiway e acusa a travessia da 11/29; e uma rota que não se acha (grafo cortado, nomes faltando) devolve "sem rota", nunca uma rota inventada.
+- [ ] **L4. Fraseologia e estados do táxi**: "via taxiway A, B", "mantenha posição fora da pista 11", o relato no ponto de espera da travessia (distinto do ponto de espera da decolagem), a **autorização de cruzar** (a frase exata ainda não tem referência: `TODO(fraseologia)`, preciso do mantenedor) e o "pista livre" depois de cruzar; cotejamento do "mantenha posição". Sem rota, a frase de hoje.
+- [ ] **L5. Acompanhar pela telemetria**: onde a aeronave está na rota, quando chegou ao ponto de espera, quando saiu da pista, e a confirmação do que o piloto relata (como a decolagem e o pouso). Se a aeronave sai da rota, o controlador reorienta ou volta ao comportamento de hoje.
+- [ ] **L6. Depois do pouso**: "taxie para o pátio 1 via taxiway D" (Art. 134) com a rota e o estacionamento do mapa, no lugar do "taxie para o pátio" de hoje; "pista livre" detectado pela posição.
+- [ ] **L7. Depois**: partida de interseção, mais de um ponto de espera por pista, pistas paralelas (15L e 15R), sentido do táxi de volta, outros simuladores (X-Plane) e outras fontes (OSM/ODbL, só com o aval do mantenedor).
+
+**Pronto quando:** em Curitiba, o piloto pede táxi do pátio e ouve a rota completa, para no ponto de espera antes da pista que a rota atravessa, pede e recebe a autorização de cruzar, segue até a cabeceira da 15, e tudo isso funciona também sem o mapa (só com a pista correta).
 
 ## Backlog / ideias
 
