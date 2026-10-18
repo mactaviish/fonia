@@ -68,8 +68,14 @@ public sealed record TakeoffClearance(string Runway, Wind? Wind = null) : AtcIns
 /// <summary>
 /// Cleared to the traffic circuit on <paramref name="Runway"/>, with the wind when known, to report the downwind (MCA 100-16, Art. 129).
 /// </summary>
-// The altimeter setting is said when there is a METAR. The other form, "autorizada aproximação direta ... reporte final", is not implemented yet.
+// The altimeter setting is said when there is a METAR. The other form, the straight-in approach, is <see cref="StraightInClearance"/>.
 public sealed record CircuitClearance(string Runway, Wind? Wind = null, int? Qnh = null) : AtcInstruction;
+
+/// <summary>
+/// Cleared for the straight-in approach to <paramref name="Runway"/>, with the wind and the altimeter setting when known, to report final
+/// (MCA 100-16, Art. 129: "autorizada aproximação direta, pista 11, vento 150 graus, 15 kt, QNH 1013. Reporte final").
+/// </summary>
+public sealed record StraightInClearance(string Runway, Wind? Wind = null, int? Qnh = null) : AtcInstruction;
 
 /// <summary>"Reporte perna base" (Art. 130, II). Art. 12 does not list reports among what must be read back.</summary>
 public sealed record ReportBase : AtcInstruction;

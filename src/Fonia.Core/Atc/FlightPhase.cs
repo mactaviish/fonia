@@ -26,7 +26,7 @@ public enum FlightPhase
     /// <summary>The pilot reported the downwind and was told to report the base leg.</summary>
     OnDownwind,
 
-    /// <summary>The pilot reported the base leg and was told to report final.</summary>
+    /// <summary>The pilot reported the base leg and was told to report final, or was cleared for the straight-in approach and told the same.</summary>
     OnBase,
 
     /// <summary>The Torre cleared the landing.</summary>

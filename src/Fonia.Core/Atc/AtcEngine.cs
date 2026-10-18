@@ -171,6 +171,7 @@ public sealed class AtcEngine : IAtcEngine
 
         return intent switch
         {
+            RequestLanding { StraightIn: true } => Clearance(new StraightInClearance(runway, airport.Wind, airport.Qnh), flight, FlightPhase.OnBase, runway),
             RequestLanding => Clearance(new CircuitClearance(runway, airport.Wind, airport.Qnh), flight, FlightPhase.InCircuit, runway),
             ReportDownwind => Clearance(new ReportBase(), flight, FlightPhase.OnDownwind, runway),
             ReportBaseLeg => Clearance(new ReportOnFinal(), flight, FlightPhase.OnBase, runway),
@@ -179,7 +180,7 @@ public sealed class AtcEngine : IAtcEngine
     }
 
     private static AtcDecision Clearance(AtcInstruction instruction, FlightContext flight, FlightPhase phase, string runway) =>
-        new(instruction, flight with { Phase = phase > flight.Phase || instruction is CircuitClearance ? phase : flight.Phase, PendingReadback = instruction, LastInstruction = instruction, AssignedRunway = runway });
+        new(instruction, flight with { Phase = phase > flight.Phase || instruction is CircuitClearance or StraightInClearance ? phase : flight.Phase, PendingReadback = instruction, LastInstruction = instruction, AssignedRunway = runway });
 
     // After landing and only then: there is no runway to vacate before it. The flight starts over once taken to the apron.
     private static AtcDecision Vacated(FlightContext flight, AtcInstruction instruction, bool keepPhase)
@@ -302,6 +303,7 @@ public sealed class AtcEngine : IAtcEngine
         TakeoffClearance takeoff => RuleBasedNlu.MentionsTakeoff(heard) && RunwayAgrees(heard, takeoff.Runway),
         TaxiToApron => RuleBasedNlu.MentionsApron(heard),
         CircuitClearance circuit => RuleBasedNlu.MentionsCircuit(heard) && RunwayAgrees(heard, circuit.Runway),
+        StraightInClearance straightIn => RuleBasedNlu.MentionsStraightIn(heard) && RunwayAgrees(heard, straightIn.Runway),
         LandingClearance landing => RuleBasedNlu.MentionsLanding(heard) && RunwayAgrees(heard, landing.Runway),
         _ => true,
     };

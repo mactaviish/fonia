@@ -80,6 +80,8 @@ public sealed class PortuguesePhraseology : IPhraseology
         CircuitClearance circuit => $"autorizado para o circuito de tráfego, {SpokenText.Runway(circuit.Runway)}{WindPart(circuit.Wind)}{AltimeterPart(circuit.Qnh)}, reporte perna do vento.",
         ReportBase => "reporte perna base.",
         ReportOnFinal => "reporte na final.",
+        // Art. 129: "autorizada aproximação direta, pista 11, vento 150 graus, 15 kt, QNH 1013. Reporte final."
+        StraightInClearance straightIn => $"autorizada aproximação direta, {SpokenText.Runway(straightIn.Runway)}{WindPart(straightIn.Wind)}{AltimeterPart(straightIn.Qnh)}, reporte final.",
         LandingClearance landing => $"{SpokenText.Runway(landing.Runway)}, pouso autorizado{WindPart(landing.Wind)}.",
         GoAroundNoted => "ciente.",
 
