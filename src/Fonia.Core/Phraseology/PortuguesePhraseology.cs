@@ -71,7 +71,7 @@ public sealed class PortuguesePhraseology : IPhraseology
         PushbackApproved { WithStartup: true } => "autorizado pushback e acionamento, chame pronto para o táxi.",
 
         // MCA 100-16 Art. 125, II, without the taxiway: the airport data has none. The altimeter setting comes when there is a METAR.
-        TaxiClearance taxi => $"autorizado táxi para o ponto de espera da {SpokenText.Runway(taxi.Runway)}{AltimeterPart(taxi.Qnh)}.",
+        TaxiClearance taxi => $"autorizado táxi para o ponto de espera da {SpokenText.Runway(taxi.Runway)}{ViaPart(taxi.Taxiways)}{AltimeterPart(taxi.Qnh)}.",
 
         // MCA 100-16 Art. 126, II: the runway, the clearance and then the wind. "Alinhe e mantenha" is composed from the manual's
         // examples (see LineUpAndWait). Art. 50: "decolagem" only in the clearance (or its cancellation).
@@ -137,6 +137,10 @@ public sealed class PortuguesePhraseology : IPhraseology
 
     // "ajuste de altímetro UNO ZERO UNO OITO" (Art. 29), said in full: the abbreviation is no word for the voice.
     private static string AltimeterPart(int? qnh) => qnh is { } hectopascals && hectopascals is >= 900 and <= 1099 ? $", ajuste de altímetro {SpokenText.Qnh(hectopascals)}" : string.Empty;
+
+    // Art. 125, II: ", via taxiway ALFA, BRAVO" (the letters in the phonetic alphabet, in the order of the route).
+    private static string ViaPart(IReadOnlyList<string>? taxiways) =>
+        taxiways is { Count: > 0 } ? $", via taxiway {string.Join(", ", taxiways.Select(SpokenText.Spell))}" : string.Empty;
 
     private static string WindPart(Sim.Wind? wind) => wind is { } known ? $", {SpokenText.Wind(known)}" : string.Empty;
 

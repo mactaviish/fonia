@@ -8,8 +8,19 @@ namespace Fonia.Core.Atc;
 /// </summary>
 public abstract record AtcInstruction;
 
-/// <summary>Taxi to the holding point of <paramref name="Runway"/> (no detailed route yet), with the altimeter setting when known (Art. 125).</summary>
-public sealed record TaxiClearance(string Runway, int? Qnh = null) : AtcInstruction;
+/// <summary>
+/// Taxi to the holding point of <paramref name="Runway"/>, with the altimeter setting when known (Art. 125). <paramref name="Taxiways"/> are the
+/// taxiways of the route, in order ("via taxiway A, B"), when the airport map gave a route that is safe to say; null or empty otherwise.
+/// </summary>
+// TODO(fraseologia): the manual shows one taxiway ("via taxiway "G""); how several are listed is to be confirmed with the maintainer.
+public sealed record TaxiClearance(string Runway, int? Qnh = null, IReadOnlyList<string>? Taxiways = null) : AtcInstruction
+{
+    // The taxiways compare by what they say, not by the list: two clearances over the same route are the same clearance.
+    public bool Equals(TaxiClearance? other) =>
+        other is not null && Runway == other.Runway && Qnh == other.Qnh && (Taxiways ?? []).SequenceEqual(other.Taxiways ?? []);
+
+    public override int GetHashCode() => HashCode.Combine(Runway, Qnh, Taxiways?.Count ?? 0);
+}
 
 /// <summary>The pilot's readback did not match; ask again for <paramref name="Expected"/>.</summary>
 public sealed record RequestReadbackCorrection(AtcInstruction Expected) : AtcInstruction;

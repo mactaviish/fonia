@@ -232,10 +232,24 @@ public sealed class AtcEngine : IAtcEngine
             return Say(new NoRunwayAvailable(), flight);
         }
 
-        var clearance = new TaxiClearance(airport.RunwayInUse, airport.Qnh);
+        var clearance = new TaxiClearance(airport.RunwayInUse, airport.Qnh, TaxiwaysOfTheRoute(flight, airport, airport.RunwayInUse));
 
         // The taxi clearance is what the manual requires to be read back (Art. 12); startup and pushback are read back too, as in practice.
         return new AtcDecision(clearance, flight with { Phase = FlightPhase.Taxiing, PendingReadback = clearance, LastInstruction = clearance, AssignedRunway = airport.RunwayInUse });
+    }
+
+    // The taxiways to say when the airport has a map, the aircraft is on the ground at a place it shows, and the route to the holding point
+    // is safe to say: found, with names, and over no runway (the crossing is not said yet). Anything else is the plain clearance.
+    private static IReadOnlyList<string>? TaxiwaysOfTheRoute(FlightContext flight, AirportContext airport, string runway)
+    {
+        if (airport.Layout is not { } layout || flight.Aircraft is not { OnGround: true } aircraft)
+        {
+            return null;
+        }
+
+        var found = TaxiRouter.Find(layout, new GeoPoint(aircraft.LatitudeDegrees, aircraft.LongitudeDegrees), runway);
+
+        return found is TaxiRouteFound { Route: { Crossings.Count: 0, Taxiways.Count: > 0 } route } ? route.Taxiways : null;
     }
 
     private static AtcDecision Repeat(FlightContext flight)
@@ -318,7 +332,15 @@ public sealed class AtcEngine : IAtcEngine
     {
         var named = RuleBasedNlu.FindRunway(heard);
 
-        return named is not null || heard.Any(t => t is "altimetro" or "qnh") ? named : RuleBasedNlu.FindRunwayInReadback(heard);
+        return named is not null || heard.Any(t => t is "altimetro" or "qnh") ? named : RuleBasedNlu.FindRunwayInReadback(BeforeTheTaxiways(heard));
+    }
+
+    // The digits of a taxiway name ("via taxiway bravo dois") are not a runway: what the pilot says from "via" or "taxiway" on is left out.
+    private static IReadOnlyList<string> BeforeTheTaxiways(IReadOnlyList<string> heard)
+    {
+        var at = heard.ToList().FindIndex(t => t is "via" or "taxiway");
+
+        return at < 0 ? heard : [.. heard.Take(at)];
     }
 
     // Answers without moving the flight on. A "REPITA" is not remembered: if the pilot asks to say it again, what is
