@@ -7,11 +7,11 @@ using Fonia.Core.Tests.TestSupport;
 
 namespace Fonia.Core.Tests.Nlu;
 
-// The lines of a real flight test (2026-10-14), written by the recognizer as it heard the pilot. A pilot must not have to repeat what the
+// What the recognizer writes when it hears the pilot badly: a split word, a letter too many. A pilot must not have to repeat what the
 // controller asked for because of one word the recognizer split or one letter it added: the readback is judged on what matters.
 public class RecognitionToleranceTests
 {
-    private const string Own = "PRFRA";
+    private const string Own = "PRFAB";
 
     private static readonly AirportContext SoloAndTower = AirportContext.Create(TestAirports.WithSolo());
 
@@ -33,9 +33,9 @@ public class RecognitionToleranceTests
         new(Own, phase, "SBXX", pending, pending, null, Runway);
 
     [Theory]
-    [InlineData("Foxtroot Romeo Alfa, autorizado de colagem, pista uno uno.")]
-    [InlineData("Foxtrot Romeo Alfa. Pista uno um. Autorizado de colagem.")]
-    [InlineData("Autorizado decolagem pista uno uno, Papa Romeo Foxtrot Romeo Alfa.")]
+    [InlineData("Foxtroot Alfa Bravo, autorizado de colagem, pista uno uno.")]
+    [InlineData("Foxtrot Alfa Bravo. Pista uno um. Autorizado de colagem.")]
+    [InlineData("Autorizado decolagem pista uno uno, Papa Romeo Foxtrot Alfa Bravo.")]
     public void The_takeoff_readback_is_taken_when_the_recognizer_splits_decolagem(string said)
     {
         var decision = Say(said, Flight(FlightPhase.TakeoffCleared, new TakeoffClearance(Runway)), OnTower);
@@ -47,13 +47,13 @@ public class RecognitionToleranceTests
     [Fact]
     public void A_takeoff_readback_without_the_runway_is_taken_because_the_pilot_is_on_it()
     {
-        Say("Autorizado de colagem, o Papa Romeo Foxtroat Romeo Alfa.", Flight(FlightPhase.TakeoffCleared, new TakeoffClearance(Runway)), OnTower)
+        Say("Autorizado de colagem, o Papa Romeo Foxtroat Alfa Bravo.", Flight(FlightPhase.TakeoffCleared, new TakeoffClearance(Runway)), OnTower)
             .Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("Autorizado, táxi para o ponto de espera da pista uno uno, o Fox Romeo Alfa.")]
-    [InlineData("Autorizado táxi para o ponto de espera da pista uno uno, Foxtroot Romeo Alfa.")]
+    [InlineData("Autorizado, táxi para o ponto de espera da pista uno uno, o Fox Alfa Bravo.")]
+    [InlineData("Autorizado táxi para o ponto de espera da pista uno uno, Foxtroot Alfa Bravo.")]
     public void Fox_is_foxtrot_in_the_callsign_of_a_readback(string said)
     {
         Say(said, Flight(FlightPhase.Taxiing, new TaxiClearance(Runway)), OnSolo).Instruction.ShouldBeOfType<NoResponse>();
@@ -64,16 +64,16 @@ public class RecognitionToleranceTests
     {
         var parked = Flight(FlightPhase.Parked, null);
 
-        var intent = _nlu.Interpret("SOLO Curitiba Papa Romeo Foxtrot Alfa. Romeo Alfa, solicitacionamento.", parked);
+        var intent = _nlu.Interpret("SOLO Curitiba Papa Romeo Foxtrot Alfa. Alfa Bravo, solicitacionamento.", parked);
 
         intent.ShouldBe(new RequestStartup(Own, null));
-        Say("SOLO Curitiba Papa Romeo Foxtrot Alfa. Romeo Alfa, solicitacionamento.", parked, OnSolo).Instruction.ShouldBeOfType<StartupApproved>();
+        Say("SOLO Curitiba Papa Romeo Foxtrot Alfa. Alfa Bravo, solicitacionamento.", parked, OnSolo).Instruction.ShouldBeOfType<StartupApproved>();
     }
 
     [Theory]
-    [InlineData("Papa Romeo Foxtrot Romeo")]
-    [InlineData("Papa Romeo Foxtrot Alfa Romeo Alfa")]
-    [InlineData("Papa Romeo Foxtroot Romeo Alfa")]
+    [InlineData("Papa Romeo Foxtrot Alfa")]
+    [InlineData("Papa Romeo Foxtrot Alfa Alfa Bravo")]
+    [InlineData("Papa Romeo Foxtroot Alfa Bravo")]
     public void One_letter_wrong_missing_or_extra_is_this_aircraft(string heard)
     {
         SpokenText.IsCloseCallsign(heard, Own).ShouldBeTrue();
@@ -81,7 +81,7 @@ public class RecognitionToleranceTests
 
     [Theory]
     [InlineData("Papa Romeo Alfa Bravo Charlie")]
-    [InlineData("Papa Romeo Alfa Alfa Bravo")]
+    [InlineData("Papa Romeo Alfa Alfa Charlie")]
     [InlineData("Papa Romeo")]
     [InlineData("Papa Tango Foxtrot Tango Alfa")]
     public void Another_aircraft_is_not_taken_for_this_one(string heard)
@@ -99,8 +99,8 @@ public class RecognitionToleranceTests
 
     // The readback of "reporte na final", written "Importará na final": it is not the pilot reporting final, which would clear the landing.
     [Theory]
-    [InlineData("Importará na final o Papa Romeo Foxtroot Romeo Alfa.")]
-    [InlineData("Reportará na final o Papa Romeo Foxtrot Romeo Alfa.")]
+    [InlineData("Importará na final o Papa Romeo Foxtroot Alfa Bravo.")]
+    [InlineData("Reportará na final o Papa Romeo Foxtrot Alfa Bravo.")]
     public void The_readback_of_the_request_to_report_final_is_not_a_report_of_final(string said)
     {
         var onBase = Flight(FlightPhase.OnBase, new ReportOnFinal());
@@ -113,9 +113,9 @@ public class RecognitionToleranceTests
 
     [Theory]
     [InlineData("Sente.")]
-    [InlineData("Foxtroot Romeo Alfa Siente.")]
-    [InlineData("Foxtroot Romeo Alfa, ciente da decolagem.")]
-    [InlineData("Papa Romeo Foxtrot Romeo Alfa.")]
+    [InlineData("Foxtroot Alfa Bravo Siente.")]
+    [InlineData("Foxtroot Alfa Bravo, ciente da decolagem.")]
+    [InlineData("Papa Romeo Foxtrot Alfa Bravo.")]
     public void The_acknowledgement_of_a_notice_is_taken_in_silence_however_it_was_written(string said)
     {
         var notice = new AirborneNotice(0);
@@ -128,7 +128,7 @@ public class RecognitionToleranceTests
     [Fact]
     public void Only_the_callsign_after_an_instruction_that_needs_a_readback_still_invites_to_go_ahead()
     {
-        Say("Papa Romeo Foxtrot Romeo Alfa.", Flight(FlightPhase.Taxiing, new TaxiClearance(Runway)), OnSolo).Instruction.ShouldBeOfType<GoAhead>();
+        Say("Papa Romeo Foxtrot Alfa Bravo.", Flight(FlightPhase.Taxiing, new TaxiClearance(Runway)), OnSolo).Instruction.ShouldBeOfType<GoAhead>();
     }
 
     [Fact]
@@ -138,8 +138,8 @@ public class RecognitionToleranceTests
     }
 
     [Theory]
-    [InlineData("Solo Curitiba. Papa Romeo Foxtroot Romeo Alfa. Solicitocionamento.")]
-    [InlineData("SOLO Curitiba Papa Romeo Foxtrot Romeo Alfa solicitacionamento")]
+    [InlineData("Solo Curitiba. Papa Romeo Foxtroot Alfa Bravo. Solicitocionamento.")]
+    [InlineData("SOLO Curitiba Papa Romeo Foxtrot Alfa Bravo solicitacionamento")]
     public void Solicito_and_acionamento_glued_together_are_still_a_request_for_startup(string said)
     {
         _nlu.Interpret(said, Flight(FlightPhase.Parked, null)).ShouldBe(new RequestStartup(Own, null));
@@ -150,12 +150,12 @@ public class RecognitionToleranceTests
     {
         var handed = Flight(FlightPhase.HandedToTower, new HandoffToTower(new Frequency(118550)));
 
-        Say("Chamando Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa.", handed, OnSolo).Instruction.ShouldBeOfType<NoResponse>();
+        Say("Chamando Torre Curitiba, Papa Romeo Foxtrot Alfa Bravo.", handed, OnSolo).Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("Torre Curitiba. Papa Romeo Foxtroot Romeo Alfa, aliñado.")]
-    [InlineData("Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, alinado")]
+    [InlineData("Torre Curitiba. Papa Romeo Foxtroot Alfa Bravo, aliñado.")]
+    [InlineData("Torre Curitiba, Papa Romeo Foxtrot Alfa Bravo, alinado")]
     public void Alinhado_without_its_h_is_still_lined_up(string said)
     {
         Say(said, Flight(FlightPhase.LineUpCleared, new LineUpAndWait(Runway)), OnTower).Instruction.ShouldBeOfType<TakeoffClearance>();
@@ -164,14 +164,14 @@ public class RecognitionToleranceTests
     [Fact]
     public void The_readback_of_the_taxi_to_the_apron_is_not_a_new_taxi_request()
     {
-        var decision = Say("Táxi para o pátio, Papa Romeo Foxtroot Romeo Alfa.", Flight(FlightPhase.Parked, new TaxiToApron()), OnSolo);
+        var decision = Say("Táxi para o pátio, Papa Romeo Foxtroot Alfa Bravo.", Flight(FlightPhase.Parked, new TaxiToApron()), OnSolo);
 
         decision.Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("TORRE Curitiba. Papa Romeo Foxtrot Romeo Alfa. Pernabase.")]
-    [InlineData("Torre Curitiba, Papa Romeo Foxtrat Romeo Alfa, perna base")]
+    [InlineData("TORRE Curitiba. Papa Romeo Foxtrot Alfa Bravo. Pernabase.")]
+    [InlineData("Torre Curitiba, Papa Romeo Foxtrat Alfa Bravo, perna base")]
     public void The_report_of_the_base_leg_is_understood_when_the_words_are_glued_or_a_letter_is_off(string said)
     {
         _nlu.Interpret(said, Flight(FlightPhase.OnDownwind, new ReportBase())).ShouldBe(new ReportBaseLeg(Own));
@@ -180,15 +180,15 @@ public class RecognitionToleranceTests
     [Fact]
     public void Reparto_na_final_is_the_readback_of_the_request_to_report_final_and_clears_nothing()
     {
-        var decision = Say("Reparto na final Papa Romeo Foxroot Romeo Alfa.", Flight(FlightPhase.OnBase, new ReportOnFinal()), OnTower);
+        var decision = Say("Reparto na final Papa Romeo Foxroot Alfa Bravo.", Flight(FlightPhase.OnBase, new ReportOnFinal()), OnTower);
 
         decision.Instruction.ShouldBeOfType<NoResponse>();
         decision.NextContext.Phase.ShouldBe(FlightPhase.OnBase);
     }
 
     [Theory]
-    [InlineData("Papa Romeo Foxtrat Romeo Alfa")]
-    [InlineData("Papa Romeo Faxtrot Romeo Alfa")]
+    [InlineData("Papa Romeo Foxtrat Alfa Bravo")]
+    [InlineData("Papa Romeo Faxtrot Alfa Bravo")]
     public void A_phonetic_word_with_a_letter_changed_is_still_that_letter(string heard)
     {
         SpokenText.IsSameCallsign(heard, Own).ShouldBeTrue();

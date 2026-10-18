@@ -217,10 +217,10 @@ public class MsfsSimAdapterTests
         var session = await h.ConnectedFirstSessionAsync();
         await using var stream = h.Adapter.StreamAsync(Ct).GetAsyncEnumerator(Ct);
 
-        session.PlayFlight(registration: "PR-FRA");
+        session.PlayFlight(registration: "PR-FAB");
 
         var state = await NextAsync(stream);
-        state.Registration.ShouldBe("PR-FRA");
+        state.Registration.ShouldBe("PR-FAB");
         state.AircraftType.ShouldBe("C25C");
         state.Com1.ShouldBe(new RadioState(new Frequency(130850), new Frequency(124850)));
         state.TransponderCode.ShouldBe(1200);
@@ -234,7 +234,7 @@ public class MsfsSimAdapterTests
         var session = await h.ConnectedFirstSessionAsync();
         var sink = session.Sink!;
 
-        sink.OnIdentity(new IdentityData("PR-FRA", "Cessna", "C25C", "CJ4"));
+        sink.OnIdentity(new IdentityData("PR-FAB", "Cessna", "C25C", "CJ4"));
         sink.OnRadios(new RadioData(130_850_000, 124_850_000, 124_850_000, 124_850_000));
         sink.OnTransponder(new TransponderData(0x1200));
         sink.OnMotion(new MotionData(-27.1, -52.6, 5675, 3637, 79, 21, 0));
@@ -250,8 +250,8 @@ public class MsfsSimAdapterTests
         await using var h = new Harness(_ => Healthy());
         var first = await h.ConnectedFirstSessionAsync();
         await using var stream = h.Adapter.StreamAsync(Ct).GetAsyncEnumerator(Ct);
-        first.PlayFlight(registration: "PR-FRA");
-        (await NextAsync(stream)).Registration.ShouldBe("PR-FRA");
+        first.PlayFlight(registration: "PR-FAB");
+        (await NextAsync(stream)).Registration.ShouldBe("PR-FAB");
         first.QueueProbes(SessionHealth.Dead, SessionHealth.Dead);
 
         await h.TickAsync(Seconds(3)); // first dead probe: nothing happens yet
@@ -306,7 +306,7 @@ public class MsfsSimAdapterTests
         await using var h = new Harness(_ => Healthy());
         var first = await h.ConnectedFirstSessionAsync();
         await using var stream = h.Adapter.StreamAsync(Ct).GetAsyncEnumerator(Ct);
-        first.PlayFlight(registration: "PR-FRA");
+        first.PlayFlight(registration: "PR-FAB");
         await NextAsync(stream);
         first.QueueProbes(SessionHealth.Dead, SessionHealth.Dead);
         await h.TickAsync(Seconds(3));

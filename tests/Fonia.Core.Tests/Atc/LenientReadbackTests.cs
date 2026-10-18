@@ -9,7 +9,7 @@ namespace Fonia.Core.Tests.Atc;
 // not repeat which runway it is, but a runway that is named and is wrong is still "negativo".
 public class LenientReadbackTests
 {
-    private const string Own = "PRFRA";
+    private const string Own = "PRFAB";
 
     private static readonly AirportContext SoloAndTower = AirportContext.Create(TestAirports.WithSolo());
 
@@ -30,43 +30,43 @@ public class LenientReadbackTests
     }
 
     [Theory]
-    [InlineData("Alinhe e mantenha, Papa Romeo Foxtrot Romeo Alfa")]
-    [InlineData("Alinhando, Foxtrot Romeo Alfa. Alinhe e mantenha")]
-    [InlineData("Alinhe e mantenha pista uno cinco, Foxtrot Romeo Alfa")]
+    [InlineData("Alinhe e mantenha, Papa Romeo Foxtrot Alfa Bravo")]
+    [InlineData("Alinhando, Foxtrot Alfa Bravo. Alinhe e mantenha")]
+    [InlineData("Alinhe e mantenha pista uno cinco, Foxtrot Alfa Bravo")]
     public void The_line_up_is_heard_with_or_without_the_runway(string said)
     {
         Say(said, new LineUpAndWait("15"), FlightPhase.LineUpCleared, OnTower).Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("Autorizado decolagem, Papa Romeo Foxtrot Romeo Alfa")]
-    [InlineData("Decolagem autorizada, Foxtrot Romeo Alfa")]
-    [InlineData("Autorizado decolagem pista uno cinco, Foxtrot Romeo Alfa")]
+    [InlineData("Autorizado decolagem, Papa Romeo Foxtrot Alfa Bravo")]
+    [InlineData("Decolagem autorizada, Foxtrot Alfa Bravo")]
+    [InlineData("Autorizado decolagem pista uno cinco, Foxtrot Alfa Bravo")]
     public void The_takeoff_clearance_is_heard_with_or_without_the_runway(string said)
     {
         Say(said, new TakeoffClearance("15"), FlightPhase.TakeoffCleared, OnTower).Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("Pouso autorizado, Papa Romeo Foxtrot Romeo Alfa")]
-    [InlineData("Autorizado pousar pista uno cinco, Foxtrot Romeo Alfa")]
+    [InlineData("Pouso autorizado, Papa Romeo Foxtrot Alfa Bravo")]
+    [InlineData("Autorizado pousar pista uno cinco, Foxtrot Alfa Bravo")]
     public void The_landing_clearance_is_heard_with_or_without_the_runway(string said)
     {
         Say(said, new LandingClearance("15"), FlightPhase.LandingCleared, OnTower).Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("Autorizado circuito de tráfego, Papa Romeo Foxtrot Romeo Alfa")]
-    [InlineData("Circuito, reporto perna do vento, Foxtrot Romeo Alfa")]
+    [InlineData("Autorizado circuito de tráfego, Papa Romeo Foxtrot Alfa Bravo")]
+    [InlineData("Circuito, reporto perna do vento, Foxtrot Alfa Bravo")]
     public void The_circuit_clearance_is_heard_with_or_without_the_runway(string said)
     {
         Say(said, new CircuitClearance("15"), FlightPhase.InCircuit, OnTower).Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("Autorizado táxi, Papa Romeo Foxtrot Romeo Alfa")]
-    [InlineData("Taxiando para o ponto de espera, Foxtrot Romeo Alfa")]
-    [InlineData("Autorizado táxi para o ponto de espera da pista uno cinco, Foxtrot Romeo Alfa")]
+    [InlineData("Autorizado táxi, Papa Romeo Foxtrot Alfa Bravo")]
+    [InlineData("Taxiando para o ponto de espera, Foxtrot Alfa Bravo")]
+    [InlineData("Autorizado táxi para o ponto de espera da pista uno cinco, Foxtrot Alfa Bravo")]
     public void The_taxi_clearance_is_heard_with_or_without_the_runway(string said)
     {
         Say(said, new TaxiClearance("15", 1014), FlightPhase.Taxiing, OnSolo).Instruction.ShouldBeOfType<NoResponse>();
@@ -75,22 +75,22 @@ public class LenientReadbackTests
     [Fact]
     public void The_numbers_of_the_altimeter_setting_are_not_taken_for_a_runway()
     {
-        Say("Autorizado táxi, ajuste de altímetro uno zero uno quatro, Foxtrot Romeo Alfa", new TaxiClearance("15", 1014), FlightPhase.Taxiing, OnSolo)
+        Say("Autorizado táxi, ajuste de altímetro uno zero uno quatro, Foxtrot Alfa Bravo", new TaxiClearance("15", 1014), FlightPhase.Taxiing, OnSolo)
             .Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Theory]
-    [InlineData("Alinhe e mantenha pista uno nove, Papa Romeo Foxtrot Romeo Alfa")]
-    [InlineData("Alinhe e mantenha pista três três, Foxtrot Romeo Alfa")]
+    [InlineData("Alinhe e mantenha pista uno nove, Papa Romeo Foxtrot Alfa Bravo")]
+    [InlineData("Alinhe e mantenha pista três três, Foxtrot Alfa Bravo")]
     public void A_runway_that_is_named_and_is_wrong_is_still_corrected(string said)
     {
         Say(said, new LineUpAndWait("15"), FlightPhase.LineUpCleared, OnTower).Instruction.ShouldBeOfType<RequestReadbackCorrection>();
     }
 
     [Theory]
-    [InlineData("Autorizado decolagem pista uno nove, Foxtrot Romeo Alfa", "takeoff")]
-    [InlineData("Pouso autorizado pista dois três, Foxtrot Romeo Alfa", "landing")]
-    [InlineData("Autorizado táxi pista uno nove, Foxtrot Romeo Alfa", "taxi")]
+    [InlineData("Autorizado decolagem pista uno nove, Foxtrot Alfa Bravo", "takeoff")]
+    [InlineData("Pouso autorizado pista dois três, Foxtrot Alfa Bravo", "landing")]
+    [InlineData("Autorizado táxi pista uno nove, Foxtrot Alfa Bravo", "taxi")]
     public void The_wrong_runway_is_corrected_in_every_clearance(string said, string kind)
     {
         AtcInstruction pending = kind switch
@@ -105,8 +105,8 @@ public class LenientReadbackTests
     }
 
     [Theory]
-    [InlineData("Ciente, Papa Romeo Foxtrot Romeo Alfa")]
-    [InlineData("Pista uno cinco, Foxtrot Romeo Alfa")]
+    [InlineData("Ciente, Papa Romeo Foxtrot Alfa Bravo")]
+    [InlineData("Pista uno cinco, Foxtrot Alfa Bravo")]
     public void A_readback_with_no_action_of_the_clearance_is_corrected(string said)
     {
         Say(said, new LineUpAndWait("15"), FlightPhase.LineUpCleared, OnTower).Instruction.ShouldBeOfType<RequestReadbackCorrection>();

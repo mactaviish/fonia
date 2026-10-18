@@ -219,7 +219,7 @@ public static class SpokenText
 
     /// <summary>
     /// Whether what the recognizer wrote is this aircraft's callsign with one letter wrong, missing or extra ("Papa Romeo Foxtrot Alfa Romeo
-    /// Alfa" for PRFRA). The exact and the abbreviated forms are <see cref="IsSameCallsign"/>; this is the last resort, and only for a
+    /// Alfa" for PRFAB). The exact and the abbreviated forms are <see cref="IsSameCallsign"/>; this is the last resort, and only for a
     /// registration of letters long enough that one letter cannot be another aircraft: the session has a single pilot.
     /// </summary>
     public static bool IsCloseCallsign(string heard, string own)
@@ -263,7 +263,7 @@ public static class SpokenText
     }
 
     /// <summary>
-    /// Whether the words end with the last two letters of this aircraft's callsign ("... Romeo Alfa" for PRFRA). A weaker sign than the
+    /// Whether the words end with the last two letters of this aircraft's callsign ("... Romeo Alfa" for PRFAB). A weaker sign than the
     /// whole callsign: it is used only to take a readback that is right in everything else.
     /// </summary>
     public static bool EndsWithCallsignTail(IReadOnlyList<string> tokens, string own)

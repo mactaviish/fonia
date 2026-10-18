@@ -68,9 +68,9 @@ public class WhisperPromptBuilderTests
     public void What_the_controller_last_said_goes_last_written_like_text()
     {
         var prompt = WhisperPromptBuilder.Build(new TranscriptionContext(
-            "PR-FRA", "Torre Curitiba", "PAPA ROMEO FOXTROT ROMEO ALFA, PISTA UNO CINCO, autorizado decolagem."));
+            "PR-FAB", "Torre Curitiba", "PAPA ROMEO FOXTROT ALFA BRAVO, PISTA UNO CINCO, autorizado decolagem."));
 
-        prompt.ShouldEndWith("Controlador: Papa Romeo Foxtrot Romeo Alfa, Pista Uno Cinco, autorizado decolagem.", Case.Sensitive);
+        prompt.ShouldEndWith("Controlador: Papa Romeo Foxtrot Alfa Bravo, Pista Uno Cinco, autorizado decolagem.", Case.Sensitive);
         prompt.ShouldNotContain("  ");
         prompt.Length.ShouldBeLessThan(600);
     }

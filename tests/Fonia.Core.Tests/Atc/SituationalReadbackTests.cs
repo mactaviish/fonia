@@ -10,7 +10,7 @@ namespace Fonia.Core.Tests.Atc;
 // does what was cleared has heard it; one lined up on the runway has not misheard the runway.
 public class SituationalReadbackTests
 {
-    private const string Own = "PRFRA";
+    private const string Own = "PRFAB";
 
     // Test airport: runway 11/29, so the end "11" points to 110 degrees magnetic.
     private static readonly AirportContext SoloAndTower = AirportContext.Create(TestAirports.WithSolo());
@@ -25,7 +25,7 @@ public class SituationalReadbackTests
 
     private static AircraftState Aircraft(bool onGround = true, double knots = 0, double heading = 110, double aglFeet = 0, double? latitude = null) => new(
         DateTimeOffset.UtcNow, latitude ?? SoloAndTower.Airport.LatitudeDegrees, SoloAndTower.Airport.LongitudeDegrees, 3000, aglFeet, knots, heading, onGround,
-        null, null, 1200, "PR-FRA", "C172");
+        null, null, 1200, "PR-FAB", "C172");
 
     private AtcDecision Say(string said, AtcInstruction pending, FlightPhase phase, AirportContext airport, AircraftState? aircraft, bool callsign = true, string runway = "11")
     {

@@ -87,8 +87,8 @@ public class SimConnectStructsTests
             OnGround = 1,
         }.ToData().ShouldBe(new MotionData(-27.1, -52.6, 5675, 3637, 79.4, 21, 1));
 
-        new IdentityStruct { AtcId = "PR-FRA", AtcType = "Cessna", AtcModel = "C25C", Title = "CJ4" }
-            .ToData().ShouldBe(new IdentityData("PR-FRA", "Cessna", "C25C", "CJ4"));
+        new IdentityStruct { AtcId = "PR-FAB", AtcType = "Cessna", AtcModel = "C25C", Title = "CJ4" }
+            .ToData().ShouldBe(new IdentityData("PR-FAB", "Cessna", "C25C", "CJ4"));
 
         new RadiosStruct { Com1Active = 1, Com1Standby = 2, Com2Active = 3, Com2Standby = 4 }
             .ToData().ShouldBe(new RadioData(1, 2, 3, 4));

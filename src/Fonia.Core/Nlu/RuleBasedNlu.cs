@@ -113,8 +113,11 @@ public sealed class RuleBasedNlu : INlu
             }
 
             // Said something, but no request: with an instruction waiting, it is the pilot answering it, if it sounds
-            // like an answer (a readback word, a runway or numbers); anything else is not understood.
-            var soundsLikeAnAnswer = repeating || rest.Contains("pista") || HasNumber(rest);
+            // like an answer (a readback word, a runway or numbers); anything else is not understood. After a notice that needs no
+            // readback ("decolado aos 16") whatever is said and is no request is the acknowledgement, written as the recognizer could:
+            // "Foxrochome Alf Sint" was "ciente, Foxtrot Romeo Alfa", and asking the pilot to say it again would be worse than the doubt.
+            var acknowledging = flight.PendingReadback is { } waiting && Acknowledgements.NeedsNoReadback(waiting) && !asking;
+            var soundsLikeAnAnswer = repeating || rest.Contains("pista") || HasNumber(rest) || acknowledging;
 
             return flight.PendingReadback is not null && soundsLikeAnAnswer
                 ? new Readback(callsign, string.Join(' ', rest), TailOnly(callsign, tokens, flight))
@@ -192,7 +195,9 @@ public sealed class RuleBasedNlu : INlu
         }
 
         // "pista livre", "livrando a pista", "livrei a pista" (the instruction "após livrar a pista" is a readback and was left above).
-        if (HasAny(rest, ["livr"]) && rest.Contains("pista"))
+        // After the landing, "pista" with the callsign and no number is the same, however "livre" was written ("Pista de Vrio").
+        if ((HasAny(rest, ["livr"]) && rest.Contains("pista"))
+            || (flight.Phase == FlightPhase.Landed && callsign is not null && rest.Contains("pista") && !HasNumber(rest)))
         {
             return new ReportRunwayVacated(callsign);
         }
@@ -384,7 +389,7 @@ public sealed class RuleBasedNlu : INlu
 
         // The exact callsign, or its abbreviation, wherever it is; and only if there is none, the callsign with a letter wrong, missing or
         // extra, which is the recognizer's slip and not another aircraft.
-        foreach (var matches in new Func<string, string, bool>[] { SpokenText.IsSameCallsign, SpokenText.IsCloseCallsign })
+        foreach (var close in new[] { false, true })
         {
             for (var start = 0; start < tokens.Count; start++)
             {
@@ -392,7 +397,13 @@ public sealed class RuleBasedNlu : INlu
                 {
                     var candidate = string.Join(' ', tokens.Skip(start).Take(length));
 
-                    if (matches(candidate, callsign))
+                    // A callsign that is only close must end where the callsign ends: "Papa Romeo Alfa Bravo" is one letter from PRFAB, but
+                    // in "Papa Romeo Alfa Bravo Charlie" it is the start of another aircraft.
+                    var matched = close
+                        ? SpokenText.IsCloseCallsign(candidate, callsign) && !LetterOrNumberFollows(tokens, start + length)
+                        : SpokenText.IsSameCallsign(candidate, callsign);
+
+                    if (matched)
                     {
                         found = true;
                         return [.. tokens.Take(start), .. tokens.Skip(start + length)];
@@ -403,6 +414,10 @@ public sealed class RuleBasedNlu : INlu
 
         return [.. tokens];
     }
+
+    // Whether the words go on with a letter of the alphabet or a number at this position ("... Alfa Bravo | Charlie").
+    private static bool LetterOrNumberFollows(IReadOnlyList<string> tokens, int index) =>
+        index < tokens.Count && SpokenCode.TryRead(tokens, ref index, out _);
 
     // Letters alone do not count: "a", "o" and "e" are Portuguese words before they are letters of the alphabet.
     private static bool HasNumber(List<string> tokens)

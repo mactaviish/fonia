@@ -77,7 +77,7 @@ public class MsfsConversionsTests
     [Fact]
     public void The_registration_is_trimmed()
     {
-        MsfsConversions.ToRegistration("  PR-FRA ").ShouldBe("PR-FRA");
+        MsfsConversions.ToRegistration("  PR-FAB ").ShouldBe("PR-FAB");
         MsfsConversions.ToRegistration(string.Empty).ShouldBe(string.Empty);
     }
 }
