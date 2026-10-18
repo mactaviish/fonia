@@ -280,8 +280,7 @@ public sealed class AtcEngine : IAtcEngine
 
     // What the manual does not list among what must be read back (Art. 12), or says without the pilot having asked: pilots acknowledge
     // it anyway, and the controller takes it in silence, whatever the words and with or without the callsign.
-    private static bool IsTakenInSilence(AtcInstruction instruction) =>
-        instruction is HandoffToTower or HandoffToGround or ReportBase or ReportOnFinal or AirborneNotice or LandedNotice;
+    private static bool IsTakenInSilence(AtcInstruction instruction) => Acknowledgements.NeedsNoReadback(instruction);
 
     // The taxi readback must have the runway; the startup and pushback ones must say what was approved.
     // A readback is right when it has the action of the instruction and, if it names a runway, the right one. In practice the pilot at the

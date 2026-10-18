@@ -113,8 +113,11 @@ public sealed class RuleBasedNlu : INlu
             }
 
             // Said something, but no request: with an instruction waiting, it is the pilot answering it, if it sounds
-            // like an answer (a readback word, a runway or numbers); anything else is not understood.
-            var soundsLikeAnAnswer = repeating || rest.Contains("pista") || HasNumber(rest);
+            // like an answer (a readback word, a runway or numbers); anything else is not understood. After a notice that needs no
+            // readback ("decolado aos 16") whatever is said and is no request is the acknowledgement, written as the recognizer could:
+            // "Foxrochome Alf Sint" was "ciente, Foxtrot Romeo Alfa", and asking the pilot to say it again would be worse than the doubt.
+            var acknowledging = flight.PendingReadback is { } waiting && Acknowledgements.NeedsNoReadback(waiting) && !asking;
+            var soundsLikeAnAnswer = repeating || rest.Contains("pista") || HasNumber(rest) || acknowledging;
 
             return flight.PendingReadback is not null && soundsLikeAnAnswer
                 ? new Readback(callsign, string.Join(' ', rest), TailOnly(callsign, tokens, flight))
@@ -192,7 +195,9 @@ public sealed class RuleBasedNlu : INlu
         }
 
         // "pista livre", "livrando a pista", "livrei a pista" (the instruction "após livrar a pista" is a readback and was left above).
-        if (HasAny(rest, ["livr"]) && rest.Contains("pista"))
+        // After the landing, "pista" with the callsign and no number is the same, however "livre" was written ("Pista de Vrio").
+        if ((HasAny(rest, ["livr"]) && rest.Contains("pista"))
+            || (flight.Phase == FlightPhase.Landed && callsign is not null && rest.Contains("pista") && !HasNumber(rest)))
         {
             return new ReportRunwayVacated(callsign);
         }
