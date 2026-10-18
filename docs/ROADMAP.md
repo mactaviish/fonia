@@ -86,7 +86,7 @@ Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entr
 
 ## M5: Expansão
 
-- [ ] Aproximação / Centro e handoffs. Resolve o "chame o Controle ..." depois da decolagem (Art. 127; hoje a Torre diz só "decolado aos MM") e a aproximação direta do Art. 129 ("autorizada aproximação direta ... reporte final"), que ficaram do M4. Precisa das frequências de Controle e Aproximação, que os dados de aeroportos quase não têm
+- [ ] Aproximação / Centro e handoffs. Resolve o "chame o Controle ..." depois da decolagem (Art. 127; hoje a Torre diz só "decolado aos MM") e a aproximação direta do Art. 129 ("autorizada aproximação direta ... reporte final"), que ficaram do M4. Precisa das frequências de Controle e Aproximação, que os dados de aeroportos quase não têm (pesquisa em [`decisions/approach-frequencies.md`](decisions/approach-frequencies.md), feita em 2026-10-18). Tarefas, uma por PR: (1) pesquisa [x]; (2) `ServiceUnit.Approach` e leitura dos tipos `APP*`; (3) handoff depois da decolagem; (4) NLU da aproximação direta; (5) motor e fraseologia da aproximação direta
 - [ ] Tráfego de IA no rádio (outras aeronaves falando)
 - [ ] Suporte ao MSFS 2024 (validar `MsfsSimAdapter`)
 - [ ] `XPlaneSimAdapter` (X-Plane 11/12)
