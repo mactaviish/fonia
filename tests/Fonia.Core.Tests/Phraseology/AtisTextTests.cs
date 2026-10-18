@@ -45,7 +45,7 @@ public class AtisTextTests
     public void A_clear_day_is_the_name_the_letter_the_time_the_runway_the_wind_cavok_the_temperature_and_the_qnh_in_that_order()
     {
         Atis("SBXX 151230Z 15008KT CAVOK 22/14 Q1018").ShouldBe(
-            "Curitiba, informação MIKE, hora UNO DOIS TRÊS ZERO. PISTA UNO CINCO em uso. VENTO UNO CINCO ZERO GRAUS, OITO NÓS. CAVOK. " +
+            "Curitiba, informação MIKE, hora UNO DOIS TRÊS ZERO ZULU. PISTA UNO CINCO em uso. VENTO UNO CINCO ZERO GRAUS, OITO NÓS. CAVOK. " +
             "temperatura DOIS DOIS GRAUS. ajuste UNO ZERO UNO OITO. informe que recebeu informação MIKE.",
             StringCompareShould.IgnoreCase);
     }

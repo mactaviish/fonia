@@ -75,6 +75,12 @@ public sealed class RuleBasedNlu : INlu
         // "alinhe" and "mantenha" are the words of the line-up clearance, which the pilot repeats without "autorizado".
         var repeating = HasAny(rest, ReadbackStems) || rest.Contains("sente") || rest.Contains("alinhe") || rest.Contains("mantenha");
 
+        // "com informação Mike": the pilot tells which ATIS has been heard; without a request in the same breath.
+        if (!repeating && !HasAny(rest, RequestStems) && AtisLetterSaid(rest) is { } atisLetter)
+        {
+            return new ReportAtis(callsign, atisLetter);
+        }
+
         if (AsksForInformation(rest, repeating))
         {
             return new RequestInformation(callsign);
@@ -153,6 +159,28 @@ public sealed class RuleBasedNlu : INlu
         }
 
         return HasAny(rest, InformationStems) || (HasAny(rest, WeakInformationStems) && (HasAny(rest, RequestStems) || rest.Contains("qual")));
+    }
+
+    // The letter after "informação" (or "atis"): "informação Mike", "com informação Mike". A word of one letter is a Portuguese word
+    // ("a", "o", "e") before it is a letter, so only the phonetic words count.
+    private static char? AtisLetterSaid(List<string> rest)
+    {
+        for (var i = 0; i < rest.Count - 1; i++)
+        {
+            if (!rest[i].StartsWith("informac", StringComparison.Ordinal) && rest[i] != "atis")
+            {
+                continue;
+            }
+
+            var next = i + 1;
+
+            if (rest[next].Length > 1 && SpokenCode.TryRead(rest, ref next, out var value) && value.Length == 1 && char.IsAsciiLetter(value[0]))
+            {
+                return char.ToUpperInvariant(value[0]);
+            }
+        }
+
+        return null;
     }
 
     // The callsign was not found but the words end with its last two letters: only the start of it was written badly.

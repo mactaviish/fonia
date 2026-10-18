@@ -97,6 +97,13 @@ public sealed record CallTheTower(Frequency Frequency) : AtcInstruction;
 public sealed record DepartureInformation(string? Runway, Wind? Wind, int? Qnh, int? TemperatureCelsius, int? VisibilityMeters) : AtcInstruction;
 
 /// <summary>
+/// The answer to the pilot saying which ATIS information was heard: the altimeter setting, and the current information when the pilot's
+/// is not it. <paramref name="Current"/> is null when the app has no information to compare with.
+/// </summary>
+// TODO(fraseologia): ICA 100-37 (Art. 759 and 767) says the unit informs the QNH and corrects an outdated information, but gives no phrase.
+public sealed record AtisReceived(char? Current, char Said, int? Qnh) : AtcInstruction;
+
+/// <summary>
 /// "No solo aos 02, após livrar a pista chame Solo ...": the Torre tells the aircraft it is on the ground, with the minute it touched down and
 /// the Solo's frequency (MCA 100-16, Art. 133). <paramref name="Solo"/> is null when the airport has no Solo, and then nothing more is said.
 /// </summary>

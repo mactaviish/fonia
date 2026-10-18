@@ -21,6 +21,14 @@ public static class FrequencyResolver
         return com1 is { } tuned ? airport with { Unit = UnitOn(airport.Airport, tuned), Tuned = tuned } : airport;
     }
 
+    /// <summary>Whether <paramref name="frequency"/> is the ATIS of the airport: nobody answers there, the broadcast plays.</summary>
+    public static bool IsAtis(Airport airport, Frequency frequency)
+    {
+        ArgumentNullException.ThrowIfNull(airport);
+
+        return airport.Frequencies.Any(f => f.Type == AirportFrequencyType.Atis && f.Frequency == frequency);
+    }
+
     /// <summary>The unit of the airport on <paramref name="frequency"/>, or <see cref="ServiceUnit.None"/>.</summary>
     public static ServiceUnit UnitOn(Airport airport, Frequency frequency)
     {

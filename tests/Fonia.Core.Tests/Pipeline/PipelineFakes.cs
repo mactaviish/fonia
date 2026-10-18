@@ -29,12 +29,15 @@ internal sealed class FakeSynthesizer(FakeTimeProvider time, TimeSpan? takes = n
 {
     public List<(string Text, Voice Voice)> Calls { get; } = [];
 
+    public List<double> Paces { get; } = [];
+
     public Func<string, Voice, SynthesizedSpeech>? Answer { get; set; }
 
-    public Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct)
+    public Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct, double pace = 1.0)
     {
         ct.ThrowIfCancellationRequested();
         Calls.Add((text, voice));
+        Paces.Add(pace);
         time.Advance(takes ?? TimeSpan.Zero);
 
         return Task.FromResult(Answer?.Invoke(text, voice) ?? OneSecondOfTone());

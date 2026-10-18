@@ -71,5 +71,12 @@ public sealed record ReportRunwayVacated(string? Callsign) : Intent(Callsign);
 /// </summary>
 public sealed record RequestInformation(string? Callsign) : Intent(Callsign);
 
+/// <summary>
+/// The pilot says which ATIS information has been received ("com informação Mike", "recebi Mike"): ICA 100-37, Art. 759 and 766. The answer
+/// is the altimeter setting, and the current information when the pilot's is not it (Art. 767).
+/// </summary>
+/// <param name="Letter">The designator the pilot says, as a letter ('M' for MIKE).</param>
+public sealed record ReportAtis(string? Callsign, char Letter) : Intent(Callsign);
+
 /// <summary>Speech that could not be interpreted.</summary>
 public sealed record Unknown(string RawText) : Intent((string?)null);

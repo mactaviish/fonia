@@ -21,7 +21,7 @@ public static class PortuguesePhonemizer
     private static readonly HashSet<string> OpenStress = new(StringComparer.Ordinal)
     {
         "sete", "nove", "uniforme", "espera", "reporte", "controle", "viracopos", "fontenelle", "novo", "nova", "zero", "solo", "torre", "velho", "velha", "foz", "box", "alegre", "terra", "serra", "festa",
-        "ovo", "osso", "forte", "morte", "corte", "sorte", "norte", "porta", "horta", "pedra", "perto", "certo", "erro", "ferro",
+        "hora", "informe", "ovo", "osso", "forte", "morte", "corte", "sorte", "norte", "porta", "horta", "pedra", "perto", "certo", "erro", "ferro",
     };
 
     // Words that lean on the next one and carry no stress of their own.

@@ -88,6 +88,18 @@ public sealed class VoiceLoop(
         }
     }
 
+    /// <summary>The airport the controller is at now (it changes when the simulator loads another flight).</summary>
+    public AirportContext Airport
+    {
+        get
+        {
+            lock (_flightGate)
+            {
+                return _airport;
+            }
+        }
+    }
+
     /// <summary>True while an exchange is being made or the answer is being played.</summary>
     public bool IsBusy => Volatile.Read(ref _busy) != 0;
 

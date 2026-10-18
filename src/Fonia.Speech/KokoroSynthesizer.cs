@@ -21,7 +21,7 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWa
     private InferenceSession? _session;
     private bool _disposed;
 
-    public async Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct)
+    public async Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct, double pace = 1.0)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(voice);
@@ -29,7 +29,7 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWa
         ct.ThrowIfCancellationRequested();
 
         // Cheap checks first: nothing to say, or no model, should not cost a model load.
-        var chunks = PhonemeChunker.Split(Pronunciation.ToPhonemes(text), KokoroTokenizer.MaxPhonemes)
+        var chunks = PhonemeChunker.Split(voice.Language == "en" ? EnglishPhonemizer.Phonemize(text) : Pronunciation.ToPhonemes(text), KokoroTokenizer.MaxPhonemes)
             .Select(KokoroTokenizer.Tokenize)
             .Where(tokens => tokens.Length > 0)
             .ToList();
@@ -50,7 +50,7 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWa
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            return await Task.Run(() => Speak(chunks, voice, ct), ct);
+            return await Task.Run(() => Speak(chunks, voice, SpeedFor(pace), ct), ct);
         }
         finally
         {
@@ -83,7 +83,7 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWa
         }
     }
 
-    private SynthesizedSpeech Speak(List<long[]> chunks, Voice voice, CancellationToken ct)
+    private SynthesizedSpeech Speak(List<long[]> chunks, Voice voice, float speed, CancellationToken ct)
     {
         var session = _session ??= new InferenceSession(
             options.ModelPath,
@@ -104,7 +104,7 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWa
         {
             ct.ThrowIfCancellationRequested();
 
-            var sentence = SilenceTrimmer.Trim(Run(session, tokens, NpzVoiceReader.StyleFor(styles, tokens.Length)), SampleRate);
+            var sentence = SilenceTrimmer.Trim(Run(session, tokens, NpzVoiceReader.StyleFor(styles, tokens.Length), speed), SampleRate);
 
             if (audio.Count > 0)
             {
@@ -117,7 +117,10 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWa
         return new SynthesizedSpeech([.. audio], SampleRate);
     }
 
-    private float[] Run(InferenceSession session, long[] tokens, ReadOnlySpan<float> style)
+    // The speed of the options times the pace asked for, inside what the model accepts (0.5 to 2.0).
+    private float SpeedFor(double pace) => (float)Math.Clamp(options.Speed * pace, 0.5, 2.0);
+
+    private static float[] Run(InferenceSession session, long[] tokens, ReadOnlySpan<float> style, float speed)
     {
         var padded = KokoroTokenizer.Pad(tokens);
 
@@ -125,7 +128,7 @@ public sealed class KokoroSynthesizer(KokoroOptions options) : ISynthesizer, IWa
         [
             NamedOnnxValue.CreateFromTensor("tokens", new DenseTensor<long>(padded, [1, padded.Length])),
             NamedOnnxValue.CreateFromTensor("style", new DenseTensor<float>(style.ToArray(), [1, NpzVoiceReader.StyleSize])),
-            NamedOnnxValue.CreateFromTensor("speed", new DenseTensor<float>(new[] { (float)options.Speed }, [1])),
+            NamedOnnxValue.CreateFromTensor("speed", new DenseTensor<float>(new[] { speed }, [1])),
         ]);
 
         return results[0].AsTensor<float>().ToArray();
