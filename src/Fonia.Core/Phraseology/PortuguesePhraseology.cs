@@ -44,6 +44,9 @@ public sealed class PortuguesePhraseology : IPhraseology
             CallTheTower tower => new Utterance(
                 $"{UnitName(context.Airport)}: o Solo não trata de chegada neste app: chame a Torre em {Mhz(tower.Frequency)}.",
                 UtteranceKind.Notice),
+            // Art. 127: "decolado aos 26, chame o Controle Rio, 119,0" (the name is the airport's, as for the Torre and the Solo).
+            AirborneNotice { Approach: { } approach } airborne => new Utterance(
+                $"{callsign}, decolado aos {Minutes(airborne.Minute)}, chame Controle {context.Airport.Airport.SpokenName} {SpokenText.Frequency(approach)}."),
             // Art. 133: "no solo aos 02, após livrar a pista chame Solo ..." (the name of the Solo is the practice of VATSIM Brasil, as for the Torre).
             LandedNotice { Solo: { } solo } landed => new Utterance(
                 $"{callsign}, no solo aos {Minutes(landed.Minute)}, após livrar a pista chame Solo {context.Airport.Airport.SpokenName} {SpokenText.Frequency(solo)}."),

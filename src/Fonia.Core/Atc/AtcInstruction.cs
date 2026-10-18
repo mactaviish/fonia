@@ -117,10 +117,14 @@ public sealed record HandoffToGround(Frequency Frequency) : AtcInstruction;
 // TODO(fraseologia): the manual says "taxie para o pátio 1 via taxiway D"; the airport data has neither the apron nor the taxiways, so both are left out.
 public sealed record TaxiToApron : AtcInstruction;
 
-/// <summary>"Decolado aos 26": the Torre tells the aircraft it is airborne, with the minute it left the ground (MCA 100-16, Art. 127).</summary>
-// TODO(fraseologia): the manual follows it with "chame o Controle ..." (the next unit), which the airport data does not have; the minutes are
-// said even though the first paragraph lets the DECEA waive the time at some aerodromes.
-public sealed record AirborneNotice(int Minute) : AtcInstruction;
+/// <summary>
+/// "Decolado aos 26, chame o Controle ...": the Torre tells the aircraft it is airborne, with the minute it left the ground and the next
+/// unit and its frequency (MCA 100-16, Art. 127). <paramref name="Approach"/> is the Controle of the airport, null when the data has none:
+/// then only the minute is said, since who receives the flight there (an area center, say) is not in the data.
+/// </summary>
+// TODO(fraseologia): the minutes are said even though the first paragraph lets the DECEA waive the time at some aerodromes; the phrase of the
+// Torre for a flight that goes to a unit the airport data does not have is not defined.
+public sealed record AirborneNotice(int Minute, Frequency? Approach = null) : AtcInstruction;
 
 /// <summary>A correct readback needs no answer (MCA 100-16 Art. 12): the controller stays silent.</summary>
 public sealed record NoResponse : AtcInstruction;
