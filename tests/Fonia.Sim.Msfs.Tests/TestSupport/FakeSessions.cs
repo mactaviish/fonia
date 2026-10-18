@@ -48,7 +48,7 @@ internal sealed class FakeSession : ISimConnectSession
     }
 
     /// <summary>Plays one complete set of valid data into the sink: the simulation running and every group.</summary>
-    public void PlayFlight(double latitude = -27.13246, string registration = "PR-FRA", double speedKnots = 79.4)
+    public void PlayFlight(double latitude = -27.13246, string registration = "PR-FAB", double speedKnots = 79.4)
     {
         var sink = Sink ?? throw new InvalidOperationException("The adapter has not subscribed yet.");
         sink.OnSimRunning(true);

@@ -91,7 +91,7 @@ public class FollowFlightTests
             nearestAirport: nearest is null ? null : (lat, lon) => nearest(lat, lon) is { } found ? (found.Item1, found.Item2) : null,
             states: token => sim.Reader.ReadAllAsync(token));
 
-        return (console.RunAsync(new AppOptions(AtcAirport: "SBCT", Callsign: "PR-FRA", NoMetar: true), stop.Token), keyboard, sim, output, stop);
+        return (console.RunAsync(new AppOptions(AtcAirport: "SBCT", Callsign: "PR-FAB", NoMetar: true), stop.Token), keyboard, sim, output, stop);
     }
 
     [Fact]
@@ -100,10 +100,10 @@ public class FollowFlightTests
         var (run, keyboard, sim, output, stop) = Start((_, _) => (Guarulhos, 0.6));
         using var _ = stop;
 
-        keyboard.Type("Solo Curitiba, Papa Romeo Foxtrot Romeo Alfa, solicito acionamento");
-        await WaitForAsync(output, "SOLO Curitiba: PAPA ROMEO FOXTROT ROMEO ALFA, acionamento aprovado");
+        keyboard.Type("Solo Curitiba, Papa Romeo Foxtrot Alfa Bravo, solicito acionamento");
+        await WaitForAsync(output, "SOLO Curitiba: PAPA ROMEO FOXTROT ALFA BRAVO, acionamento aprovado");
 
-        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FRA"), Ct);
+        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FAB"), Ct);
         await sim.Writer.WriteAsync(State(Guarulhos, 1, "PT-XYZ"), Ct);
         await WaitForAsync(output, "Novo voo detectado no simulador: aeronave PTXYZ, SBGR.");
 
@@ -122,8 +122,8 @@ public class FollowFlightTests
         var (run, keyboard, sim, output, stop) = Start((_, _) => (Guarulhos, 250));
         using var _ = stop;
 
-        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FRA"), Ct);
-        await sim.Writer.WriteAsync(State(Guarulhos, 1, "PR-FRA"), Ct);
+        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FAB"), Ct);
+        await sim.Writer.WriteAsync(State(Guarulhos, 1, "PR-FAB"), Ct);
         await WaitForAsync(output, "nenhum aeroporto por perto: o Fonia continua em SBCT");
 
         keyboard.Type("sair");
@@ -136,10 +136,10 @@ public class FollowFlightTests
         var (run, keyboard, sim, output, stop) = Start((_, _) => (Guarulhos, 0.6));
         using var _ = stop;
 
-        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FRA"), Ct);
-        await sim.Writer.WriteAsync(State(Curitiba, 1, "PR-FRA"), Ct);
-        await sim.Writer.WriteAsync(State(Curitiba, 2, "PR-FRA"), Ct);
-        keyboard.Type("Solo Curitiba, Papa Romeo Foxtrot Romeo Alfa, solicito acionamento");
+        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FAB"), Ct);
+        await sim.Writer.WriteAsync(State(Curitiba, 1, "PR-FAB"), Ct);
+        await sim.Writer.WriteAsync(State(Curitiba, 2, "PR-FAB"), Ct);
+        keyboard.Type("Solo Curitiba, Papa Romeo Foxtrot Alfa Bravo, solicito acionamento");
         await WaitForAsync(output, "acionamento aprovado");
         keyboard.Type("sair");
 
@@ -153,7 +153,7 @@ public class FollowFlightTests
         var (run, keyboard, sim, output, stop) = Start(nearest: null);
         using var _ = stop;
 
-        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FRA"), Ct);
+        await sim.Writer.WriteAsync(State(Curitiba, 0, "PR-FAB"), Ct);
         await sim.Writer.WriteAsync(State(Guarulhos, 1, "PT-XYZ"), Ct);
         keyboard.Type("sair");
 

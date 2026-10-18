@@ -12,7 +12,7 @@ public class FlightChangeDetectorTests
     private const double Lat = -25.5285;
     private const double Lon = -49.1758;
 
-    private static AircraftState State(double lat, double lon, int seconds, string registration = "PR-FRA", double knots = 0) => new(
+    private static AircraftState State(double lat, double lon, int seconds, string registration = "PR-FAB", double knots = 0) => new(
         Noon.AddSeconds(seconds), lat, lon, 3000, 0, knots, 150, true, null, null, 1200, registration, "C172");
 
     [Fact]
@@ -42,7 +42,7 @@ public class FlightChangeDetectorTests
         var change = detector.Observe(State(-23.4356, -46.4731, 1));
 
         change.ShouldNotBeNull();
-        change.State.Registration.ShouldBe("PR-FRA");
+        change.State.Registration.ShouldBe("PR-FAB");
         change.Reason.ShouldBe(FlightChangeReason.Teleported);
     }
 
@@ -60,7 +60,7 @@ public class FlightChangeDetectorTests
     public void Another_aircraft_is_another_flight_even_at_the_same_place()
     {
         var detector = new FlightChangeDetector();
-        detector.Observe(State(Lat, Lon, 0, "PR-FRA"));
+        detector.Observe(State(Lat, Lon, 0, "PR-FAB"));
 
         var change = detector.Observe(State(Lat, Lon, 1, "PT-ABC"));
 
@@ -69,8 +69,8 @@ public class FlightChangeDetectorTests
     }
 
     [Theory]
-    [InlineData("PR-FRA", "PRFRA")]
-    [InlineData("pr fra", "PR-FRA")]
+    [InlineData("PR-FAB", "PRFAB")]
+    [InlineData("pr fab", "PR-FAB")]
     public void The_same_registration_written_differently_is_the_same_aircraft(string first, string second)
     {
         var detector = new FlightChangeDetector();
@@ -80,8 +80,8 @@ public class FlightChangeDetectorTests
     }
 
     [Theory]
-    [InlineData("", "PR-FRA")]
-    [InlineData("PR-FRA", "")]
+    [InlineData("", "PR-FAB")]
+    [InlineData("PR-FAB", "")]
     [InlineData("", "")]
     public void An_empty_registration_is_a_reading_that_is_not_settled_yet_and_changes_nothing(string first, string second)
     {

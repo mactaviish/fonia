@@ -5,10 +5,11 @@ using Fonia.Core.Tests.TestSupport;
 
 namespace Fonia.Core.Tests.Nlu;
 
-// The two "repita" of the flight of 2026-10-18 (SBCT, PR-FRA), with the words the recognizer wrote: both are cases kept by the app itself.
-public class FlightOfOctober18Tests
+// The pilot acknowledges and the recognizer writes something that means nothing: the controller must not ask to say it again when all there
+// was to do was to take the acknowledgement. The sentences are invented; each is the kind of slip the recognizer makes.
+public class UnclearAcknowledgementTests
 {
-    private const string Own = "PRFRA";
+    private const string Own = "PRFAB";
 
     private static readonly AirportContext SoloAndTower = AirportContext.Create(TestAirports.WithSolo());
 
@@ -20,12 +21,12 @@ public class FlightOfOctober18Tests
 
     private AtcDecision Say(string said, FlightContext flight) => _engine.Handle(_nlu.Interpret(said, flight), flight, OnTower);
 
-    private static FlightContext Flight(FlightPhase phase, AtcInstruction? pending) => new(Own, phase, "SBCT", pending, pending, null, "15");
+    private static FlightContext Flight(FlightPhase phase, AtcInstruction? pending) => new(Own, phase, "SBXX", pending, pending, null, "15");
 
-    // 1. After "decolado aos UNO MEIA" the pilot acknowledged and the recognizer wrote "Foxrochome Alf Sint.": it was "repita".
+    // After a notice that needs no readback ("decolado aos ...") whatever is said and is no request is the acknowledgement.
     [Theory]
-    [InlineData("Foxrochome Alf Sint.")]
-    [InlineData("Cientio Foxtroot Romeo Alfa.")]
+    [InlineData("Foxrome Alf Sint.")]
+    [InlineData("Cientio Foxtroot Alfa Bravo.")]
     [InlineData("blá blá")]
     public void An_acknowledgement_that_was_not_understood_after_a_notice_is_still_taken_in_silence(string said)
     {
@@ -47,32 +48,32 @@ public class FlightOfOctober18Tests
             : notice == typeof(ReportBase) ? new ReportBase()
             : new ReportOnFinal();
 
-        Say("Foxrochome Alf Sint.", Flight(FlightPhase.Airborne, pending)).Instruction.ShouldBeOfType<NoResponse>();
+        Say("Foxrome Alf Sint.", Flight(FlightPhase.Airborne, pending)).Instruction.ShouldBeOfType<NoResponse>();
     }
 
     [Fact]
     public void An_instruction_that_needs_a_readback_is_not_acknowledged_by_a_mumble()
     {
-        Say("Foxrochome Alf Sint.", Flight(FlightPhase.Taxiing, new TaxiClearance("15"))).Instruction.ShouldBeOfType<SayAgainRequest>();
+        Say("Foxrome Alf Sint.", Flight(FlightPhase.Taxiing, new TaxiClearance("15"))).Instruction.ShouldBeOfType<SayAgainRequest>();
     }
 
     [Fact]
     public void With_nothing_to_acknowledge_a_mumble_is_still_not_understood()
     {
-        Say("Foxrochome Alf Sint.", Flight(FlightPhase.Airborne, null)).Instruction.ShouldBeOfType<SayAgainRequest>();
+        Say("Foxrome Alf Sint.", Flight(FlightPhase.Airborne, null)).Instruction.ShouldBeOfType<SayAgainRequest>();
     }
 
     [Fact]
     public void A_request_after_a_notice_is_still_a_request_and_not_an_acknowledgement()
     {
-        Say("Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, solicito pouso", Flight(FlightPhase.Airborne, new AirborneNotice(16)))
+        Say("Torre, Papa Romeo Foxtrot Alfa Bravo, solicito pouso", Flight(FlightPhase.Airborne, new AirborneNotice(16)))
             .Instruction.ShouldBeOfType<CircuitClearance>();
     }
 
-    // 2. After landing, "pista livre, Foxtrot Romeo Alfa" was written "Pista de Vrio Foxtroot Romeo Alfa.": it was "repita".
+    // After the landing, "pista" with the callsign and no number is the runway vacated, however "livre" was written.
     [Theory]
-    [InlineData("Pista de Vrio Foxtroot Romeo Alfa.")]
-    [InlineData("Torre Curitiba, Papa Romeo Foxtrot Romeo Alfa, pista")]
+    [InlineData("Pista de livri Foxtroot Alfa Bravo.")]
+    [InlineData("Torre, Papa Romeo Foxtrot Alfa Bravo, pista")]
     public void After_landing_the_word_pista_with_the_callsign_and_no_number_is_the_runway_vacated(string said)
     {
         Say(said, Flight(FlightPhase.Landed, null)).Instruction.ShouldBeOfType<HandoffToGround>();
@@ -81,12 +82,12 @@ public class FlightOfOctober18Tests
     [Fact]
     public void After_landing_a_runway_with_a_number_is_not_the_runway_vacated()
     {
-        Say("Pista uno cinco, Foxtrot Romeo Alfa", Flight(FlightPhase.Landed, null)).Instruction.ShouldNotBeOfType<HandoffToGround>();
+        Say("Pista uno cinco, Foxtrot Alfa Bravo", Flight(FlightPhase.Landed, null)).Instruction.ShouldNotBeOfType<HandoffToGround>();
     }
 
     [Fact]
     public void Outside_the_landed_phase_the_word_pista_alone_is_nothing()
     {
-        Say("Pista de Vrio Foxtroot Romeo Alfa.", Flight(FlightPhase.Taxiing, null)).Instruction.ShouldBeOfType<SayAgainRequest>();
+        Say("Pista de livri Foxtroot Alfa Bravo.", Flight(FlightPhase.Taxiing, null)).Instruction.ShouldBeOfType<SayAgainRequest>();
     }
 }

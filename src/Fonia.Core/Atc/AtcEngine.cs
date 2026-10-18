@@ -284,7 +284,7 @@ public sealed class AtcEngine : IAtcEngine
 
     // The taxi readback must have the runway; the startup and pushback ones must say what was approved.
     // A readback is right when it has the action of the instruction and, if it names a runway, the right one. In practice the pilot at the
-    // holding point of a runway does not repeat which one ("alinhe e mantenha, PRFRA"): the callsign and the action are what shows that
+    // holding point of a runway does not repeat which one ("alinhe e mantenha, PRFAB"): the callsign and the action are what shows that
     // the clearance was heard. A runway that is named and is wrong is still "negativo": that is the mistake that matters.
     private static bool IsCorrect(AtcInstruction expected, IReadOnlyList<string> heard) => expected switch
     {

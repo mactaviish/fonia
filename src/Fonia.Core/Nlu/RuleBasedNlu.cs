@@ -389,7 +389,7 @@ public sealed class RuleBasedNlu : INlu
 
         // The exact callsign, or its abbreviation, wherever it is; and only if there is none, the callsign with a letter wrong, missing or
         // extra, which is the recognizer's slip and not another aircraft.
-        foreach (var matches in new Func<string, string, bool>[] { SpokenText.IsSameCallsign, SpokenText.IsCloseCallsign })
+        foreach (var close in new[] { false, true })
         {
             for (var start = 0; start < tokens.Count; start++)
             {
@@ -397,7 +397,13 @@ public sealed class RuleBasedNlu : INlu
                 {
                     var candidate = string.Join(' ', tokens.Skip(start).Take(length));
 
-                    if (matches(candidate, callsign))
+                    // A callsign that is only close must end where the callsign ends: "Papa Romeo Alfa Bravo" is one letter from PRFAB, but
+                    // in "Papa Romeo Alfa Bravo Charlie" it is the start of another aircraft.
+                    var matched = close
+                        ? SpokenText.IsCloseCallsign(candidate, callsign) && !LetterOrNumberFollows(tokens, start + length)
+                        : SpokenText.IsSameCallsign(candidate, callsign);
+
+                    if (matched)
                     {
                         found = true;
                         return [.. tokens.Take(start), .. tokens.Skip(start + length)];
@@ -408,6 +414,10 @@ public sealed class RuleBasedNlu : INlu
 
         return [.. tokens];
     }
+
+    // Whether the words go on with a letter of the alphabet or a number at this position ("... Alfa Bravo | Charlie").
+    private static bool LetterOrNumberFollows(IReadOnlyList<string> tokens, int index) =>
+        index < tokens.Count && SpokenCode.TryRead(tokens, ref index, out _);
 
     // Letters alone do not count: "a", "o" and "e" are Portuguese words before they are letters of the alphabet.
     private static bool HasNumber(List<string> tokens)

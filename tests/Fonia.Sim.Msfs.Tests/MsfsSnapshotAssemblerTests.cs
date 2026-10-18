@@ -10,7 +10,7 @@ public class MsfsSnapshotAssemblerTests
     // Real values from the spike (Cessna CJ4 flying near Concordia).
     private static MotionData Flying() => new(-27.13246, -52.66867, 5675, 3637, 79.4, 21, SimOnGround: 0);
 
-    private static IdentityData Identity() => new("PR-FRA", "Cessna", "C25C", "Cessna CJ4 Citation Asobo");
+    private static IdentityData Identity() => new("PR-FAB", "Cessna", "C25C", "Cessna CJ4 Citation Asobo");
 
     private static RadioData Radios() => new(130_850_000, 124_850_000, 124_850_000, 124_850_000);
 
@@ -51,7 +51,7 @@ public class MsfsSnapshotAssemblerTests
         state.Com1.ShouldBe(new RadioState(new Frequency(130850), new Frequency(124850)));
         state.Com2.ShouldBe(new RadioState(new Frequency(124850), new Frequency(124850)));
         state.TransponderCode.ShouldBe(1234);
-        state.Registration.ShouldBe("PR-FRA");
+        state.Registration.ShouldBe("PR-FAB");
         state.AircraftType.ShouldBe("C25C");
     }
 

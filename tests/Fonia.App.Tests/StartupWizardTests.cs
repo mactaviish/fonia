@@ -49,20 +49,20 @@ public class StartupWizardTests
         return new Run(options, output.ToString(), airport, callsign, looks);
     }
 
-    private static readonly SimulatorFix OnTheApron = new("PR-FRA", -25.5285, -49.1758);
+    private static readonly SimulatorFix OnTheApron = new("PR-FAB", -25.5285, -49.1758);
 
     [Fact]
     public async Task With_the_simulator_both_the_callsign_and_the_airport_come_from_it_and_nothing_is_asked()
     {
         var run = await RunAsync(string.Empty, OnTheApron);
 
-        run.Options.ShouldBe(new AppOptions(AtcAirport: "SBCT", Voice: true, Callsign: "PR-FRA"));
-        run.Output.ShouldContain("PR-FRA");
+        run.Options.ShouldBe(new AppOptions(AtcAirport: "SBCT", Voice: true, Callsign: "PR-FAB"));
+        run.Output.ShouldContain("PR-FAB");
         run.Output.ShouldContain("SBCT");
         run.Output.ShouldNotContain("Aeroporto (");
         run.Output.ShouldNotContain("Indicativo (");
         run.AirportRemembered.ShouldBe("SBCT");
-        run.CallsignRemembered.ShouldBe("PR-FRA");
+        run.CallsignRemembered.ShouldBe("PR-FAB");
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class StartupWizardTests
     {
         var run = await RunAsync("SBCT\n", OnTheApron, kmToCuritiba: 120);
 
-        run.Options.ShouldBe(new AppOptions(AtcAirport: "SBCT", Voice: true, Callsign: "PR-FRA"));
+        run.Options.ShouldBe(new AppOptions(AtcAirport: "SBCT", Voice: true, Callsign: "PR-FAB"));
         run.Output.ShouldContain("nenhum aeroporto por perto");
         run.Output.ShouldNotContain("Indicativo (");
     }

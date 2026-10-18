@@ -21,9 +21,9 @@ public sealed class CaseLogTests : IDisposable
 
     private static readonly AirportContext Solo = AirportContext.Create(Curitiba);
 
-    private static readonly FlightContext Parked = new("PRFRA", FlightPhase.Parked, "SBCT", null);
+    private static readonly FlightContext Parked = new("PRFAB", FlightPhase.Parked, "SBCT", null);
 
-    private static readonly FlightContext Taxiing = new("PRFRA", FlightPhase.Taxiing, "SBCT", new TaxiClearance("15"), new TaxiClearance("15"));
+    private static readonly FlightContext Taxiing = new("PRFAB", FlightPhase.Taxiing, "SBCT", new TaxiClearance("15"), new TaxiClearance("15"));
 
     private static readonly StageTimings NoTime = new(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero);
 
@@ -41,16 +41,16 @@ public sealed class CaseLogTests : IDisposable
         File.Delete(_root);
     }
 
-    private CaseLog Create(bool saveAudio = false) => new(_root, _time, new PortuguesePhraseology(), Solo, "PR-FRA", saveAudio);
+    private CaseLog Create(bool saveAudio = false) => new(_root, _time, new PortuguesePhraseology(), Solo, "PR-FAB", saveAudio);
 
     private static ExchangeResult Exchange(FlightContext before, Intent intent, AtcInstruction instruction, string heard, RecordedSpeech? audio = null) =>
-        new(heard, intent, new AtcDecision(instruction, before), new PortuguesePhraseology().Speak(instruction, new PhraseContext("PRFRA", Solo)), null, NoTime, "SOLO Curitiba", before, audio);
+        new(heard, intent, new AtcDecision(instruction, before), new PortuguesePhraseology().Speak(instruction, new PhraseContext("PRFAB", Solo)), null, NoTime, "SOLO Curitiba", before, audio);
 
     private static ExchangeResult NotUnderstood(string heard = "blá blá", RecordedSpeech? audio = null) =>
         Exchange(Parked, new Unknown(heard), new SayAgainRequest(), heard, audio);
 
     private static ExchangeResult WentWell() =>
-        Exchange(Parked, new RequestStartup("PRFRA", null), new StartupApproved(), "solicito acionamento");
+        Exchange(Parked, new RequestStartup("PRFAB", null), new StartupApproved(), "solicito acionamento");
 
     private static RecordedSpeech Speech() => new(AudioFormat.Speech, new byte[AudioFormat.Speech.BytesPerSecond]);
 
@@ -75,14 +75,14 @@ public sealed class CaseLogTests : IDisposable
     {
         var log = Create();
 
-        log.Record(Exchange(Taxiing, new Readback("PRFRA", "pista dois nove"), new RequestReadbackCorrection(new TaxiClearance("15")), "pista dois nove")).ShouldBe([CaseReasons.Corrected]);
+        log.Record(Exchange(Taxiing, new Readback("PRFAB", "pista dois nove"), new RequestReadbackCorrection(new TaxiClearance("15")), "pista dois nove")).ShouldBe([CaseReasons.Corrected]);
 
         var lines = Lines(log);
         lines.Count.ShouldBe(2);
 
         lines[0].GetProperty("type").GetString().ShouldBe("session");
         lines[0].GetProperty("airport").GetString().ShouldBe("SBCT");
-        lines[0].GetProperty("callsign").GetString().ShouldBe("PR-FRA");
+        lines[0].GetProperty("callsign").GetString().ShouldBe("PR-FAB");
         lines[0].GetProperty("startedAt").GetDateTimeOffset().ShouldBe(Start);
 
         var entry = lines[1];
@@ -147,7 +147,7 @@ public sealed class CaseLogTests : IDisposable
     public void Marking_an_exchange_that_went_well_keeps_it_as_a_case_with_its_sound()
     {
         var log = Create(saveAudio: true);
-        log.Record(Exchange(Parked, new RequestStartup("PRFRA", null), new StartupApproved(), "solicito acionamento", Speech()));
+        log.Record(Exchange(Parked, new RequestStartup("PRFAB", null), new StartupApproved(), "solicito acionamento", Speech()));
         Sessions().ShouldBeEmpty();
 
         log.Mark().ShouldBeTrue();

@@ -18,7 +18,7 @@ public class StateFormatterTests
         Com1 = new RadioState(Frequency.FromMhz(130.85), Frequency.FromMhz(124.85)),
         Com2 = new RadioState(Frequency.FromMhz(121.5), Frequency.FromMhz(123.45)),
         TransponderCode = 1200,
-        Registration = "PR-FRA",
+        Registration = "PR-FAB",
         AircraftType = "C25C",
     };
 
@@ -28,7 +28,7 @@ public class StateFormatterTests
         var expectedTime = Flying().Timestamp.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
 
         StateFormatter.Format(Flying()).ShouldBe(
-            $"{expectedTime}  PR-FRA C25C  27.13246°S 52.66867°W  5675 ft (3637 AGL)  GS 79 kt  HDG 021°  AR  " +
+            $"{expectedTime}  PR-FAB C25C  27.13246°S 52.66867°W  5675 ft (3637 AGL)  GS 79 kt  HDG 021°  AR  " +
             "COM1 130.850/124.850  COM2 121.500/123.450  XPDR 1200");
     }
 
@@ -119,7 +119,7 @@ public class StateFormatterTests
     [Fact]
     public void A_field_is_never_split_across_two_rows()
     {
-        var fields = new[] { "PR-FRA C25C", "27.13246°S 52.66867°W", "5675 ft (3637 AGL)", "GS 79 kt", "HDG 021°", "AR", "COM1 130.850/124.850", "COM2 121.500/123.450", "XPDR 1200" };
+        var fields = new[] { "PR-FAB C25C", "27.13246°S 52.66867°W", "5675 ft (3637 AGL)", "GS 79 kt", "HDG 021°", "AR", "COM1 130.850/124.850", "COM2 121.500/123.450", "XPDR 1200" };
 
         for (var columns = 21; columns <= 140; columns++)
         {
