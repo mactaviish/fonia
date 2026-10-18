@@ -295,7 +295,8 @@ ReportGoingAround ("arremetendo")         ->  GoAroundNoted ("ciente")          
 - **Cotejamento exigido** (Art. 12: "entrar" e "pousar") do circuito (palavra "circuito") e do pouso ("pouso"/"pousar"), com o indicativo, no critério da seção "Cotejamento" abaixo. Os pedidos de reporte são aceitos em silêncio, como a passagem de frequência.
 - Na frequência do **Solo**, a chegada vira o aviso `CallTheTower` ("chame a Torre em 119.5"), como a Torre faz com o Solo.
 - **Ordem das palavras (Art. 129 e 132):** o circuito diz a autorização antes da pista ("autorizado para o circuito de tráfego, PISTA ..."); o pouso diz a pista antes ("PISTA ..., pouso autorizado"). O vento fecha as duas, quando houver. O QNH do Art. 129 ainda não é dito (sem fonte).
-- Ficam para depois: a aproximação direta ("autorizada aproximação direta ... reporte final"), "número 2 para pouso", toque e arremetida, condições da pista, e o "no solo aos MM" (depois do pouso).
+- **Aproximação direta (M5, em andamento):** o NLU já entende o pedido ("solicito aproximação direta", "pouso direto", "entrada direta na final", "straight in") como `RequestLanding(StraightIn: true)`, e o "final" dentro do pedido não vira relato. O motor ainda não distingue: responde com o circuito, como antes. A resposta do Art. 129 ("autorizada aproximação direta ... reporte final") é a tarefa seguinte.
+- Ficam para depois: "número 2 para pouso", toque e arremetida, condições da pista, e o "no solo aos MM" (depois do pouso).
 
 ### Cotejamento (regra de 2026-10-15)
 

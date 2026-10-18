@@ -47,8 +47,12 @@ public sealed record ReportLinedUp(string? Callsign, string? Runway) : Intent(Ca
 /// <summary>The pilot reports starting the takeoff ("decolando"): the Torre has nothing to say to it.</summary>
 public sealed record ReportTakingOff(string? Callsign) : Intent(Callsign);
 
-/// <summary>The pilot asks for instructions to land ("instruções para pouso", "solicito entrada no circuito"): MCA 100-16, Art. 128.</summary>
-public sealed record RequestLanding(string? Callsign) : Intent(Callsign);
+/// <summary>
+/// The pilot asks for instructions to land ("instruções para pouso", "solicito entrada no circuito"): MCA 100-16, Art. 128.
+/// <paramref name="StraightIn"/> is true when the pilot asks for the straight-in approach ("solicito aproximação direta"), which the
+/// controller answers with Art. 129's "autorizada aproximação direta".
+/// </summary>
+public sealed record RequestLanding(string? Callsign, bool StraightIn = false) : Intent(Callsign);
 
 /// <summary>The pilot reports the downwind leg ("perna do vento"): Art. 130, I.</summary>
 public sealed record ReportDownwind(string? Callsign) : Intent(Callsign);

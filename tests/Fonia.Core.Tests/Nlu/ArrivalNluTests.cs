@@ -30,6 +30,45 @@ public class ArrivalNluTests
         _nlu.Interpret(said, new FlightContext(Own, FlightPhase.Parked, "SBCT", null)).ShouldBe(new RequestLanding(Own));
     }
 
+    // The pilot may ask for a straight-in approach (answered in Art. 129: "autorizada aproximação direta"): said any way, with or without the
+    // runway, and "final" in it is where the pilot wants to go and not a report.
+    [Theory]
+    [InlineData("Torre Curitiba, PRABC, solicito aproximação direta pista uno cinco")]
+    [InlineData("PRABC, cinco milhas ao sul, solicita aproximação direta")]
+    [InlineData("Torre, PRABC, solicito pouso direto")]
+    [InlineData("Torre, PRABC, solicito entrada direta na final")]
+    [InlineData("Torre, PRABC, straight in pista uno cinco, solicito pouso")]
+    [InlineData("Papa Romeo Alfa Bravo Charlie, aproximação direta")]
+    [InlineData("Torre Curitiba, PRABC, para pouso, solicito entrada direta")]
+    public void The_pilot_asking_for_a_straight_in_approach_is_understood_in_any_wording(string said)
+    {
+        _nlu.Interpret(said, Flying).ShouldBe(new RequestLanding(Own, StraightIn: true));
+        _nlu.Interpret(said, new FlightContext(Own, FlightPhase.Parked, "SBCT", null)).ShouldBe(new RequestLanding(Own, StraightIn: true));
+    }
+
+    [Theory]
+    [InlineData("PRABC, direto para o VOR")]
+    [InlineData("PRABC, solicito direto ao ponto")]
+    public void Direct_to_somewhere_is_not_a_landing_request(string said)
+    {
+        _nlu.Interpret(said, Flying).ShouldNotBeOfType<RequestLanding>();
+    }
+
+    // The readback of "autorizada aproximação direta, pista 15, reporte final" is not a new request.
+    [Theory]
+    [InlineData("autorizada aproximação direta pista uno cinco, reporto final, PRABC")]
+    [InlineData("aproximação direta, reporte final, Papa Romeo Alfa Bravo Charlie")]
+    public void The_readback_of_the_straight_in_clearance_is_not_asking_again(string said)
+    {
+        _nlu.Interpret(said, Flying).ShouldNotBeOfType<RequestLanding>();
+    }
+
+    [Fact]
+    public void A_request_without_the_straight_in_words_is_the_usual_one()
+    {
+        _nlu.Interpret("Torre, PRABC, solicito pouso", Flying).ShouldBe(new RequestLanding(Own, StraightIn: false));
+    }
+
     // Art. 130, I: "Torre São José, PT BFA, perna do vento, pista 35."
     [Theory]
     [InlineData("Torre Curitiba, PRABC, perna do vento, pista uno cinco")]
