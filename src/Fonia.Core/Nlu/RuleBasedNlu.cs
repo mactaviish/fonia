@@ -39,6 +39,10 @@ public sealed class RuleBasedNlu : INlu
 
     // The arrival (MCA 100-16, Art. 128 to 132, 136).
     private static readonly string[] LandingStems = ["pous", "pouso", "pousar", "circuito", "aproxim"];
+
+    // "aproximação direta", "pouso direto", "entrada direta", "straight in": "direto" alone is navigation ("direto para o VOR"), so it counts
+    // only with a landing word.
+    private static readonly string[] StraightInStems = ["diret", "straight"];
     private static readonly string[] GoAroundStems = ["arremet", "perdida"];
 
     // The conditions of the aerodrome (Art. 121): asking for them needs no request word when the pilot names the information, and
@@ -252,12 +256,15 @@ public sealed class RuleBasedNlu : INlu
             return new ReportBaseLeg(callsign);
         }
 
-        if (rest.Contains("final"))
+        var straightIn = HasAny(rest, StraightInStems);
+
+        // "solicito entrada direta na final": the "final" is where the pilot wants to go, and not the report of being there.
+        if (rest.Contains("final") && !(straightIn && HasAny(rest, RequestStems) && flight.Phase < FlightPhase.InCircuit))
         {
             return new ReportFinal(callsign);
         }
 
-        if (!HasAny(rest, LandingStems))
+        if (!HasAny(rest, LandingStems) && !(straightIn && rest.Contains("final")))
         {
             return null;
         }
@@ -265,7 +272,7 @@ public sealed class RuleBasedNlu : INlu
         // "pouso pista uno cinco, PRABC" after "pista uno cinco, pouso autorizado" is the pilot reading it back, wrongly perhaps.
         var answering = flight.PendingReadback is CircuitClearance or LandingClearance && !HasAny(rest, RequestStems);
 
-        return answering ? null : new RequestLanding(callsign);
+        return answering ? null : new RequestLanding(callsign, straightIn);
     }
 
     // "no ponto de espera", "em ponto de espera", "holding": the aircraft is there. The "no"/"em" before "ponto" is what tells
