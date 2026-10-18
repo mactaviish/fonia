@@ -22,6 +22,16 @@
 - **Rota (`TaxiRouter`, Core, lógica pura):** do ponto onde a aeronave está (posição da telemetria) até o ponto de espera da pista em uso, por menor caminho no grafo, com custo alto para usar uma pista como taxiway. O resultado é a lista de taxiways ("A, depois B"), as **travessias de pista** (cada aresta de pista que a rota atravessa) e os **pontos de espera** onde parar.
 - **Fraseologia (`PortuguesePhraseology`)** e **motor (`AtcEngine`):** só usam o que existir: com rota, "via taxiway A, B"; com travessia, "mantenha posição fora da pista 11"; sem layout, a frase de hoje.
 
+## O roteador (L3, `TaxiRouter`)
+
+`TaxiRouter.Find(layout, posição, pista)` devolve `TaxiRouteFound` (a rota) ou `NoTaxiRoute` (o motivo). Regras:
+
+- **Origem:** o nó mais próximo da aeronave, a no máximo 150 m (`MaxDistanceToGraphMeters`); mais longe, `AircraftOffTheGraph`.
+- **Destino:** o ponto de espera da cabeceira pedida = um nó `HoldShort` ao lado de um nó da pista, o mais próximo da cabeceira. O grafo não liga ponto de espera a pista; a ligação é inferida pela vizinhança. Sem nenhum, `NoHoldingPoint`.
+- **Caminho:** Dijkstra pelo comprimento, com o grafo nos dois sentidos. Usar uma pista como taxiway custa 5.000 m a mais por trecho e uma taxiway sem nome, 3.000 m: prefere-se sempre dar a volta por um caminho que o controlador sabe dizer. Se o melhor caminho ainda usa taxiway sem nome, `UnnamedTaxiway`; se o grafo é cortado, `NotConnected`; sem nenhuma taxiway no layout, `NoTaxiways`; pista que o layout não tem, `UnknownRunway`.
+- **Resultado:** os nós, as taxiways em ordem (cada uma uma vez seguida: "A, B"), as travessias (`RunwayCrossing`: a pista, o nó onde a rota chega nela, o ponto de espera antes dela, que pode ser desconhecido, e se a rota **segue** a pista em vez de só cruzá-la) e o comprimento. A pista em que a aeronave já está no começo não é travessia.
+- **Limites conhecidos:** o ponto de espera da travessia só é conhecido quando o nó imediatamente antes da pista está marcado como `HoldShort` no grafo; senão a travessia vem com o ponto nulo (o L4 decide o que dizer, o L0 mostra o quanto isso acontece de verdade). O roteador foi escrito sobre o layout sintético e precisa ser conferido com o grafo real do simulador.
+
 ## Fraseologia (MCA 100-16/2025, Art. 125, II)
 
 O manual lista como instruções complementares do táxi:
