@@ -61,18 +61,51 @@ public class FrequencyResolverTests
     }
 
     [Fact]
-    public void Only_the_frequencies_of_a_unit_that_talks_count_not_the_atis_or_the_approach()
+    public void Only_the_frequencies_of_a_unit_that_talks_count_not_the_atis()
     {
         var airport = TestAirports.Airport(
             "SBXX",
             [TestAirports.Runway("15", "33", 6000)],
             AirportFrequencyType.Ground,
-            AirportFrequencyType.Atis,
-            AirportFrequencyType.Approach);
+            AirportFrequencyType.Atis);
         var context = AirportContext.Create(airport);
 
         FrequencyResolver.Apply(context, Of(context, AirportFrequencyType.Atis)).Unit.ShouldBe(ServiceUnit.None);
-        FrequencyResolver.Apply(context, Of(context, AirportFrequencyType.Approach)).Unit.ShouldBe(ServiceUnit.None);
+    }
+
+    [Fact]
+    public void On_the_frequency_of_the_approach_the_controle_answers()
+    {
+        var airport = AirportContext.Create(TestAirports.Airport(
+            "SBXX",
+            [TestAirports.Runway("15", "33", 6000)],
+            AirportFrequencyType.Tower,
+            AirportFrequencyType.Approach));
+
+        var context = FrequencyResolver.Apply(airport, Of(airport, AirportFrequencyType.Approach));
+
+        context.Unit.ShouldBe(ServiceUnit.Approach);
+        context.Tuned.ShouldBe(Of(airport, AirportFrequencyType.Approach));
+    }
+
+    [Fact]
+    public void Every_approach_frequency_of_the_airport_is_the_controle()
+    {
+        var runways = new[] { TestAirports.Runway("15", "33", 6000) };
+        var first = TestAirports.Frequency(AirportFrequencyType.Approach, 119950);
+        var second = TestAirports.Frequency(AirportFrequencyType.Approach, 119750);
+        var airport = AirportContext.Create(TestAirports.Airport("SBXX", runways, AirportFrequencyType.Tower) with { Frequencies = [first, second] });
+
+        FrequencyResolver.Apply(airport, first.Frequency).Unit.ShouldBe(ServiceUnit.Approach);
+        FrequencyResolver.Apply(airport, second.Frequency).Unit.ShouldBe(ServiceUnit.Approach);
+    }
+
+    [Fact]
+    public void The_approach_is_never_the_unit_an_airport_starts_with()
+    {
+        var airport = TestAirports.Airport("SBXX", [TestAirports.Runway("15", "33", 6000)], AirportFrequencyType.Approach);
+
+        AirportContext.Create(airport).Unit.ShouldBe(ServiceUnit.None);
     }
 
     [Fact]

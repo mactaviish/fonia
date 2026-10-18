@@ -38,6 +38,9 @@ public sealed class PortuguesePhraseology : IPhraseology
             AtisReceived { Qnh: { } qnh } when qnh is >= 900 and <= 1099 => new Utterance($"{callsign}, ajuste de altímetro {SpokenText.Qnh(qnh)}."),
             AtisReceived => null,
             DepartureInformation information => new Utterance($"{callsign}, {Conditions(information, context.Now)}."),
+            CallTheTower tower when context.Airport.Unit == ServiceUnit.Approach => new Utterance(
+                $"{UnitName(context.Airport)}: o Controle não atende este pedido neste app: chame a Torre em {Mhz(tower.Frequency)}.",
+                UtteranceKind.Notice),
             CallTheTower tower => new Utterance(
                 $"{UnitName(context.Airport)}: o Solo não trata de chegada neste app: chame a Torre em {Mhz(tower.Frequency)}.",
                 UtteranceKind.Notice),
@@ -160,6 +163,7 @@ public sealed class PortuguesePhraseology : IPhraseology
     {
         ServiceUnit.Ground => "SOLO",
         ServiceUnit.Tower => "TORRE",
+        ServiceUnit.Approach => "CONTROLE",
         _ => "RÁDIO",
     };
 

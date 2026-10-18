@@ -5,8 +5,8 @@ namespace Fonia.Core.Atc;
 
 /// <summary>
 /// Who answers is decided by the frequency the pilot tuned, as on a real radio: the Solo on its frequency, the Torre on
-/// its own, nobody on one that belongs to no unit of the airport. It only looks at the units that talk (Solo, Torre, AFIS):
-/// the ATIS and the approach have frequencies too, but nobody there answers a call from the ground.
+/// its own, nobody on one that belongs to no unit of the airport. It only looks at the units that talk (Solo, Torre, AFIS and
+/// the Controle): the ATIS has a frequency too, but nobody there answers a call.
 /// </summary>
 public static class FrequencyResolver
 {
@@ -44,6 +44,8 @@ public static class FrequencyResolver
                     return ServiceUnit.Tower;
                 case AirportFrequencyType.Afis:
                     return ServiceUnit.Afis;
+                case AirportFrequencyType.Approach:
+                    return ServiceUnit.Approach;
             }
         }
 
