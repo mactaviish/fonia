@@ -82,6 +82,8 @@ Dois achados do primeiro teste ao vivo, resolvidos escolhendo **de ouvido** entr
 
 **Pronto quando:** você faz um voo local completo (partida → táxi → decolagem → circuito → pouso → táxi) falando com o app.
 
+**Concluído em 2026-10-18:** o voo completo foi validado pelo mantenedor no MSFS (Solo, Torre, circuito e pouso) e o ATIS foi ouvido e aprovado por ele (português e inglês, voz fixa). Fica para outros marcos: o "chame o Controle ..." e a aproximação direta (M5) e as rotas de táxi pelo mapa do aeródromo (M6).
+
 ## M5: Expansão
 
 - [ ] Aproximação / Centro e handoffs. Resolve o "chame o Controle ..." depois da decolagem (Art. 127; hoje a Torre diz só "decolado aos MM") e a aproximação direta do Art. 129 ("autorizada aproximação direta ... reporte final"), que ficaram do M4. Precisa das frequências de Controle e Aproximação, que os dados de aeroportos quase não têm
