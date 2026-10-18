@@ -86,6 +86,68 @@ public class AirborneNoticeTests
         phraseology.Speak(new AirborneNotice(2), context)!.Text.ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, decolado aos ZERO DOIS.");
     }
 
+    private static readonly AirportContext WithApproach = AirportContext.Create(TestAirports.Airport(
+        "SBXX",
+        [TestAirports.Runway("11", "29", 9000)],
+        AirportFrequencyType.Ground,
+        AirportFrequencyType.Tower,
+        AirportFrequencyType.Approach));
+
+    private static readonly AirportContext OnTowerWithApproach =
+        FrequencyResolver.Apply(WithApproach, WithApproach.Airport.FrequencyOf(AirportFrequencyType.Tower)!.Frequency);
+
+    private static Frequency Approach => WithApproach.Airport.FrequencyOf(AirportFrequencyType.Approach)!.Frequency;
+
+    // Art. 127, IV: the next unit and its frequency. It is the Controle of the airport, when the data has one.
+    [Fact]
+    public void An_airport_with_an_approach_passes_the_flight_to_the_controle_with_its_frequency()
+    {
+        var decision = new AtcEngine().Handle(At(26), Cleared, OnTowerWithApproach);
+
+        decision.Instruction.ShouldBe(new AirborneNotice(26, Approach));
+        decision.NextContext.PendingReadback.ShouldBe(new AirborneNotice(26, Approach));
+        decision.NextContext.Phase.ShouldBe(FlightPhase.Airborne);
+    }
+
+    [Fact]
+    public void An_airport_without_an_approach_says_only_the_minute_as_before()
+    {
+        new AtcEngine().Handle(At(26), Cleared, OnTower).Instruction.ShouldBe(new AirborneNotice(26, null));
+    }
+
+    [Fact]
+    public void The_notice_with_the_controle_is_the_minute_and_then_where_to_call()
+    {
+        var phraseology = new PortuguesePhraseology();
+        var context = new PhraseContext(Own, OnTowerWithApproach);
+
+        phraseology.Speak(new AirborneNotice(26, Approach), context)!.Text
+            .ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, decolado aos DOIS MEIA, chame Controle Curitiba UNO UNO OITO DECIMAL DOIS.");
+    }
+
+    [Theory]
+    [InlineData("Controle Curitiba uno uno oito decimal dois, Papa Romeo Alfa Bravo Charlie")]
+    [InlineData("chamando Controle uno uno oito decimal dois")]
+    [InlineData("ciente, Alfa Bravo Charlie")]
+    public void What_the_pilot_says_after_the_controle_handoff_is_taken_in_silence(string said)
+    {
+        var flight = new AtcEngine().Handle(At(26), Cleared, OnTowerWithApproach).NextContext;
+
+        var decision = new AtcEngine().Handle(new RuleBasedNlu().Interpret(said, flight), flight, OnTowerWithApproach);
+
+        decision.Instruction.ShouldBeOfType<NoResponse>();
+        decision.NextContext.PendingReadback.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Asking_to_say_it_again_after_the_controle_handoff_repeats_it()
+    {
+        var engine = new AtcEngine();
+        var flight = engine.Handle(At(26), Cleared, OnTowerWithApproach).NextContext;
+
+        engine.Handle(new SayAgain(Own), flight, OnTowerWithApproach).Instruction.ShouldBe(new AirborneNotice(26, Approach));
+    }
+
     [Fact]
     public void Asking_to_say_it_again_after_the_notice_repeats_it()
     {

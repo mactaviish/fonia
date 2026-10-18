@@ -78,7 +78,7 @@ public sealed class AtcEngine : IAtcEngine
         {
             // The Torre that cleared the takeoff, and is still on the frequency, says the aircraft is off the ground.
             case TookOff tookOff when airport.Unit == ServiceUnit.Tower && flight.Phase == FlightPhase.TakeoffCleared:
-                var notice = new AirborneNotice(tookOff.At.UtcDateTime.Minute);
+                var notice = new AirborneNotice(tookOff.At.UtcDateTime.Minute, airport.Airport.FrequencyOf(AirportFrequencyType.Approach)?.Frequency);
 
                 // The pilot may acknowledge it ("ciente"): kept as pending so that the NLU reads the answer, and taken in silence.
                 return new AtcDecision(notice, flight with { Phase = FlightPhase.Airborne, PendingReadback = notice, LastInstruction = notice });
