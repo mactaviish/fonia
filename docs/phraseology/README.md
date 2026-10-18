@@ -26,6 +26,7 @@ Para ler o manual, baixe o PDF da edição vigente na página oficial e guarde *
 
 - [`solo-pt-br.md`](solo-pt-br.md): catálogo da fraseologia do Solo usada no M2 (acionamento, pushback, táxi, readback), com a fonte de cada frase, e como falar números, letras, pistas e indicativos.
 - [`torre-pt-br.md`](torre-pt-br.md): catálogo da fraseologia da Torre usada no M4 (saída: ponto de espera, alinhar, decolagem; chegada: circuito, final, pouso; depois do pouso), com artigo de cada frase, como falar vento e hora e o que fica de fora.
+- [`atis-pt-br.md`](atis-pt-br.md): o ATIS (ICA 100-37, Art. 759 a 777): ordem dos itens, regras de vento, visibilidade, nuvens e designador, e o que o app ainda não diz.
 
 ## O que o NLU não deve herdar daqui
 
