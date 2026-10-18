@@ -1,6 +1,6 @@
 # Decisão: o mapa do aeródromo vem do simulador (taxiways, travessia de pista, pátio)
 
-- **Status:** decidido em 2026-10-15; nada implementado ainda (plano em `docs/ROADMAP.md`, marco M6).
+- **Status:** decidido em 2026-10-15. O modelo e o JSON (L1) estão no Core desde 2026-10-18; o resto ainda não (plano em `docs/ROADMAP.md`, marco M6).
 - **Origem:** no voo de teste em SBCT o Solo mandou "táxi para o ponto de espera da pista UNO CINCO" sem dizer a taxiway, e a rota de Curitiba **atravessa outra pista** para chegar à 15, o que exige autorização do controle. O app não sabe disso, porque os dados de aeroportos (OurAirports) têm pistas e frequências, mas **nenhuma taxiway** (e o nosso recorte nem guarda as coordenadas das cabeceiras).
 
 ## Decisão
@@ -15,7 +15,8 @@
 - **Core (`Fonia.Core.Airports`):** modelo `AirportLayout`, sem referência a simulador:
   - **pistas** com as duas cabeceiras (posição, rumo, largura, comprimento);
   - **grafo de táxi:** nós (posição, tipo: comum, ponto de espera, ...) e arestas (nome da taxiway, tipo: taxiway, pista, estacionamento);
-  - **estacionamentos** (nome ou número, posição, tipo) e **pátios**.
+  - **estacionamentos** (nome ou número, posição, tipo) e **pátios**;
+  - **frequências de rádio** do aeroporto (reaproveita o `AirportFrequency`). O SimConnect as entrega no mesmo pedido de instalações: o filho `FREQUENCY` de `AIRPORT` (campos `TYPE`, `FREQUENCY` em Hz e `NAME`; tipos NONE, ATIS, MULTICOM, UNICOM, CTAF, GROUND, TOWER, CLEARANCE, APPROACH, DEPARTURE, CENTER, FSS, AWOS, ASOS, CPT, GCO, conforme o SDK). Têm `APPROACH`/`DEPARTURE`/`CENTER`, que o OurAirports não distingue, mas **não sabemos se são corretos para o Brasil**: o L0 compara com o OurAirports antes de qualquer regra de mesclagem. Vale a mesma decisão do mapa: lidas da instalação do usuário, guardadas só no computador dele.
 - **Interface de capacidade** `IAirportLayoutSource` (em `Fonia.Core.Sim`), como a `IComRadioControl`: o adaptador do MSFS a implementa (`Fonia.Sim.Msfs`, a única que fala com SimConnect, princípio 2), o `MockSimAdapter` devolve layouts de teste, e o app a usa quando existe.
 - **Leitura e cache em JSON** (`AirportLayoutJson`, no Core ou em `Fonia.Data`), para os testes e para não pedir ao simulador de novo a cada sessão.
 - **Rota (`TaxiRouter`, Core, lógica pura):** do ponto onde a aeronave está (posição da telemetria) até o ponto de espera da pista em uso, por menor caminho no grafo, com custo alto para usar uma pista como taxiway. O resultado é a lista de taxiways ("A, depois B"), as **travessias de pista** (cada aresta de pista que a rota atravessa) e os **pontos de espera** onde parar.
