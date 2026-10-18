@@ -35,6 +35,12 @@ public static partial class MetarParser
         int? temperature = null;
         int? qnh = null;
         int? visibility = null;
+        var cavok = false;
+        var clouds = new List<CloudLayer>();
+        var weather = new List<string>();
+        var time = tokens[index + 1];
+        var hour = int.Parse(time.AsSpan(2, 2), CultureInfo.InvariantCulture);
+        var minute = int.Parse(time.AsSpan(4, 2), CultureInfo.InvariantCulture);
 
         foreach (var token in tokens.Skip(index + 2).TakeWhile(t => t != "RMK"))
         {
@@ -49,6 +55,15 @@ public static partial class MetarParser
             else if (token == "CAVOK")
             {
                 visibility ??= 9999;
+                cavok = true;
+            }
+            else if (CloudGroup().Match(token) is { Success: true } c)
+            {
+                clouds.Add(new CloudLayer(OctasOf(c.Groups[1].Value), int.Parse(c.Groups[2].Value, CultureInfo.InvariantCulture) * 100, c.Groups[3].Value == "CB"));
+            }
+            else if (WeatherGroup().IsMatch(token) && !token.Contains("VC", StringComparison.Ordinal))
+            {
+                weather.Add(token);
             }
             else if (TemperatureGroup().Match(token) is { Success: true } t)
             {
@@ -64,7 +79,7 @@ public static partial class MetarParser
             }
         }
 
-        metar = new Metar(tokens[index], wind, temperature, qnh, variable, raw.Trim(), visibility);
+        metar = new Metar(tokens[index], wind, temperature, qnh, variable, raw.Trim(), visibility, cavok, clouds, weather, hour, minute);
         return true;
     }
 
@@ -91,6 +106,8 @@ public static partial class MetarParser
             : (new Wind(direction, speed, gust is { } v && v >= speed ? v : null), false);
     }
 
+    private static int OctasOf(string cover) => cover switch { "FEW" => 2, "SCT" => 4, "BKN" => 6, _ => 8 };
+
     // "M02" is minus two.
     private static int Signed(string value) =>
         value[0] == 'M' ? -int.Parse(value[1..], CultureInfo.InvariantCulture) : int.Parse(value, CultureInfo.InvariantCulture);
@@ -103,6 +120,12 @@ public static partial class MetarParser
 
     [GeneratedRegex(@"^(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?(KT|MPS)$")]
     private static partial Regex WindGroup();
+
+    [GeneratedRegex(@"^(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?$")]
+    private static partial Regex CloudGroup();
+
+    [GeneratedRegex(@"^[-+]?(?:VC)?(?:(?:MI|BC|PR|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)+|TS)$")]
+    private static partial Regex WeatherGroup();
 
     [GeneratedRegex(@"^\d{4}$")]
     private static partial Regex VisibilityGroup();
