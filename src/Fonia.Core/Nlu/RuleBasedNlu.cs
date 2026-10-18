@@ -270,7 +270,7 @@ public sealed class RuleBasedNlu : INlu
         }
 
         // "pouso pista uno cinco, PRABC" after "pista uno cinco, pouso autorizado" is the pilot reading it back, wrongly perhaps.
-        var answering = flight.PendingReadback is CircuitClearance or LandingClearance && !HasAny(rest, RequestStems);
+        var answering = flight.PendingReadback is CircuitClearance or StraightInClearance or LandingClearance && !HasAny(rest, RequestStems);
 
         return answering ? null : new RequestLanding(callsign, straightIn);
     }
@@ -320,6 +320,9 @@ public sealed class RuleBasedNlu : INlu
 
     /// <summary>True when the words mention the takeoff ("autorizado decolagem", "decolar").</summary>
     internal static bool MentionsTakeoff(IReadOnlyList<string> tokens) => HasAny(tokens, DepartureStems);
+
+    /// <summary>True when the words mention the straight-in approach ("autorizada aproximação direta").</summary>
+    internal static bool MentionsStraightIn(IReadOnlyList<string> tokens) => HasAny(tokens, StraightInStems);
 
     /// <summary>True when the words mention the circuit ("autorizado circuito de tráfego").</summary>
     internal static bool MentionsCircuit(IReadOnlyList<string> tokens) => HasAny(tokens, ["circuito"]);

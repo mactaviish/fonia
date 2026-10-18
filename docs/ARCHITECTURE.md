@@ -284,6 +284,7 @@ A chegada na frequência da Torre (MCA 100-16/2025, Art. 128 a 132; catálogo em
 
 ```
 RequestLanding ("instruções para pouso")  ->  CircuitClearance (pista, vento?)  ->  fase InCircuit,       cotejamento exigido
+RequestLanding (StraightIn)              ->  StraightInClearance (pista, vento?, QNH?) ->  fase OnBase,   cotejamento exigido
 ReportDownwind ("perna do vento")         ->  ReportBase  ("reporte perna base") ->  fase OnDownwind,      cotejamento opcional
 ReportBaseLeg  ("perna base")             ->  ReportOnFinal ("reporte na final") ->  fase OnBase,          cotejamento opcional
 ReportFinal    ("final")                  ->  LandingClearance (pista, vento?)   ->  fase LandingCleared,  cotejamento exigido
@@ -295,7 +296,7 @@ ReportGoingAround ("arremetendo")         ->  GoAroundNoted ("ciente")          
 - **Cotejamento exigido** (Art. 12: "entrar" e "pousar") do circuito (palavra "circuito") e do pouso ("pouso"/"pousar"), com o indicativo, no critério da seção "Cotejamento" abaixo. Os pedidos de reporte são aceitos em silêncio, como a passagem de frequência.
 - Na frequência do **Solo**, a chegada vira o aviso `CallTheTower` ("chame a Torre em 119.5"), como a Torre faz com o Solo.
 - **Ordem das palavras (Art. 129 e 132):** o circuito diz a autorização antes da pista ("autorizado para o circuito de tráfego, PISTA ..."); o pouso diz a pista antes ("PISTA ..., pouso autorizado"). O vento fecha as duas, quando houver. O QNH do Art. 129 ainda não é dito (sem fonte).
-- **Aproximação direta (M5, em andamento):** o NLU já entende o pedido ("solicito aproximação direta", "pouso direto", "entrada direta na final", "straight in") como `RequestLanding(StraightIn: true)`, e o "final" dentro do pedido não vira relato. O motor ainda não distingue: responde com o circuito, como antes. A resposta do Art. 129 ("autorizada aproximação direta ... reporte final") é a tarefa seguinte.
+- **Aproximação direta (M5):** o pedido ("solicito aproximação direta", "pouso direto", "entrada direta na final", "straight in") é `RequestLanding(StraightIn: true)`; a Torre responde `StraightInClearance` ("autorizada aproximação direta, PISTA ..., vento, ajuste de altímetro, reporte final", Art. 129), na ordem do manual e com o vento e o altímetro quando houver, e o voo vai para `OnBase` (já foi mandado reportar final). O "final" do piloto dá a autorização de pouso na mesma pista. O cotejamento exige "aproximação direta" e, se citada, a pista certa; a leitura de volta não vira pedido novo. A telemetria também confirma (perto do aeródromo e no ar). Na frequência do Solo ou do Controle vale o `CallTheTower`.
 - Ficam para depois: "número 2 para pouso", toque e arremetida, condições da pista, e o "no solo aos MM" (depois do pouso).
 
 ### Cotejamento (regra de 2026-10-15)

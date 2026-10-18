@@ -58,7 +58,7 @@ public static class Situation
         {
             LineUpAndWait lineUp => OnTheRunway(aircraft, airport, lineUp.Runway),
             TakeoffClearance takeoff => OnTheRunway(aircraft, airport, takeoff.Runway),
-            LandingClearance or CircuitClearance => !aircraft.OnGround && airport.Airport.DistanceKmTo(aircraft.LatitudeDegrees, aircraft.LongitudeDegrees) <= NearAirportKm,
+            LandingClearance or CircuitClearance or StraightInClearance => !aircraft.OnGround && airport.Airport.DistanceKmTo(aircraft.LatitudeDegrees, aircraft.LongitudeDegrees) <= NearAirportKm,
 
             // The runway of a taxi cannot be told from where the aircraft is: only what it says counts.
             _ => false,
