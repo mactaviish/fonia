@@ -91,7 +91,7 @@ internal sealed class WarmableSynthesizer : ISynthesizer, IWarmUp
         return Task.CompletedTask;
     }
 
-    public Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct)
+    public Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct, double pace = 1.0)
     {
         Said.Add(text);
         return Task.FromResult(new SynthesizedSpeech(new float[24_000], 24_000));

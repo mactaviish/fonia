@@ -33,6 +33,7 @@ public static class Pronunciation
         ["charlie"] = "tchárli",
         ["pushback"] = "púchibéqui",
         ["qnh"] = "quê ene agá",
+        ["cavok"] = "cavóc",
     };
 
     // Words after which the voice should stop for longer than a comma makes it: the comma is spoken as three dots. Chosen by

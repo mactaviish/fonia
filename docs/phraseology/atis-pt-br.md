@@ -6,7 +6,7 @@ Fonte: **ICA 100-37** (Serviços de Tráfego Aéreo), Subseção IV, Art. 759 a 
 
 - **Designador (Art. 759):** uma letra do alfabeto; as letras seguem em ordem alfabética e a sequência recomeça à 0000 UTC. O piloto acusa o recebimento no primeiro contato com APP/Torre; o órgão informa o QNH ao responder.
 - **Tipos (Art. 760):** de chegada, de saída ou combinado. O app monta o **combinado** (Art. 768).
-- **Idioma (Art. 761 §2º):** gravado em português e em inglês. O app só tem o português; o inglês fica para o suporte a EN.
+- **Idioma (Art. 761 §2º):** gravado em português e em inglês. O app fala tudo em português, uma pausa, tudo em inglês, e recomeça (`AtisEnglish`). A ICA não traz exemplo em inglês: as frases seguem o ATIS usual da ICAO ("advise on initial contact you have information ...") e levam `TODO(fraseologia)`; os números saem ao modo ICAO (tree, fife, niner).
 - **Mesmo conteúdo (Art. 763, parágrafo único):** dentro dos critérios SPECI o conteúdo é idêntico e o designador não muda.
 - **Art. 766:** não é preciso repetir o que o piloto já confirmou, **exceto o QNH**, que sempre é informado. **Art. 767:** ATIS desatualizado acusado pelo piloto é corrigido na hora.
 
@@ -14,7 +14,7 @@ Fonte: **ICA 100-37** (Serviços de Tráfego Aéreo), Subseção IV, Art. 759 a 
 
 | # | Item | App |
 |---|---|---|
-| I | Aeródromo, informação, designador, hora da observação | Sim: "Curitiba, informação MIKE, hora UNO DOIS TRÊS ZERO" |
+| I | Aeródromo, informação, designador, hora da observação | Sim: "Curitiba, informação MIKE, hora UNO DOIS TRÊS ZERO ZULU" |
 | II | Tipos de aproximação esperados | Omitido (sem dado). `TODO(fraseologia)` |
 | III | Pista(s) em uso | Sim: "PISTA UNO CINCO em uso" (a pista que o vento favorece) |
 | IV | Condições de pista / frenagem | Omitido (sem dado) |
@@ -29,6 +29,19 @@ Fonte: **ICA 100-37** (Serviços de Tráfego Aéreo), Subseção IV, Art. 759 a 
 | XIII | QNH (hPa) | Sim: "ajuste UNO ZERO UNO OITO", sempre |
 | XIV | Outras informações meteorológicas / tendência | Omitido |
 | XV | Instrução para acusar o recebimento com o designador | Sim: "informe que recebeu informação MIKE" |
+
+## O piloto acusa o recebimento
+
+O piloto diz a letra ao chamar ("Solo, PRABC, com informação Mike", "recebi Mike"); o NLU só procura "informação" ou "ATIS" seguida de uma palavra do alfabeto fonético (`ReportAtis`), e um pedido na mesma frase ("solicito acionamento com informação Mike") continua sendo o pedido. A resposta (`AtisReceived`):
+
+- letra atual, ou sem METAR para comparar: o QNH ("PRABC, ajuste de altímetro UNO ZERO UNO OITO"), Art. 759 e 766;
+- letra desatualizada: a informação em vigor e o QNH ("PRABC, informação MIKE em vigor, ajuste de altímetro ..."), Art. 767. `TODO(fraseologia)`: a norma manda corrigir, mas não traz a frase.
+
+## Como a voz lê
+
+- **Item por item:** cada item do ATIS é sintetizado sozinho, lido a 85% da velocidade, com 0,6 s de silêncio entre os itens e 1,5 s entre os idiomas. Texto longo numa chamada só saía corrido, sem pausa entre as palavras.
+- **Inglês sem espeak-ng:** o Kokoro precisa de fonemas e o fonetizador usual do inglês (espeak-ng) é GPL. O ATIS em inglês usa um vocabulário **fechado** (números, alfabeto fonético, as palavras do ATIS), com os fonemas escritos à mão em `EnglishPhonemizer`; o nome do aeroporto cai no fonetizador do português. **A voz do ATIS é fixa, feminina, a mesma em todos os aeroportos:** `pf_dora` em português e `af_heart` em inglês (esta do mesmo arquivo de vozes, Apache-2.0). **Nada disso foi ouvido ainda:** a pronúncia dos fonemas e a voz precisam da audição do mantenedor.
+- **Pré-síntese:** o ATIS é sintetizado assim que há METAR, antes de alguém sintonizar, para tocar na hora; um METAR novo sintetiza de novo.
 
 ## Escolhas do app (não normativas)
 

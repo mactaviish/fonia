@@ -23,7 +23,7 @@ public sealed class SpeakCommandTests : IDisposable
     {
         public List<(string Text, Voice Voice)> Calls { get; } = [];
 
-        public Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct)
+        public Task<SynthesizedSpeech> SynthesizeAsync(string text, Voice voice, CancellationToken ct, double pace = 1.0)
         {
             Calls.Add((text, voice));
             return Task.FromResult(answer(text, voice));

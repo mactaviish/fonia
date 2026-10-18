@@ -87,6 +87,21 @@ internal sealed class VoiceMode(
 
         var loop = new VoiceLoop(new SpeechRecorder(capture, pushToTalk), exchange, player, airport, flight, observer, com1, aircraft);
 
+        // On the ATIS frequency of the airport the broadcast plays by itself, for as long as the radio stays there.
+        var broadcast = new AtisBroadcast(
+            synthesizer,
+            radio,
+            random,
+            player,
+            () => loop.Airport,
+            () => com1?.Invoke(),
+            (portuguese, english) =>
+            {
+                output.WriteLine($"  ATIS: {portuguese}");
+                output.WriteLine($"  ATIS (en): {english}");
+            },
+            ex => error.WriteLine($"fonia: falha no ATIS: {ex.Message}"));
+
         // What the telemetry shows (the takeoff) is something the controller may say without being asked; read only once the radio is up.
         var following = states?.Invoke(ct) is { } stream ? FollowAsync(loop, stream, onNewFlight, log, ct) : Task.CompletedTask;
 
@@ -98,6 +113,8 @@ internal sealed class VoiceMode(
             markKey.StartWatching();
         }
 
+        var broadcasting = broadcast.RunAsync(ct);
+
         try
         {
             // Said only once the microphone and the key are open: whoever reads it may press the key at once.
@@ -105,6 +122,7 @@ internal sealed class VoiceMode(
                 ct,
                 () => output.WriteLine($"Pronto. Segure {keyName}, fale e solte: {station} responde em voz alta.{(marking ? $" Se ele entender errado, aperte {markKeyName} para marcar a troca." : string.Empty)} Ctrl+C encerra."));
             await following;
+            await broadcasting;
         }
         finally
         {

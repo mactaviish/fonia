@@ -47,6 +47,8 @@ public class PortuguesePhonemizerTests
     [InlineData("bom", "b\u02C8o\u014B")]
     [InlineData("dia", "d\u0292\u02C8i\u00E6")]
     [InlineData("zero", "z\u02C8\u025B\u027E\u028A")]
+    [InlineData("informe", "ˌiŋfˈɔɾəmy")]
+    [InlineData("hora", "ˈɔɾæ")]
     [InlineData("uno", "\u02C8un\u028A")]
     [InlineData("dois", "d\u02C8o\u026As")]
     [InlineData("três", "tr\u02C8es")]

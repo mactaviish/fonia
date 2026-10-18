@@ -333,7 +333,7 @@ internal sealed class AtcConsole(
             output.WriteLine("Sem METAR (sem rede ou sem dados): o vento e o ajuste de altímetro ficam de fora das falas.");
         }
 
-        var frequencies = new[] { AirportFrequencyType.Ground, AirportFrequencyType.Tower, AirportFrequencyType.Afis }
+        var frequencies = new[] { AirportFrequencyType.Ground, AirportFrequencyType.Tower, AirportFrequencyType.Afis, AirportFrequencyType.Atis }
             .Select(type => airport.FrequencyOf(type) is { } f ? $"{type} {f.Frequency.MHz.ToString("0.0##", CultureInfo.InvariantCulture)}" : null)
             .OfType<string>()
             .ToList();

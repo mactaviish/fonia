@@ -34,6 +34,8 @@ public sealed class AtcEngine : IAtcEngine
             // The conditions of the aerodrome are given by whoever answers, an AFIS included (it informs).
             RequestInformation when airport.Unit != ServiceUnit.None
                 => Say(new DepartureInformation(airport.RunwayInUse, airport.Wind, airport.Qnh, airport.TemperatureCelsius, airport.VisibilityMeters), Released(flight)),
+            ReportAtis atis when airport.Unit != ServiceUnit.None
+                => Say(new AtisReceived(airport.Report is { } report ? AtisText.Letter(report) : null, atis.Letter, airport.Qnh), Released(flight)),
             _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight with { AwaitingCallsign = null }),
 
             // On the Torre's frequency the Torre does not do the Solo's job when the airport has a Solo: it says where to call.

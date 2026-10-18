@@ -47,7 +47,7 @@ public class AtcConsoleFrequencyTests
         SpokenNameSource.Reference,
         true,
         [Runway("15", "33", 6000), Runway("11", "29", 9000)],
-        [new AirportFrequency(AirportFrequencyType.Ground, new Frequency(118000), "Ground"), new AirportFrequency(AirportFrequencyType.Tower, new Frequency(119500), "Tower")]);
+        [new AirportFrequency(AirportFrequencyType.Ground, new Frequency(118000), "Ground"), new AirportFrequency(AirportFrequencyType.Tower, new Frequency(119500), "Tower"), new AirportFrequency(AirportFrequencyType.Atis, new Frequency(127800), "ATIS")]);
 
     private static async Task<(int Code, string Output, string Error)> RunAsync(AppOptions options, string typed, Func<Frequency?>? live = null, IMetarSource? metar = null, Func<AirportContext, string, CaseLog?>? cases = null, Func<AircraftState?>? aircraft = null)
     {
@@ -128,6 +128,14 @@ public class AtcConsoleFrequencyTests
     }
 
     [Fact]
+    public async Task The_header_lists_the_atis_frequency_among_the_others()
+    {
+        var result = await RunAsync(Atc(), "sair\n");
+
+        result.Output.ShouldContain("Atis 127.8");
+    }
+
+    [Fact]
     public async Task On_a_frequency_of_nobody_the_console_says_so_and_which_frequencies_exist()
     {
         var result = await RunAsync(Atc(), "/com1 121.5\nsair\n");
@@ -135,6 +143,7 @@ public class AtcConsoleFrequencyTests
         result.Output.ShouldContain("Ninguém responde em 121.5");
         result.Output.ShouldContain("Solo 118");
         result.Output.ShouldContain("Torre 119.5");
+        result.Output.ShouldContain("ATIS 127.8");
     }
 
     [Fact]

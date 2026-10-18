@@ -19,12 +19,23 @@ public static class AtisText
     /// The designator of the broadcast (Art. 759): consecutive letters of the alphabet, starting again at 0000 UTC. It is the letter of the hour
     /// of the observation (00 is ALFA, 23 is X-RAY), so every run of the app says the same letter for the same report.
     /// </summary>
-    public static string Designator(int observedHour)
+    public static string Designator(int observedHour) => SpokenText.Spell(Letter(observedHour).ToString());
+
+    /// <summary>The letter of the designator for the hour of the observation: 'A' at 00, 'X' at 23.</summary>
+    public static char Letter(int observedHour)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(observedHour);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(observedHour, 23);
 
-        return SpokenText.Spell(((char)('A' + observedHour)).ToString());
+        return (char)('A' + observedHour);
+    }
+
+    /// <summary>The letter of the designator of the report, or null when the report has no time to take it from.</summary>
+    public static char? Letter(Metar metar)
+    {
+        ArgumentNullException.ThrowIfNull(metar);
+
+        return metar.ObservedHour is { } hour ? Letter(hour) : null;
     }
 
     /// <summary>The designator of the report, or null when the report has no time to take it from.</summary>
@@ -39,7 +50,10 @@ public static class AtisText
     /// The combined ATIS of the airport with the weather of the report. <paramref name="airport"/> is the airport already with the weather
     /// (<see cref="AirportContext.WithWeather"/>), so the wind is the magnetic one and the runway is the one in use.
     /// </summary>
-    public static string Combined(AirportContext airport, Metar metar)
+    public static string Combined(AirportContext airport, Metar metar) => string.Join(". ", Sentences(airport, metar)) + ".";
+
+    /// <summary>The same ATIS, one sentence for each item, without the final dots: what the broadcast voices one by one.</summary>
+    public static IReadOnlyList<string> Sentences(AirportContext airport, Metar metar)
     {
         ArgumentNullException.ThrowIfNull(airport);
         ArgumentNullException.ThrowIfNull(metar);
@@ -90,13 +104,13 @@ public static class AtisText
 
         parts.Add($"informe que recebeu informação {designator ?? "recebida"}");
 
-        return string.Join(". ", parts) + ".";
+        return parts;
     }
 
     // Art. 768 I: the time of the observation, digit by digit: 12:30 is "UNO DOIS TRÊS ZERO".
     private static string Time(Metar metar) =>
         metar.ObservedHour is { } hour && metar.ObservedMinute is { } minute
-            ? $", hora {SpokenText.Digits(hour.ToString("00", CultureInfo.InvariantCulture) + minute.ToString("00", CultureInfo.InvariantCulture))}"
+            ? $", hora {SpokenText.Digits(hour.ToString("00", CultureInfo.InvariantCulture) + minute.ToString("00", CultureInfo.InvariantCulture))} ZULU"
             : string.Empty;
 
     // Art. 772: up to 5,000 m in meters; above that, and below 10 km, in kilometers; 10 km or more is "maior do que dez quilômetros".

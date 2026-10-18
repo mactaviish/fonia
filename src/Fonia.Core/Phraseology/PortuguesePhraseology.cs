@@ -32,6 +32,11 @@ public sealed class PortuguesePhraseology : IPhraseology
             NoOneOnFrequency silent => new Utterance(
                 $"Ninguém responde em {Mhz(silent.Frequency)}. Sintonize uma frequência de {context.Airport.Airport.Ident}: {FrequenciesOf(context.Airport)}.",
                 UtteranceKind.Notice),
+            // Art. 759: the unit informs the altimeter setting; Art. 767: an outdated information is corrected at once.
+            AtisReceived { Current: { } current } outdated when current != outdated.Said
+                => new Utterance($"{callsign}, informação {SpokenText.Spell(current.ToString())} em vigor{AltimeterPart(outdated.Qnh)}."),
+            AtisReceived { Qnh: { } qnh } when qnh is >= 900 and <= 1099 => new Utterance($"{callsign}, ajuste de altímetro {SpokenText.Qnh(qnh)}."),
+            AtisReceived => null,
             DepartureInformation information => new Utterance($"{callsign}, {Conditions(information, context.Now)}."),
             CallTheTower tower => new Utterance(
                 $"{UnitName(context.Airport)}: o Solo não trata de chegada neste app: chame a Torre em {Mhz(tower.Frequency)}.",
@@ -132,7 +137,7 @@ public sealed class PortuguesePhraseology : IPhraseology
 
     private static string FrequenciesOf(AirportContext airport)
     {
-        var listed = new[] { (AirportFrequencyType.Ground, "Solo"), (AirportFrequencyType.Tower, "Torre"), (AirportFrequencyType.Afis, "Rádio") }
+        var listed = new[] { (AirportFrequencyType.Ground, "Solo"), (AirportFrequencyType.Tower, "Torre"), (AirportFrequencyType.Afis, "Rádio"), (AirportFrequencyType.Atis, "ATIS") }
             .Select(unit => airport.Airport.FrequencyOf(unit.Item1) is { } f ? $"{unit.Item2} {Mhz(f.Frequency)}" : null)
             .OfType<string>()
             .ToList();
