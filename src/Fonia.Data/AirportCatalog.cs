@@ -301,6 +301,8 @@ public sealed class AirportCatalog : IAirportCatalog
             "GND" => AirportFrequencyType.Ground,
             "TWR" => AirportFrequencyType.Tower,
             "APP" => AirportFrequencyType.Approach,
+            // A second approach of the airport is listed with a name ("APP ACADEMIA").
+            var name when name.StartsWith("APP ", StringComparison.Ordinal) => AirportFrequencyType.Approach,
             "ATIS" => AirportFrequencyType.Atis,
             "AFIS" => AirportFrequencyType.Afis,
             "CLD" => AirportFrequencyType.Delivery,

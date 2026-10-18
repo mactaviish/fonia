@@ -115,6 +115,20 @@ public class TowerPhraseologyTests
         utterance.Text.ShouldContain("Torre em 119.5");
     }
 
+    [Fact]
+    public void The_Controle_asked_for_anything_else_is_a_notice_with_the_torres_frequency()
+    {
+        var withApproach = AirportContext.Create(TestAirports.Airport("SBXX", [TestAirports.Runway("11", "29", 9000)], AirportFrequencyType.Tower, AirportFrequencyType.Approach));
+        var onApproach = new PhraseContext("PRABC", FrequencyResolver.Apply(withApproach, withApproach.Airport.FrequencyOf(AirportFrequencyType.Approach)!.Frequency));
+
+        var utterance = _phraseology.Speak(new CallTheTower(new Frequency(119500)), onApproach)!;
+
+        utterance.Kind.ShouldBe(UtteranceKind.Notice);
+        utterance.Text.ShouldContain("CONTROLE Curitiba");
+        utterance.Text.ShouldContain("Torre em 119.5");
+        utterance.Text.ShouldNotContain("Solo");
+    }
+
     // TODO(fraseologia): the manual has no phrase for taking in a go-around besides the handoff of Art. 136.
     [Fact]
     public void The_go_around_is_acknowledged_with_ciente()

@@ -14,4 +14,10 @@ public enum ServiceUnit
 
     /// <summary>Solo.</summary>
     Ground,
+
+    /// <summary>
+    /// Controle (the approach). Never what an airport starts with: only the pilot tuning its frequency brings it, and it
+    /// sends what belongs to the Torre to the Torre.
+    /// </summary>
+    Approach,
 }

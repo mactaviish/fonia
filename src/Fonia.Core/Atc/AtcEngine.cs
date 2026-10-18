@@ -38,6 +38,9 @@ public sealed class AtcEngine : IAtcEngine
                 => Say(new AtisReceived(airport.Report is { } report ? AtisText.Letter(report) : null, atis.Letter, airport.Qnh), Released(flight)),
             _ when airport.Unit is ServiceUnit.None or ServiceUnit.Afis => Say(new NoControlService(airport.Unit), flight with { AwaitingCallsign = null }),
 
+            // The Controle is not played by the app: whatever else the pilot asks of it belongs to the Torre.
+            _ when airport.Unit == ServiceUnit.Approach => CallTheTower(Released(flight), airport),
+
             // On the Torre's frequency the Torre does not do the Solo's job when the airport has a Solo: it says where to call.
             RequestStartup or RequestPushback or RequestTaxi when airport.Unit == ServiceUnit.Tower && airport.Airport.FrequencyOf(AirportFrequencyType.Ground) is { } ground
                 => Say(new CallTheSolo(ground.Frequency), Released(flight)),
