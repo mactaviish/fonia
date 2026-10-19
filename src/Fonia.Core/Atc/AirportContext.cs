@@ -18,7 +18,11 @@ namespace Fonia.Core.Atc;
 /// The frequency the pilot's radio is on, when it is known (a simulator reading or the user's choice); null otherwise.
 /// <see cref="Unit"/> is then who answers on it, see <see cref="FrequencyResolver"/>.
 /// </param>
-public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null, int? TemperatureCelsius = null, int? VisibilityMeters = null, Metar? Report = null)
+/// <param name="Layout">
+/// The map of the airport (taxiways, holding points) when the simulator gave one; null otherwise, and then the controller says the runway
+/// and nothing about how to get there.
+/// </param>
+public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null, int? TemperatureCelsius = null, int? VisibilityMeters = null, Metar? Report = null, AirportLayout? Layout = null)
 {
     // Up to five knots the wind is as good as calm for choosing the runway (a light tailwind is accepted): the default stays.
     private const int WindThatChoosesTheRunwayKnots = 6;

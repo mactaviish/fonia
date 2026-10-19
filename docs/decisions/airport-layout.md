@@ -32,6 +32,10 @@
 - **Resultado:** os nós, as taxiways em ordem (cada uma uma vez seguida: "A, B"), as travessias (`RunwayCrossing`: a pista, o nó onde a rota chega nela, o ponto de espera antes dela, que pode ser desconhecido, e se a rota **segue** a pista em vez de só cruzá-la) e o comprimento. A pista em que a aeronave já está no começo não é travessia.
 - **Limites conhecidos:** o ponto de espera da travessia só é conhecido quando o nó imediatamente antes da pista está marcado como `HoldShort` no grafo; senão a travessia vem com o ponto nulo (o L4 decide o que dizer, o L0 mostra o quanto isso acontece de verdade). O roteador foi escrito sobre o layout sintético e precisa ser conferido com o grafo real do simulador.
 
+## L4a: a rota na autorização de táxi
+
+`AirportContext.Layout` (opcional) leva o mapa ao motor; quem o preenche é o L2 (a fonte no simulador), e até lá só os testes o fazem. Quando o Solo (ou a Torre que faz o papel dele) autoriza o táxi e há mapa, posição da aeronave (`FlightContext.Aircraft`, no solo) e uma rota segura sem travessia de pista, a autorização leva `TaxiClearance.Taxiways` e a frase termina com "via taxiway ALFA, BRAVO". Em qualquer outro caso, a frase de hoje.
+
 ## Fraseologia (MCA 100-16/2025, Art. 125, II)
 
 O manual lista como instruções complementares do táxi:

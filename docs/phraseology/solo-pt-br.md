@@ -61,6 +61,8 @@ No fluxo com **Tráfego** (autorização de plano, no capítulo do Serviço de C
 
 A forma sem taxiway (S-TXI-OK-SHORT) é a que o M2 usa: os dados do OurAirports não têm taxiways, e há aeródromos que nem têm.
 
+**M6/L4a (2026-10-18): "via taxiway ..." (S-TXI-OK).** Com o mapa do aeródromo (`AirportContext.Layout`), a posição da aeronave no solo e uma rota segura (achada, com nome em todas as taxiways e **sem travessia de pista**), a autorização diz "PRABC, autorizado táxi para o ponto de espera da PISTA UNO UNO, via taxiway ALFA, BRAVO DOIS." (letras no alfabeto fonético, na ordem da rota; com o ajuste de altímetro depois). O cotejamento exige a pista e **não** exige as taxiways; os dígitos de um nome de taxiway ("B2") não contam como pista. Em qualquer outro caso (sem mapa, sem posição, no ar, longe do grafo, sem rota, rota que atravessa pista) vale a forma curta de hoje. `TODO(fraseologia)`: o manual mostra uma taxiway; como se listam várias é do mantenedor. A travessia ("mantenha posição fora da pista ...", autorização de cruzar) é a L4b e depende da frase.
+
 **Prática (VATSIM-BR):**
 
 | ID | Quem | Frase |
