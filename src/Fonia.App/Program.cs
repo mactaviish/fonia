@@ -210,6 +210,7 @@ if (options.AtcAirport is not null)
         nearestAirport: airports.Nearest,
         states: session.States,
         liveAircraft: () => session.Latest,
+        runwayUse: RunwayUseTable.Load().RulesFor,
         layouts: new CachedAirportLayoutSource(
             options.Source == SimSourceKind.Msfs ? new MsfsAirportLayoutSource() : null,
             LayoutCommands.DefaultRoot));

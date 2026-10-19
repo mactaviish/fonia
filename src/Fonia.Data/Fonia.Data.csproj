@@ -10,6 +10,7 @@
   <ItemGroup>
     <EmbeddedResource Include="..\..\data\ourairports\br-*.csv" LogicalName="Fonia.Data.%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\..\data\atc-names.csv" LogicalName="Fonia.Data.atc-names.csv" />
+    <EmbeddedResource Include="..\..\data\runway-use.csv" LogicalName="Fonia.Data.runway-use.csv" />
   </ItemGroup>
 
   <ItemGroup>

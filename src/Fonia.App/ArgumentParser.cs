@@ -44,6 +44,7 @@ internal sealed record AppOptions(
     Fonia.Core.Sim.Frequency? Com1 = null,
     bool NoMetar = false,
     bool NoMap = false,
+    string? ArrivalRunway = null,
     bool ShowConfig = false,
     bool InitConfig = false,
     string? OnlyModels = null,
@@ -64,7 +65,7 @@ internal static class ArgumentParser
 
         Uso: fonia [opções]
              fonia                  (sem argumentos, num terminal: pega o indicativo e o aeroporto do simulador, ou pergunta, e conversa por voz)
-             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar] [--no-map]
+             fonia --atc <ICAO> [--runway <pista>] [--arrival-runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar] [--no-map]
              fonia --config | --init-config | --cases
              fonia --dump-layout <ICAO> [--log-level <nível>]
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
@@ -77,6 +78,9 @@ internal static class ArgumentParser
           --atc <ICAO>           Modo ATC por texto: você digita a fala do piloto e o controlador do
                                  aeroporto responde (ex.: --atc SBCT). Escreva "sair" para encerrar.
           --runway <pista>       Pista em uso (ex.: 15, 33L). Padrão: a mais longa do aeroporto.
+          --arrival-runway <pista>  Pista dos pousos, quando não é a mesma das decolagens (ex.: 10R). Padrão: a mesma pista em uso, a
+                                 não ser num aeroporto que mantém os usos separados (Guarulhos: com a 10, pousos na 10R e decolagens
+                                 na 10L), que está em data/runway-use.csv.
           --config               Mostra de onde vêm as configurações e o que está configurado.
           --init-config          Cria o seu arquivo de configuração (%APPDATA%\Fonia\appsettings.json) com todas as opções
                                  comentadas, para você editar. Suas preferências (tecla do PTT, microfone, voz, GPU...) ficam
@@ -186,6 +190,7 @@ internal static class ArgumentParser
         string? record = null;
         string? atc = null;
         string? runway = null;
+        string? arrivalRunway = null;
         string? callsign = null;
         Fonia.Core.Sim.Frequency? com1 = null;
         string? micTest = null;
@@ -297,7 +302,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1" or "--only" or "--mark-key"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--arrival-runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1" or "--only" or "--mark-key"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -327,6 +332,9 @@ internal static class ArgumentParser
                     break;
                 case "--runway":
                     runway = value;
+                    break;
+                case "--arrival-runway":
+                    arrivalRunway = value;
                     break;
                 case "--callsign":
                     callsign = value;
@@ -428,6 +436,16 @@ internal static class ArgumentParser
             }
 
             result = result with { NoMetar = true };
+        }
+
+        if (arrivalRunway is not null)
+        {
+            if (result.AtcAirport is null)
+            {
+                return Failure("--arrival-runway só vale no modo ATC: use também --atc <ICAO>.");
+            }
+
+            result = result with { ArrivalRunway = arrivalRunway };
         }
 
         if (noMap)
