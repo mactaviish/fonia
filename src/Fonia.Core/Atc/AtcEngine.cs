@@ -160,9 +160,10 @@ public sealed class AtcEngine : IAtcEngine
             return new AtcDecision(noted, flight with { Phase = FlightPhase.Airborne, PendingReadback = null, LastInstruction = noted });
         }
 
+        // The landings use the arrival runway, which is not the one of the takeoffs at an airport that keeps them apart.
         var runway = intent is not RequestLanding && flight.Phase >= FlightPhase.InCircuit
-            ? flight.AssignedRunway ?? airport.RunwayInUse
-            : airport.RunwayInUse;
+            ? flight.AssignedRunway ?? airport.RunwayForArrival
+            : airport.RunwayForArrival;
 
         if (runway is null)
         {

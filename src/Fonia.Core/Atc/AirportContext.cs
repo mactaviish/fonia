@@ -22,7 +22,11 @@ namespace Fonia.Core.Atc;
 /// The map of the airport (taxiways, holding points) when the simulator gave one; null otherwise, and then the controller says the runway
 /// and nothing about how to get there.
 /// </param>
-public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null, int? TemperatureCelsius = null, int? VisibilityMeters = null, Metar? Report = null, AirportLayout? Layout = null)
+/// <param name="ArrivalRunway">
+/// The runway end that receives the landings, when it is not <paramref name="RunwayInUse"/>, which then is the one for takeoffs and taxi
+/// (an airport with parallel runways of different uses, see <see cref="RunwayUseRule"/>); null when one runway does both.
+/// </param>
+public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null, int? TemperatureCelsius = null, int? VisibilityMeters = null, Metar? Report = null, AirportLayout? Layout = null, string? ArrivalRunway = null)
 {
     // Up to five knots the wind is as good as calm for choosing the runway (a light tailwind is accepted): the default stays.
     private const int WindThatChoosesTheRunwayKnots = 6;
@@ -47,6 +51,50 @@ public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? R
             Report = metar,
             RunwayInUse = keepRunway || wind is null || wind.SpeedKnots < WindThatChoosesTheRunwayKnots ? RunwayInUse : RunwayWithTheWindInTheNose(wind) ?? RunwayInUse,
         };
+    }
+
+    /// <summary>The runway the landings use: <see cref="ArrivalRunway"/> when the airport has one apart, otherwise <see cref="RunwayInUse"/>.</summary>
+    public string? RunwayForArrival => ArrivalRunway ?? RunwayInUse;
+
+    /// <summary>
+    /// The airport with the uses of its runways given by a rule that fits the runway in use: when the runway in use is the rule's departure, the
+    /// landings go to the rule's arrival runway; when it is the rule's arrival (the wind chose it), the runway in use becomes the departure and the
+    /// landings stay on the arrival. A runway the user asked for (<paramref name="keepRunway"/>) is only changed into its pair when it is the
+    /// departure; asked for as the arrival, it is kept for both. A rule whose runways the airport does not have is ignored.
+    /// </summary>
+    public AirportContext WithRunwayUse(IReadOnlyList<RunwayUseRule> rules, bool keepRunway)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+
+        if (RunwayInUse is null)
+        {
+            return this;
+        }
+
+        var open = Airport.Runways.Where(r => !r.Closed).SelectMany(r => r.Ends).Select(e => RunwayDesignator.Normalize(e.Designator)).ToHashSet(StringComparer.Ordinal);
+        var usable = rules.Where(r => open.Contains(RunwayDesignator.Normalize(r.Arrival)) && open.Contains(RunwayDesignator.Normalize(r.Departure))).ToList();
+
+        var rule = usable.FirstOrDefault(r => RunwayDesignator.AreSame(r.Departure, RunwayInUse))
+            ?? (keepRunway ? null : usable.FirstOrDefault(r => RunwayDesignator.AreSame(r.Arrival, RunwayInUse)));
+
+        return rule is null
+            ? this
+            : this with { RunwayInUse = RunwayDesignator.Normalize(rule.Departure), ArrivalRunway = RunwayDesignator.Normalize(rule.Arrival) };
+    }
+
+    /// <summary>The airport with the landings on the runway the user asked for.</summary>
+    /// <exception cref="ArgumentException">The requested runway is not one of the airport's open runways.</exception>
+    public AirportContext WithArrivalRunway(string requested)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(requested);
+
+        var open = Airport.Runways.Where(r => !r.Closed).ToList();
+        var end = open.SelectMany(r => r.Ends).FirstOrDefault(e => RunwayDesignator.AreSame(e.Designator, requested))
+            ?? throw new ArgumentException(
+                $"{Airport.Ident} has no open runway '{requested}' (it has: {string.Join(", ", open.Select(r => r.Name))}).",
+                nameof(requested));
+
+        return this with { ArrivalRunway = RunwayDesignator.Normalize(end.Designator) };
     }
 
     private static Wind ToMagnetic(Wind wind, double eastVariation)

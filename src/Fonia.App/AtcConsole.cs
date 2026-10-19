@@ -18,6 +18,9 @@ namespace Fonia.App;
 /// <param name="interactive">True on a terminal: shows the "piloto&gt;" prompt.</param>
 /// <param name="voiceMode">When given, the pilot speaks to the microphone and the controller answers aloud, instead of typing.</param>
 /// <param name="liveCom1">The frequency COM1 is on, read from the simulator at every line; null without a simulator.</param>
+/// <param name="runwayUse">
+/// The rules of the airports that keep landings and takeoffs on different runways (<c>data/runway-use.csv</c>); null for none.
+/// </param>
 /// <param name="layouts">
 /// Where the map of the airport (and the simulator's frequencies) come from, when there is one; null for none. An extra, like the METAR: without it
 /// the airport data alone is used.
@@ -40,7 +43,8 @@ internal sealed class AtcConsole(
     Func<double, double, (Airport Airport, double Kilometers)?>? nearestAirport = null,
     Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null,
     Func<AircraftState?>? liveAircraft = null,
-    IAirportLayoutSource? layouts = null)
+    IAirportLayoutSource? layouts = null,
+    Func<string, IReadOnlyList<RunwayUseRule>>? runwayUse = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -77,6 +81,24 @@ internal sealed class AtcConsole(
         if (weather is not null)
         {
             context = context.WithWeather(weather.Metar, keepRunway: options.Runway is not null);
+        }
+
+        // The runway chosen (by the wind or by the user) is the direction; at an airport that keeps the landings apart, a rule says which runway does what.
+        context = context.WithRunwayUse(runwayUse?.Invoke(airport.Ident) ?? [], keepRunway: options.Runway is not null);
+
+        if (options.ArrivalRunway is { } requestedArrival)
+        {
+            try
+            {
+                context = context.WithArrivalRunway(requestedArrival);
+            }
+            catch (ArgumentException)
+            {
+                var open = string.Join(", ", airport.Runways.Where(r => !r.Closed).Select(r => r.Name));
+
+                error.WriteLine($"fonia: {airport.Ident} não tem a pista '{requestedArrival}' aberta para os pousos. Pistas: {(open.Length > 0 ? open : "nenhuma nos dados")}.");
+                return 2;
+            }
         }
 
         string? callsign;
@@ -289,6 +311,20 @@ internal sealed class AtcConsole(
             context = context.WithWeather(weather.Metar, keepRunway: sameAirport && options.Runway is not null);
         }
 
+        context = context.WithRunwayUse(runwayUse?.Invoke(target.Ident) ?? [], keepRunway: sameAirport && options.Runway is not null);
+
+        if (sameAirport && options.ArrivalRunway is { } sameArrival)
+        {
+            try
+            {
+                context = context.WithArrivalRunway(sameArrival);
+            }
+            catch (ArgumentException)
+            {
+                // The runway asked for at the start is not one of this airport's: the rule or the default stands.
+            }
+        }
+
         output.WriteLine();
         output.WriteLine($"Novo voo detectado no simulador: aeronave {callsign}, {target.Ident}.");
         WriteHeader(context, callsign, weather, metarSource is not null && !options.NoMetar);
@@ -325,6 +361,12 @@ internal sealed class AtcConsole(
         }
     }
 
+    // "Pista em uso: 11." or, where the landings are kept apart, "Pistas em uso: decolagem 10L, pouso 10R."
+    private static string DescribeRunways(AirportContext context) =>
+        context.ArrivalRunway is { } arrival && arrival != context.RunwayInUse
+            ? $"Pistas em uso: decolagem {context.RunwayInUse}, pouso {arrival}."
+            : $"Pista em uso: {context.RunwayInUse ?? "nenhuma nos dados"}.";
+
     // The map is an extra: the source waits for the simulator a few seconds at most, and any failure is just "no map".
     private async Task<AirportLayout?> ReadLayoutAsync(string icao, CancellationToken ct)
     {
@@ -357,7 +399,7 @@ internal sealed class AtcConsole(
         output.WriteLine($"Fonia ATC - {airport.Ident} {airport.Name}. Aeronave {callsign}.");
         output.WriteLine(context.Unit == ServiceUnit.None
             ? "Sem serviço de controle neste aeródromo: ninguém responde."
-            : $"Responde: {phraseology.UnitName(context)}. Pista em uso: {context.RunwayInUse ?? "nenhuma nos dados"}.");
+            : $"Responde: {phraseology.UnitName(context)}. {DescribeRunways(context)}");
 
         if (weather is not null)
         {

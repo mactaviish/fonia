@@ -1,5 +1,19 @@
 # Dados
 
+## `runway-use.csv`: pista de pouso e pista de decolagem
+
+Aeroportos com pistas paralelas de usos diferentes, onde a mesma direção tem uma pista para os pousos e outra para as decolagens (Guarulhos: com a 10 em uso, a 10R recebe os pousos e a 10L as decolagens; com a 28, a 28L e a 28R). O vento ou o usuário escolhe a direção; a tabela diz quem faz o quê. Um aeroporto que não está no arquivo usa uma pista só para os dois, como sempre.
+
+| Coluna | Significado |
+|---|---|
+| `icao` | Código do aeroporto. |
+| `arrival` | A cabeceira que recebe os pousos (`10R`). |
+| `departure` | A cabeceira das decolagens (`10L`). |
+| `source` | De onde veio (`mantenedor`: informado por quem ouve a Torre). |
+| `notes` | Observações e a data. |
+
+Uma linha por direção. **São informações operacionais, não de manual:** confirme com a Torre real ou a carta do aeroporto antes de acrescentar uma linha. Uma linha com uma pista que o aeroporto não tem é ignorada na hora de usar.
+
 ## `atc-names.csv`: nome falado dos aeroportos controlados
 
 O nome que o controlador fala depois do órgão ("Solo **Galeão**", "Torre **Guarulhos**", MCA 100-16, Art. 37). O município dos dados do OurAirports não serve: erra justamente nos aeroportos mais usados (SBGR sai "São Paulo", SBKP "Campinas", SBCF "Belo Horizonte", SBGL "Rio De Janeiro").

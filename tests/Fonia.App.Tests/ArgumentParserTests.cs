@@ -777,6 +777,16 @@ public class ArgumentParserTests
     }
 
     [Fact]
+    public void The_arrival_runway_is_asked_for_in_the_atc_mode_only()
+    {
+        ArgumentParser.Parse(["--atc", "SBGR", "--callsign", "PRABC", "--arrival-runway", "10R"]).Options!.ArrivalRunway.ShouldBe("10R");
+        ArgumentParser.Parse(["--atc", "SBGR", "--callsign", "PRABC", "--runway", "10L", "--arrival-runway=10R"]).Options!.ArrivalRunway.ShouldBe("10R");
+        ArgumentParser.Parse(["--atc", "SBGR", "--callsign", "PRABC"]).Options!.ArrivalRunway.ShouldBeNull();
+        Error("--arrival-runway", "10R").ShouldContain("--atc");
+        Error("--atc", "SBGR", "--arrival-runway").ShouldContain("valor");
+    }
+
+    [Fact]
     public void The_help_tells_about_the_dump_of_an_airport_layout()
     {
         ArgumentParser.HelpText.ShouldContain("--dump-layout <ICAO>");
