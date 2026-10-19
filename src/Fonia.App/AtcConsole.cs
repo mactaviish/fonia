@@ -18,6 +18,10 @@ namespace Fonia.App;
 /// <param name="interactive">True on a terminal: shows the "piloto&gt;" prompt.</param>
 /// <param name="voiceMode">When given, the pilot speaks to the microphone and the controller answers aloud, instead of typing.</param>
 /// <param name="liveCom1">The frequency COM1 is on, read from the simulator at every line; null without a simulator.</param>
+/// <param name="layouts">
+/// Where the map of the airport (and the simulator's frequencies) come from, when there is one; null for none. An extra, like the METAR: without it
+/// the airport data alone is used.
+/// </param>
 internal sealed class AtcConsole(
     IAirportCatalog catalog,
     INlu nlu,
@@ -35,7 +39,8 @@ internal sealed class AtcConsole(
     Func<AirportContext, string, CaseLog?>? cases = null,
     Func<double, double, (Airport Airport, double Kilometers)?>? nearestAirport = null,
     Func<CancellationToken, IAsyncEnumerable<AircraftState>?>? states = null,
-    Func<AircraftState?>? liveAircraft = null)
+    Func<AircraftState?>? liveAircraft = null,
+    IAirportLayoutSource? layouts = null)
 {
     private static readonly string[] ExitWords = ["sair", "exit", "quit"];
 
@@ -50,11 +55,14 @@ internal sealed class AtcConsole(
             return 2;
         }
 
+        // The simulator's map and frequencies are an extra: without them (no simulator, none kept, or --no-map) the airport data alone is used.
+        var layout = options.NoMap ? null : await ReadLayoutAsync(airport.Ident, ct);
+        var known = layout is null ? airport : AirportFrequencyMerge.Apply(airport, layout.Frequencies);
         AirportContext context;
 
         try
         {
-            context = AirportContext.Create(airport, options.Runway);
+            context = AirportContext.Create(known, options.Runway) with { Layout = layout };
         }
         catch (ArgumentException)
         {
@@ -261,15 +269,17 @@ internal sealed class AtcConsole(
         }
 
         var sameAirport = string.Equals(target.Ident, current.Airport.Ident, StringComparison.OrdinalIgnoreCase);
+        var layout = options.NoMap ? null : await ReadLayoutAsync(target.Ident, ct);
+        var known = layout is null ? target : AirportFrequencyMerge.Apply(target, layout.Frequencies);
         AirportContext context;
 
         try
         {
-            context = AirportContext.Create(target, sameAirport ? options.Runway : null);
+            context = AirportContext.Create(known, sameAirport ? options.Runway : null) with { Layout = layout };
         }
         catch (ArgumentException)
         {
-            context = AirportContext.Create(target);
+            context = AirportContext.Create(known) with { Layout = layout };
         }
 
         var weather = options.NoMetar ? null : await ReadWeatherAsync(target.Ident, ct);
@@ -315,6 +325,31 @@ internal sealed class AtcConsole(
         }
     }
 
+    // The map is an extra: the source waits for the simulator a few seconds at most, and any failure is just "no map".
+    private async Task<AirportLayout?> ReadLayoutAsync(string icao, CancellationToken ct)
+    {
+        if (layouts is null)
+        {
+            return null;
+        }
+
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(TimeSpan.FromSeconds(8));
+
+        try
+        {
+            return await layouts.GetAsync(icao, limit.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
+        {
+            return null;
+        }
+    }
+
     private void WriteHeader(AirportContext context, string callsign, MetarReading? weather, bool weatherWasAsked)
     {
         var airport = context.Airport;
@@ -343,6 +378,11 @@ internal sealed class AtcConsole(
             output.WriteLine($"Frequências: {string.Join(", ", frequencies)}.");
         }
 
+        if (context.Layout is { } layout)
+        {
+            output.WriteLine(DescribeLayout(layout));
+        }
+
         if (voiceMode is null)
         {
             output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/errado\" marca a última troca como mal entendida).");
@@ -350,6 +390,19 @@ internal sealed class AtcConsole(
     }
 
     // "METAR SBCT 152000Z 23003KT ... (observado às 20:00Z); pista em uso pelo vento: 15."
+    // "Mapa do aeródromo (do simulador): 24 taxiways com nome (71% dos caminhos de táxi); 10 frequências do simulador usadas."
+    private static string DescribeLayout(AirportLayout layout)
+    {
+        var taxiways = layout.Edges.Where(e => e.Kind == TaxiEdgeKind.Taxiway).ToList();
+        var named = taxiways.Where(e => !string.IsNullOrWhiteSpace(e.Name)).ToList();
+        var share = taxiways.Count == 0 ? 0 : (int)Math.Round(100.0 * named.Count / taxiways.Count, MidpointRounding.AwayFromZero);
+        var frequencies = layout.Frequencies.Count > 0 ? $"; {layout.Frequencies.Count} frequências do simulador usadas" : string.Empty;
+
+        return taxiways.Count == 0
+            ? $"Mapa do aeródromo (do simulador): só as pistas, sem taxiways{frequencies}."
+            : $"Mapa do aeródromo (do simulador): {named.Select(e => e.Name).Distinct().Count()} taxiways com nome ({share.ToString(CultureInfo.InvariantCulture)}% dos caminhos de táxi){frequencies}.";
+    }
+
     private string DescribeWeather(MetarReading weather)
     {
         var age = (timeProvider ?? TimeProvider.System).GetUtcNow() - weather.ObservedAt;

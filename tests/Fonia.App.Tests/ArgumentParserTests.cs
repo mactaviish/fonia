@@ -769,9 +769,18 @@ public class ArgumentParserTests
     }
 
     [Fact]
+    public void No_map_turns_the_airport_map_and_the_simulators_frequencies_off_in_the_atc_mode_only()
+    {
+        ArgumentParser.Parse(["--atc", "SBCT", "--callsign", "PRABC", "--no-map"]).Options!.NoMap.ShouldBeTrue();
+        ArgumentParser.Parse(["--atc", "SBCT", "--callsign", "PRABC"]).Options!.NoMap.ShouldBeFalse();
+        Error("--no-map").ShouldContain("--atc");
+    }
+
+    [Fact]
     public void The_help_tells_about_the_dump_of_an_airport_layout()
     {
         ArgumentParser.HelpText.ShouldContain("--dump-layout <ICAO>");
+        ArgumentParser.HelpText.ShouldContain("--no-map");
         ArgumentParser.HelpText.ShouldContain(@"%LOCALAPPDATA%\Fonia\layouts\raw\<ICAO>.raw.json");
     }
 }

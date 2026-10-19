@@ -4,6 +4,7 @@ using Fonia.Core.Atc;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
 using Fonia.Data;
+using Fonia.Sim.Msfs;
 using Microsoft.Extensions.Logging;
 
 // Composition root: reads the command line, wires the pieces and handles Ctrl+C. The logic lives in
@@ -208,7 +209,10 @@ if (options.AtcAirport is not null)
         cases: cases,
         nearestAirport: airports.Nearest,
         states: session.States,
-        liveAircraft: () => session.Latest);
+        liveAircraft: () => session.Latest,
+        layouts: new CachedAirportLayoutSource(
+            options.Source == SimSourceKind.Msfs ? new MsfsAirportLayoutSource() : null,
+            LayoutCommands.DefaultRoot));
 
     return await atc.RunAsync(options, cancellation.Token);
 }

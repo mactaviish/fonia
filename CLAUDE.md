@@ -16,7 +16,7 @@ Aplicativo de ATC (controle de tráfego aéreo) por voz, com IA, para simuladore
 
 1. **O LLM nunca decide a resposta de ATC.** Ele (ou regras/regex) apenas *interpreta* a fala do piloto e devolve uma intenção estruturada (JSON desserializado e validado em um `record` tipado). Quem decide a resposta é código determinístico (máquina de estados). A fala do controlador sai de *templates* de fraseologia.
 2. **O núcleo nunca fala direto com o simulador.** Tudo passa pela interface `ISimAdapter` (`Fonia.Core`). Nenhuma referência a SimConnect, socket do X-Plane etc. fora dos projetos `Fonia.Sim.*`.
-3. **Tudo precisa rodar sem simulador.** Existe o `MockSimAdapter` e replay de telemetria gravada. Todo teste automatizado usa o mock.
+3. **Tudo precisa rodar sem simulador.** Existe o `MockSimAdapter` e replay de telemetria gravada. Todo teste automatizado usa o mock. Isso vale também para **o uso**: o modo de texto e o de voz (`--atc`) funcionam sem o simulador, por exemplo para praticar fraseologia. Todo recurso que aproveita o simulador (posição, rádio, mapa do aeródromo, frequências) precisa ter um caminho sem ele: ou não faz nada (o comportamento de antes, com os dados abertos), ou usa o que foi guardado antes no computador do usuário. O simulador acrescenta, nunca é pré-requisito.
 4. **Funcionar offline** deve ser possível (STT e TTS locais). Serviços online (METAR, LLM em nuvem) são opcionais e com fallback.
 5. **Módulos pequenos, entradas e saídas explícitas** (`record`s imutáveis). Sem estado global escondido; dependências por injeção.
 6. **Licenças de dados:** usar apenas dados com licença aberta (ex.: OurAirports). Não incluir dados AIRAC/Navigraph ou outros proprietários no repositório.
@@ -96,3 +96,4 @@ docs/
 - [ ] `dotnet format --verify-no-changes` limpo
 - [ ] Docs atualizadas se a arquitetura ou o comportamento mudou
 - [ ] Nenhum acoplamento novo ao simulador fora de `Fonia.Sim.*`
+- [ ] Funciona sem o simulador: o que é novo tem um caminho sem ele (modo de texto e de voz), coberto por teste
