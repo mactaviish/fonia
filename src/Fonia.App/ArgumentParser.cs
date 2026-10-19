@@ -49,7 +49,8 @@ internal sealed record AppOptions(
     bool NoCases = false,
     bool SaveAudio = false,
     string MarkKey = PushToTalkKey.DefaultMarkName,
-    bool ShowCases = false);
+    bool ShowCases = false,
+    string? DumpLayoutAirport = null);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp, bool ShowVersion = false);
@@ -64,6 +65,7 @@ internal static class ArgumentParser
              fonia                  (sem argumentos, num terminal: pega o indicativo e o aeroporto do simulador, ou pergunta, e conversa por voz)
              fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar]
              fonia --config | --init-config | --cases
+             fonia --dump-layout <ICAO> [--log-level <nível>]
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
              fonia --mic-list
              fonia --transcribe <arquivo.wav> [--callsign <indicativo>] [--stt-dir <pasta>] [--stt-gpu]
@@ -85,6 +87,11 @@ internal static class ArgumentParser
           --mark-key <tecla>     Com --voice: tecla que marca a última troca como "o controlador entendeu errado" (padrão: ScrollLock).
                                  No modo texto, "/errado" faz o mesmo.
           --cases                Mostra onde estão os casos guardados e quantos há por sessão.
+          --dump-layout <ICAO>   Pergunta ao MSFS 2020 (aberto, com um voo carregado) o que ele sabe do aeroporto: pistas,
+                                 frequências de rádio, pontos e caminhos de táxi, nomes de taxiway e estacionamentos. Só lê.
+                                 Grava o que veio, sem interpretar, em %LOCALAPPDATA%\Fonia\layouts\raw\<ICAO>.raw.json e
+                                 mostra um resumo e a comparação das frequências com as do OurAirports. Serve para ver o que o
+                                 simulador entrega antes de usar o mapa do aeródromo; nada é enviado.
           --no-metar             Não busca o METAR na internet (aviationweather.gov, só o código do aeroporto vai pela rede).
                                  Com o METAR o controlador diz o vento e o ajuste de altímetro e a pista em uso é a que o
                                  vento favorece (--runway manda); sem ele, ou sem rede, essas partes ficam de fora. O último
@@ -254,6 +261,11 @@ internal static class ArgumentParser
                 }
 
                 return new ParsedArguments(new AppOptions(ShowConfig: name == "--config", InitConfig: name == "--init-config", ShowCases: name == "--cases"), null, ShowHelp: false);
+            }
+
+            if (name == "--dump-layout")
+            {
+                return ParseDumpLayout(args);
             }
 
             if (name == "--no-cases")
@@ -774,6 +786,53 @@ internal static class ArgumentParser
 
         problem = $"--log-level '{value}' não existe. Use: {string.Join(", ", LogLevelNames)}.";
         return LogLevel.Warning;
+    }
+
+    // --dump-layout stands alone, with --log-level at most: it asks the simulator and ends.
+    private static ParsedArguments ParseDumpLayout(string[] args)
+    {
+        string? icao = null;
+        var logLevel = LogLevel.Warning;
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            var (name, inlineValue) = Split(args[i]);
+
+            if (name is not ("--dump-layout" or "--log-level"))
+            {
+                return Failure($"--dump-layout não combina com outras opções: use só --dump-layout <ICAO> (e --log-level). Veio '{args[i]}'.");
+            }
+
+            var value = inlineValue ?? (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) ? args[++i] : null);
+
+            if (value is null)
+            {
+                return Failure(name == "--dump-layout"
+                    ? "--dump-layout precisa do código do aeroporto (ICAO), por exemplo --dump-layout SBCT."
+                    : "--log-level precisa de um valor.");
+            }
+
+            if (name == "--log-level")
+            {
+                logLevel = ParseLogLevel(value, out var problem);
+
+                if (problem is not null)
+                {
+                    return Failure(problem);
+                }
+
+                continue;
+            }
+
+            icao = value.Trim().ToUpperInvariant();
+
+            if (icao.Length is < 3 or > 8 || !icao.All(char.IsAsciiLetterOrDigit))
+            {
+                return Failure($"--dump-layout '{value}' não parece um código de aeroporto (ICAO): use de 3 a 8 letras ou números, como SBCT.");
+            }
+        }
+
+        return new ParsedArguments(new AppOptions(LogLevel: logLevel, DumpLayoutAirport: icao), null, ShowHelp: false);
     }
 
     private static ParsedArguments Failure(string message) => new(null, message, ShowHelp: false);

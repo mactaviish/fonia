@@ -93,6 +93,11 @@ Console.CancelKeyPress += (_, e) =>
     cancellation.Cancel();
 };
 
+if (options.DumpLayoutAirport is { } dumpAirport)
+{
+    return await LayoutCommands.DumpAsync(dumpAirport, new MsfsFacilitySource(), AirportCatalog.Load(), LayoutCommands.DefaultRoot, TimeProvider.System, Console.Out, Console.Error, cancellation.Token);
+}
+
 if (options.DownloadModels)
 {
     return await ModelCommands.DownloadAsync(options, Console.In, Console.Out, Console.Error, terminal, cancellation.Token);

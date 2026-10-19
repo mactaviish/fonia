@@ -3,6 +3,11 @@
   <!-- net10.0, not -windows: only the native SimConnect.dll is Windows-specific at run time, so this
        project builds and is tested everywhere. See docs/decisions/simconnect.md. -->
 
+  <!-- Only for the code the LibraryImport generator writes (the two facility calls SimConnect.NET keeps to itself); none is written by hand. -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Fonia.Core\Fonia.Core.csproj" />
   </ItemGroup>

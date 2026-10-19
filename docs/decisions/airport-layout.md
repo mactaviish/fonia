@@ -51,7 +51,21 @@ O manual lista como instruções complementares do táxi:
 4. A rota segue até o ponto de espera da pista de decolagem, e daí o fluxo atual (passagem para a Torre, alinhar, decolar).
 5. A **telemetria acompanha o progresso** (a que distância do próximo ponto de espera, se saiu da rota) e confirma o que o piloto relata, como já faz com a decolagem e o pouso.
 
-## O que não se sabe e o spike responde (etapa L0)
+## Resultados do L0a (2026-10-18): o que o MSFS 2020 entrega
+
+O comando `fonia --dump-layout <ICAO>` (com o MSFS 2020 aberto e um voo carregado) pede o aeroporto ao simulador, grava o que veio em `%LOCALAPPDATA%\Fonia\layouts\raw\<ICAO>.raw.json` (fora do git) e mostra um resumo. O código está em `Fonia.Sim.Msfs` (`MsfsFacilityReader`, com P/Invoke próprio para as duas funções que o SimConnect.NET 0.2.2 não expõe) e em `Fonia.App` (`LayoutCommands`). Rodado em SBCT, SBGR, SBGO, SBPS, SBIH e SBSG:
+
+- **Funciona de primeira e é rápido:** ~0,3 s por aeroporto, todos os pedidos terminam, e as contagens recebidas batem com as que o simulador diz ter.
+- **Eixos dos pontos de táxi confirmados:** `BIAS_X` é leste e `BIAS_Z` é norte, a partir do ponto de referência do aeroporto (erro médio de 2 a 3 m contra as pistas, em todos). O comando refaz essa conferência a cada execução.
+- **Tipos de caminho:** as taxiways vêm como **tipo 4** ("Path"), e não há nenhuma de tipo 1 ("Taxi") nos aeroportos vistos. Tipo 2 é pista, 3 é estacionamento e 6 é veículo (fora do táxi de aeronave). `RUNWAY_NUMBER` e `RUNWAY_DESIGNATOR` só valem nos caminhos de tipo 2; nos outros vêm com valores sem sentido e devem ser ignorados.
+- **Pontos de espera:** tipo 5 ("hold short sem desenho") na maioria e alguns de tipo 2. Ficam **80 a 130 m do eixo da pista e nunca ao lado de um nó de pista no grafo** (0 em 4 aeroportos). A suposição do `TaxiRouter` (L3) de que o ponto de espera é vizinho do nó da pista **não vale nos dados reais**: o L0b precisa ligar cada ponto de espera à pista por geometria (a pista mais próxima) e guardar isso no modelo. O grafo de cada aeroporto é um único componente conectado.
+- **Nomes de taxiway são o ponto fraco:** SBGR tem 24 taxiways e 71% dos caminhos de táxi com nome (703 de 986); SBGO, SBIH e SBSG têm de um terço a 40% e poucas letras; SBCT tem 25% (só "A" e "B"); SBPS não tem nenhum. Onde faltam nomes o roteador já devolve "sem rota" (nunca inventa), e o L4a diz a taxiway só quando a rota inteira tem nome: então **a rota por taxiway vai funcionar bem em alguns aeroportos (SBGR) e quase nunca em outros**, e o comportamento de hoje continua o padrão.
+- **Frequências:** o simulador distingue tipos que o OurAirports não distingue (vários `APPROACH`, `CLEARANCE`, `GROUND` e `TOWER` múltiplos). Em SBGO, SBPS, SBIH e SBSG ele coincide com o que o mantenedor viu na AISWEB e corrige o OurAirports (Torre errada em SBPS e SBIH, Solo, Tráfego e ATIS faltando); em SBGR traz o Solo que o mantenedor ouve no ar e o OurAirports não tem. Em SBCT discorda do OurAirports na Torre (118,15 no simulador, 118,55 no OurAirports), e **o mantenedor confirmou que a certa é 118,15** (a outra frequência da Torre, 121,5, é a de emergência). Com isso a frequência do simulador acertou em todos os aeroportos conferidos e é a melhor fonte, com o OurAirports de base; a regra de mesclagem (e o que fazer com os muitos setores de `APPROACH` do mesmo Controle) fica para o L2.
+- **Não testado:** MSFS 2024 (o tamanho do campo `ident` das instalações mudou lá); cenário de terceiros.
+
+O que isto muda no plano: **L0b** passa a ser a conversão do dump para o `AirportLayout` com (1) taxiways de tipo 4 (e 1), (2) ligação do ponto de espera à pista por geometria, (3) ignorar veículo, (4) o cache em arquivo, e o `TaxiRouter` troca a vizinhança pela ligação guardada.
+
+## O que não se sabia e o spike respondeu (etapa L0)
 
 - O que o **SimConnect.NET** expõe da API de instalações do SimConnect (`SimConnect_RequestFacilityData` e as definições `AIRPORT`, `RUNWAY`, `TAXI_PATH`, `TAXI_POINT`, `TAXI_NAME`, `TAXI_PARKING`): se dá para usar direto ou se é preciso chamar a biblioteca nativa, e como são os tipos e as unidades.
 - **MSFS 2020 x 2024:** o campo `ident` das estruturas de instalações mudou de tamanho (já anotado em `simconnect.md`); o spike usa o 2020 e anota as diferenças.
