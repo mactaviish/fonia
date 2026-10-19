@@ -73,8 +73,11 @@ public static class AirportLayoutJson
         return layout;
     }
 
-    // What makes a graph worth speaking a route from: every reference goes somewhere and no position is off the Earth.
-    private static void Validate(AirportLayout layout)
+    /// <summary>
+    /// What makes a graph worth speaking a route from: every reference goes somewhere and no position is off the Earth.
+    /// </summary>
+    /// <exception cref="AirportLayoutFormatException">The layout does not hold together.</exception>
+    public static void Validate(AirportLayout layout)
     {
         if (string.IsNullOrWhiteSpace(layout.Ident))
         {
@@ -112,6 +115,11 @@ public static class AirportLayoutJson
             }
 
             CheckPosition(layout, node.Position, $"node {node.Id}");
+
+            if (node.Runway is not null && !layout.Runways.Any(r => r.Matches(node.Runway)))
+            {
+                throw new AirportLayoutFormatException($"Node {node.Id} of {layout.Ident} holds short of runway {node.Runway}, which the layout does not have.");
+            }
         }
 
         foreach (var edge in layout.Edges)

@@ -42,7 +42,7 @@ public enum NoRouteReason
     /// <summary>The graph is cut: there is no way from the aircraft to the holding point.</summary>
     NotConnected,
 
-    /// <summary>The only way uses a taxiway that has no name, which cannot be said.</summary>
+    /// <summary>Too much of the best way is over taxiways that have no name, which cannot be said (see <see cref="TaxiRouter.MaxUnnamedShare"/>).</summary>
     UnnamedTaxiway,
 }
 
@@ -61,6 +61,19 @@ public static class TaxiRouter
 {
     /// <summary>The aircraft farther than this from every node is not taken to be on the graph.</summary>
     public const double MaxDistanceToGraphMeters = 150;
+
+    /// <summary>
+    /// The most of the taxiway length of a route that may be unnamed. The simulator names about 70% of the taxiways of a big airport and
+    /// about a quarter of those of another; the unnamed stretches are mostly the short connectors of an intersection and the taxilanes of the
+    /// apron, which the controller does not name. The route says only the taxiways that have a name, and past this share it is not said.
+    /// </summary>
+    public const double MaxUnnamedShare = 0.4;
+
+    /// <summary>
+    /// The longest run of unnamed taxiway, in meters, that a route may have: the apron before the first named taxiway is of this order, but a
+    /// pilot cannot be left to find alone a longer one.
+    /// </summary>
+    public const double MaxUnnamedRunMeters = 300;
 
     // Going on a runway as if it were a taxiway, or on a taxiway that cannot be named, is allowed but costs as much as a long detour:
     // a way around is always preferred to one the controller could not say.
@@ -100,7 +113,7 @@ public static class TaxiRouter
         }
 
         var runwaysAt = RunwaysAtNodes(layout);
-        var holdingPoint = HoldingPointOf(layout, target.Runway, target.End, nodes, runwaysAt);
+        var holdingPoint = HoldingPointOf(layout, target.Runway, target.End);
 
         if (holdingPoint is null)
         {
@@ -114,7 +127,7 @@ public static class TaxiRouter
 
         var used = path.EdgeIndexes.Select(i => layout.Edges[i]).ToList();
 
-        if (used.Any(e => e.Kind == TaxiEdgeKind.Taxiway && string.IsNullOrWhiteSpace(e.Name)))
+        if (!CanBeSaid(used, nodes))
         {
             return new NoTaxiRoute(NoRouteReason.UnnamedTaxiway);
         }
@@ -122,7 +135,7 @@ public static class TaxiRouter
         return new TaxiRouteFound(new TaxiRoute(
             path.NodeIds,
             TaxiwaysOf(used),
-            CrossingsOf(path.NodeIds, used, nodes, runwaysAt),
+            CrossingsOf(layout, path.NodeIds, used, nodes, runwaysAt),
             holdingPoint.Id,
             path.Meters));
     }
@@ -148,38 +161,14 @@ public static class TaxiRouter
         return runwaysAt;
     }
 
-    // The holding point of an end: a marked holding point next to the runway, the one nearest to the threshold of that end.
-    private static TaxiNode? HoldingPointOf(
-        AirportLayout layout,
-        LayoutRunway runway,
-        LayoutRunwayEnd end,
-        Dictionary<int, TaxiNode> nodes,
-        Dictionary<int, SortedSet<string>> runwaysAt)
-    {
-        var onTheRunway = runwaysAt
-            .Where(x => x.Value.Any(name => SameRunway(name, runway)))
-            .Select(x => x.Key)
-            .ToHashSet();
-
-        return layout.Edges
-            .SelectMany(e => new[] { (Hold: e.From, Other: e.To), (Hold: e.To, Other: e.From) })
-            .Where(x => onTheRunway.Contains(x.Other) && !onTheRunway.Contains(x.Hold) && nodes[x.Hold].Kind == TaxiNodeKind.HoldShort)
-            .Select(x => nodes[x.Hold])
-            .Distinct()
+    // The holding point of an end: a holding point the layout ties to that runway (the simulator marks them 80 to 130 m from the runway and not
+    // next to it in the graph, so they are tied by distance when the layout is made), the one nearest to the threshold of that end.
+    private static TaxiNode? HoldingPointOf(AirportLayout layout, LayoutRunway runway, LayoutRunwayEnd end) =>
+        layout.Nodes
+            .Where(n => n.Kind == TaxiNodeKind.HoldShort && runway.Matches(n.Runway))
             .OrderBy(n => MetersBetween(n.Position, end.Position))
             .ThenBy(n => n.Id)
             .FirstOrDefault();
-    }
-
-    // "11/29" in an edge and the runway of the layout: the same designators, in whichever order and however written.
-    private static bool SameRunway(string name, LayoutRunway runway)
-    {
-        var parts = name.Split('/');
-
-        return parts.Length == 2
-            && ((RunwayDesignator.AreSame(parts[0], runway.Low.Designator) && RunwayDesignator.AreSame(parts[1], runway.High.Designator))
-                || (RunwayDesignator.AreSame(parts[0], runway.High.Designator) && RunwayDesignator.AreSame(parts[1], runway.Low.Designator)));
-    }
 
     private sealed record Path(IReadOnlyList<int> NodeIds, IReadOnlyList<int> EdgeIndexes, double Meters);
 
@@ -262,12 +251,51 @@ public static class TaxiRouter
         _ => 0,
     };
 
-    // The names in order, a taxiway said once however many stretches it has. The way from a parking position and the runways are not taxiways.
+    // A route is said when the taxiways that have a name are most of it: at least one, no more than MaxUnnamedShare of the taxiway length without
+    // a name, and no run of unnamed stretches longer than MaxUnnamedRunMeters.
+    private static bool CanBeSaid(List<TaxiEdge> used, Dictionary<int, TaxiNode> nodes)
+    {
+        var taxiwayMeters = 0.0;
+        var unnamedMeters = 0.0;
+        var run = 0.0;
+        var longestRun = 0.0;
+        var named = 0;
+
+        foreach (var edge in used)
+        {
+            if (edge.Kind != TaxiEdgeKind.Taxiway)
+            {
+                run = 0;
+                continue;
+            }
+
+            var meters = MetersBetween(nodes[edge.From].Position, nodes[edge.To].Position);
+
+            taxiwayMeters += meters;
+
+            if (string.IsNullOrWhiteSpace(edge.Name))
+            {
+                unnamedMeters += meters;
+                run += meters;
+                longestRun = Math.Max(longestRun, run);
+            }
+            else
+            {
+                named++;
+                run = 0;
+            }
+        }
+
+        return unnamedMeters == 0 || (named > 0 && unnamedMeters / taxiwayMeters <= MaxUnnamedShare && longestRun <= MaxUnnamedRunMeters);
+    }
+
+    // The names in order, a taxiway said once however many stretches it has. The way from a parking position and the runways are not taxiways,
+    // and a stretch without a name is gone through and not said.
     private static List<string> TaxiwaysOf(List<TaxiEdge> used)
     {
         var names = new List<string>();
 
-        foreach (var name in used.Where(e => e.Kind == TaxiEdgeKind.Taxiway).Select(e => e.Name!))
+        foreach (var name in used.Where(e => e.Kind == TaxiEdgeKind.Taxiway && !string.IsNullOrWhiteSpace(e.Name)).Select(e => e.Name!))
         {
             if (names.Count == 0 || names[^1] != name)
             {
@@ -280,6 +308,7 @@ public static class TaxiRouter
 
     // Each time the route reaches a runway (not the one the aircraft starts on) is one crossing, however many of its nodes the route touches.
     private static List<RunwayCrossing> CrossingsOf(
+        AirportLayout layout,
         IReadOnlyList<int> path,
         List<TaxiEdge> used,
         Dictionary<int, TaxiNode> nodes,
@@ -308,13 +337,32 @@ public static class TaxiRouter
                     along |= used[j] is { Kind: TaxiEdgeKind.Runway } edge && edge.Runway == name;
                 }
 
-                var holdShort = nodes[path[i - 1]].Kind == TaxiNodeKind.HoldShort ? path[i - 1] : (int?)null;
-
-                crossings.Add(new RunwayCrossing(name, path[i], holdShort, along));
+                crossings.Add(new RunwayCrossing(name, path[i], HoldShortBefore(layout, path, i, name, nodes, runwaysAt), along));
             }
         }
 
         return crossings;
+    }
+
+    // The holding point of the runway the route is about to reach: the last one tied to it on the way there, looking back along the route until
+    // another runway is on it. Null when the graph marks none (then the crossing is there, and the place to stop is not known).
+    private static int? HoldShortBefore(
+        AirportLayout layout,
+        IReadOnlyList<int> path,
+        int reached,
+        string runway,
+        Dictionary<int, TaxiNode> nodes,
+        Dictionary<int, SortedSet<string>> runwaysAt)
+    {
+        for (var i = reached - 1; i >= 0 && !runwaysAt.ContainsKey(path[i]); i--)
+        {
+            if (nodes[path[i]] is { Kind: TaxiNodeKind.HoldShort } node && LayoutRunway.SameName(node.Runway, runway))
+            {
+                return node.Id;
+            }
+        }
+
+        return null;
     }
 
     private static double MetersBetween(GeoPoint a, GeoPoint b) =>

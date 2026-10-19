@@ -75,13 +75,35 @@ internal static class LayoutCommands
             return 1;
         }
 
-        foreach (var line in LayoutReport.Lines(icao, facility, source.IsMsfs2024, catalog))
+        var conversion = AirportLayoutConverter.Convert(facility);
+        var layoutPath = Path.Combine(root, $"{icao}.json");
+
+        try
+        {
+            if (conversion.Layout is { } layout)
+            {
+                await File.WriteAllTextAsync(layoutPath, AirportLayoutJson.Write(layout), ct);
+            }
+        }
+        catch (IOException ex)
+        {
+            error.WriteLine($"fonia: não consegui gravar {layoutPath}: {ex.Message}");
+            return 1;
+        }
+
+        foreach (var line in LayoutReport.Lines(icao, facility, source.IsMsfs2024, catalog, conversion))
         {
             output.WriteLine(line);
         }
 
         output.WriteLine();
         output.WriteLine($"Gravado em {path}");
+
+        if (conversion.Layout is not null)
+        {
+            output.WriteLine($"Mapa gravado em {layoutPath}");
+        }
+
         output.WriteLine("Traga este texto e o arquivo .raw.json; eles ficam só no seu computador.");
 
         return facility.Airport is not null && facility.Runways.Count > 0 ? 0 : 1;
@@ -91,7 +113,7 @@ internal static class LayoutCommands
 /// <summary>What the dump prints: the counts, how each request went, the frequencies against the airport data, and the check of the axes.</summary>
 internal static class LayoutReport
 {
-    public static IReadOnlyList<string> Lines(string icao, AirportFacility facility, bool? isMsfs2024, IAirportCatalog catalog)
+    public static IReadOnlyList<string> Lines(string icao, AirportFacility facility, bool? isMsfs2024, IAirportCatalog catalog, LayoutConversion conversion)
     {
         var lines = new List<string>
         {
@@ -105,9 +127,76 @@ internal static class LayoutReport
         lines.AddRange(Frequencies(icao, facility, catalog));
         lines.Add(string.Empty);
         lines.AddRange(Axes(facility));
+        lines.Add(string.Empty);
+        lines.AddRange(Map(conversion));
 
         return lines;
     }
+
+    // The layout made from the data, what was left out, and a test of the router over it: a route from every parking spot to the holding point
+    // of every runway end, to see how often the map can speak a route.
+    private static IEnumerable<string> Map(LayoutConversion conversion)
+    {
+        if (conversion.Layout is not { } layout)
+        {
+            yield return "Mapa: não deu para converter os dados em um mapa do aeródromo.";
+
+            foreach (var note in conversion.Notes)
+            {
+                yield return $"  - {note}";
+            }
+
+            yield break;
+        }
+
+        var holding = layout.Nodes.Where(n => n.Kind == TaxiNodeKind.HoldShort).ToList();
+
+        yield return $"Mapa convertido: {layout.Nodes.Count} nós e {layout.Edges.Count} arestas ({layout.Edges.Count(e => e.Kind == TaxiEdgeKind.Taxiway)} de taxiway, {layout.Edges.Count(e => e.Kind == TaxiEdgeKind.Runway)} de pista, {layout.Edges.Count(e => e.Kind == TaxiEdgeKind.Parking)} de estacionamento); {holding.Count} pontos de espera, {holding.Count(n => n.Runway is not null)} ligados a uma pista.";
+
+        foreach (var note in conversion.Notes)
+        {
+            yield return $"  - {note}";
+        }
+
+        foreach (var line in RouteTest(layout))
+        {
+            yield return line;
+        }
+    }
+
+    private static IEnumerable<string> RouteTest(AirportLayout layout)
+    {
+        var parkings = layout.Parkings.Where(p => p.Node is not null).ToList();
+
+        if (parkings.Count == 0)
+        {
+            yield return "Teste de rotas: sem estacionamento ligado ao grafo.";
+            yield break;
+        }
+
+        yield return $"Teste de rotas (de cada um dos {parkings.Count} estacionamentos ligados até o ponto de espera de cada cabeceira):";
+
+        foreach (var end in layout.Runways.SelectMany(r => new[] { r.Low, r.High }))
+        {
+            var results = parkings.Select(p => TaxiRouter.Find(layout, p.Position, end.Designator)).ToList();
+            var found = results.OfType<TaxiRouteFound>().ToList();
+            var refused = results.OfType<NoTaxiRoute>().GroupBy(r => r.Reason).OrderByDescending(g => g.Count()).ToList();
+
+            yield return $"  cabeceira {end.Designator}: {found.Count} de {results.Count} com rota ({found.Count(f => f.Route.Crossings.Count > 0)} atravessando pista)"
+                + (refused.Count == 0 ? string.Empty : $"; sem rota: {string.Join(", ", refused.Select(g => $"{ReasonText(g.Key)} {g.Count()}"))}");
+        }
+    }
+
+    private static string ReasonText(NoRouteReason reason) => reason switch
+    {
+        NoRouteReason.NoTaxiways => "sem taxiways",
+        NoRouteReason.UnknownRunway => "pista desconhecida",
+        NoRouteReason.AircraftOffTheGraph => "longe do grafo",
+        NoRouteReason.NoHoldingPoint => "sem ponto de espera",
+        NoRouteReason.NotConnected => "grafo cortado",
+        NoRouteReason.UnnamedTaxiway => "taxiway sem nome",
+        _ => reason.ToString(),
+    };
 
     private static IEnumerable<string> Counts(AirportFacility facility)
     {

@@ -67,7 +67,28 @@ O comando `fonia --dump-layout <ICAO>` (com o MSFS 2020 aberto e um voo carregad
 - **Frequências:** o simulador distingue tipos que o OurAirports não distingue (vários `APPROACH`, `CLEARANCE`, `GROUND` e `TOWER` múltiplos). Em SBGO, SBPS, SBIH e SBSG ele coincide com o que o mantenedor viu na AISWEB e corrige o OurAirports (Torre errada em SBPS e SBIH, Solo, Tráfego e ATIS faltando); em SBGR traz o Solo que o mantenedor ouve no ar e o OurAirports não tem. Em SBCT discorda do OurAirports na Torre (118,15 no simulador, 118,55 no OurAirports), e **o mantenedor confirmou que a certa é 118,15** (a outra frequência da Torre, 121,5, é a de emergência). Com isso a frequência do simulador acertou em todos os aeroportos conferidos e é a melhor fonte, com o OurAirports de base; a regra de mesclagem (e o que fazer com os muitos setores de `APPROACH` do mesmo Controle) fica para o L2.
 - **Não testado:** MSFS 2024 (o tamanho do campo `ident` das instalações mudou lá); cenário de terceiros.
 
-O que isto muda no plano: **L0b** passa a ser a conversão do dump para o `AirportLayout` com (1) taxiways de tipo 4 (e 1), (2) ligação do ponto de espera à pista por geometria, (3) ignorar veículo, (4) o cache em arquivo, e o `TaxiRouter` troca a vizinhança pela ligação guardada.
+## L0b (2026-10-18): do dump ao mapa, e quantas rotas o mapa real dá
+
+`AirportLayoutConverter` (em `Fonia.Sim.Msfs`) faz o `AirportLayout` a partir do dump, e o `fonia --dump-layout` passa a gravar também `%LOCALAPPDATA%\Fonia\layouts\<ICAO>.json` (o mapa) e a mostrar um **teste de rotas** (de cada estacionamento até o ponto de espera de cada cabeceira, pelo `TaxiRouter`). Regras da conversão, todas tiradas dos dados reais:
+
+- Os pontos de táxi viram nós com o índice do simulador; os estacionamentos, nós à parte (1.000.000 + índice), ligados pelo caminho de estacionamento (tipo 3, em que `START` é o ponto de táxi e `END` é a vaga). Caminhos de tipo 4 (e 1) viram taxiways, com o nome quando há; tipo 2 vira trecho de pista, da pista dada por número e lado; veículo, estrada, fechado e linha pintada ficam de fora (e contados nas notas).
+- A cabeceira primária fica **atrás** do centro, no começo da corrida (`HEADING` é o rumo da primária); a de menor número vai primeiro no nome da pista ("15/33").
+- Cada ponto de espera é ligado à **pista mais próxima** (até 250 m; mais longe, a nenhuma). O `TaxiNode` ganhou `Runway`, o `TaxiRouter` escolhe o ponto de espera de uma cabeceira entre os ligados à pista (o mais perto da cabeceira) e o ponto de parada antes de uma travessia é o último ponto de espera ligado àquela pista, olhando para trás pela rota.
+- As frequências viram as do app: `APPROACH` e `DEPARTURE` são o Controle, `CLEARANCE` é o Tráfego, `UNICOM`/`MULTICOM`/`CTAF` são Rádio.
+
+**Os nomes que faltam, e a regra nova do roteador.** Recusar qualquer trecho de taxiway sem nome dava **0 rotas até em Guarulhos**: 29% dos caminhos de SBGR não têm nome, mas são sobretudo conectores curtos de interseção (mediana de 21 m) e o pátio. Na rota típica de SBGR só 8 a 10% do comprimento é sem nome (p90 de 37 a 44%), e o maior trecho seguido sem nome tem 65 m de mediana (p90 268 m); em SBCT a rota típica tem 50 a 60% sem nome. Por isso o roteador passou a **atravessar os trechos sem nome e dizer só as taxiways com nome**, e a recusar ("taxiway sem nome") quando o nome falta demais: pelo menos uma taxiway com nome, no máximo **40%** do comprimento de taxiway sem nome (`MaxUnnamedShare`) e nenhum trecho seguido sem nome com mais de **300 m** (`MaxUnnamedRunMeters`). Os dois valores são julgamento, escolhidos com esses números; ajustar é trocar uma constante.
+
+Resultado do teste de rotas no MSFS 2020 (estacionamentos ligados até cada cabeceira):
+
+| Aeroporto | Com rota | Sem rota |
+|---|---|---|
+| SBGR | 86 de 99 (as duas cabeceiras de cada pista) | 10 taxiway sem nome, 3 estacionamentos isolados |
+| SBGO | 39 e 42 de 62 | ~20 taxiway sem nome |
+| SBSG | 25 e 26 de 59 | ~30 taxiway sem nome |
+| SBCT | 22 e 19 de 40 (cabeceiras 15 e 33); 0 nas 11 e 29 | taxiway sem nome |
+| SBPS | 0 de 20 | nenhuma taxiway tem nome |
+
+As rotas fazem sentido com o que o mantenedor descreveu: em SBGR a rota até a pista de pouso 10R atravessa a 10L, e em SBCT a rota até a 15 atravessa uma pista. **O mapa serve onde o cenário tem nomes** (SBGR é o melhor caso visto) e quase nunca onde não tem; o comportamento sem mapa continua o padrão.
 
 ## O que não se sabia e o spike respondeu (etapa L0)
 

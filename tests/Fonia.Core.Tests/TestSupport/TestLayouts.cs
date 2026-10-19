@@ -31,10 +31,10 @@ internal static class TestLayouts
             ],
             [
                 new TaxiNode(1, new GeoPoint(-25.5010, -49.1060), TaxiNodeKind.Parking),
-                new TaxiNode(2, new GeoPoint(-25.5015, -49.1050), TaxiNodeKind.HoldShort),
+                new TaxiNode(2, new GeoPoint(-25.5015, -49.1050), TaxiNodeKind.HoldShort, "11/29"),
                 new TaxiNode(3, new GeoPoint(-25.5020, -49.1050), TaxiNodeKind.Normal),
-                new TaxiNode(4, new GeoPoint(-25.5025, -49.1050), TaxiNodeKind.HoldShort),
-                new TaxiNode(5, new GeoPoint(-25.5045, -49.1030), TaxiNodeKind.HoldShort),
+                new TaxiNode(4, new GeoPoint(-25.5025, -49.1050), TaxiNodeKind.HoldShort, "11/29"),
+                new TaxiNode(5, new GeoPoint(-25.5045, -49.1030), TaxiNodeKind.HoldShort, "15/33"),
                 new TaxiNode(6, new GeoPoint(-25.5000, -49.1100), TaxiNodeKind.Normal),
                 new TaxiNode(7, new GeoPoint(-25.5040, -49.1000), TaxiNodeKind.Normal),
                 new TaxiNode(8, new GeoPoint(-25.5050, -49.1020), TaxiNodeKind.Normal),
