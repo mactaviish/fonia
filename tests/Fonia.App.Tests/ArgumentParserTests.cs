@@ -725,4 +725,53 @@ public class ArgumentParserTests
         ArgumentParser.Parse(["--cases"]).Options!.ShowCases.ShouldBeTrue();
         Error("--cases", "--voice").ShouldContain("--cases");
     }
+
+    [Theory]
+    [InlineData("--dump-layout", "SBCT")]
+    [InlineData("--dump-layout=SBCT")]
+    [InlineData("--dump-layout", "sbct")]
+    [InlineData("--dump-layout", " sbct ")]
+    public void The_dump_of_an_airport_layout_is_a_mode_of_its_own_and_the_code_is_in_capitals(params string[] args)
+    {
+        ArgumentParser.Parse(args).Options!.DumpLayoutAirport.ShouldBe("SBCT");
+    }
+
+    [Fact]
+    public void The_dump_of_an_airport_layout_takes_the_log_level_and_nothing_else()
+    {
+        var options = ArgumentParser.Parse(["--dump-layout", "SBGR", "--log-level", "debug"]).Options!;
+
+        options.DumpLayoutAirport.ShouldBe("SBGR");
+        options.LogLevel.ShouldBe(Microsoft.Extensions.Logging.LogLevel.Debug);
+        ArgumentParser.Parse(["--log-level=trace", "--dump-layout=SBGR"]).Options!.LogLevel.ShouldBe(Microsoft.Extensions.Logging.LogLevel.Trace);
+        Error("--dump-layout", "SBCT", "--voice").ShouldContain("--dump-layout");
+        Error("--dump-layout", "SBCT", "--atc", "SBCT").ShouldContain("--dump-layout");
+        Error("SBCT", "--dump-layout", "SBCT").ShouldContain("SBCT");
+    }
+
+    [Theory]
+    [InlineData("--dump-layout")]
+    [InlineData("--dump-layout", "--log-level", "debug")]
+    public void The_dump_of_an_airport_layout_needs_the_code(params string[] args)
+    {
+        Error(args).ShouldContain("ICAO");
+    }
+
+    [Theory]
+    [InlineData("S")]
+    [InlineData("SB")]
+    [InlineData("SB CT")]
+    [InlineData("SBCT.json")]
+    [InlineData("SBCTSBCTS")]
+    public void The_dump_of_an_airport_layout_refuses_what_is_not_a_code(string code)
+    {
+        Error("--dump-layout", code).ShouldContain("ICAO");
+    }
+
+    [Fact]
+    public void The_help_tells_about_the_dump_of_an_airport_layout()
+    {
+        ArgumentParser.HelpText.ShouldContain("--dump-layout <ICAO>");
+        ArgumentParser.HelpText.ShouldContain(@"%LOCALAPPDATA%\Fonia\layouts\raw\<ICAO>.raw.json");
+    }
 }

@@ -97,6 +97,8 @@ Depois de `ConnectAsync`, uma tarefa de fundo (o supervisor) é dona da conexão
 
 Os tempos são `MsfsAdapterOptions` (padrões acima). Streams e `LatestState` vêm do `AircraftStateBroadcaster` do Core, o mesmo do mock. A parte que fala com a biblioteca é a `SimConnectNetSession`; o resto é testado com uma sessão falsa e um relógio injetável, sem MSFS. Testes ao vivo (`FONIA_LIVE_MSFS=1`) cobrem a sessão e o adapter contra um MSFS real. Ainda não implementa `IComRadioControl` (sintonizar o rádio pelo app chega com a transferência de frequência, no M4).
 
+**Instalações do aeroporto (M6, L0a):** o `MsfsFacilityReader` (público, em `Fonia.Sim.Msfs`) pergunta ao MSFS o que ele sabe de um aeroporto (pistas, frequências, pontos e caminhos de táxi, nomes, estacionamentos) pela API de instalações do SimConnect, uma requisição por parte para que uma parte recusada não custe as outras, e devolve os dados **sem interpretar** (`AirportFacility`). O SimConnect.NET 0.2.2 não expõe essas chamadas; o `NativeFacilities` as faz com o `Handle` da conexão dele. A conversa fica atrás de `IFacilityTransport` e é testada com um transporte falso. É usado hoje só pelo comando `fonia --dump-layout <ICAO>` (ver `docs/decisions/airport-layout.md`).
+
 #### Aplicativo de console (`Fonia.App`)
 
 `fonia` mostra o estado da aeronave em tempo real, vindo de qualquer `ISimAdapter`, e é a forma de ver o M1 funcionando:
