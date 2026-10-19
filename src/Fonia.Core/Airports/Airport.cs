@@ -52,7 +52,12 @@ public enum SpokenNameSource
     Municipality,
 }
 
-public sealed record AirportFrequency(AirportFrequencyType Type, Frequency Frequency, string Description);
+/// <summary>
+/// A radio frequency of an airport. <paramref name="Primary"/> says whether the app may name it when it passes a flight on ("chame Torre ...");
+/// every frequency answers when the pilot tunes it, but of the several a unit can have (the sectors of an approach) only one is named, and
+/// none when it cannot be told which.
+/// </summary>
+public sealed record AirportFrequency(AirportFrequencyType Type, Frequency Frequency, string Description, bool Primary = true);
 
 /// <summary>One end of a runway (the runway "15/33" has the ends "15" and "33").</summary>
 /// <param name="MagneticHeadingDegrees">Approximate, from the number of the designator; null if it is not a runway number.</param>
@@ -97,10 +102,10 @@ public sealed record Airport(
     public double DistanceKmTo(double latitudeDegrees, double longitudeDegrees) =>
         Sim.Geo.DistanceKm(LatitudeDegrees, LongitudeDegrees, latitudeDegrees, longitudeDegrees);
 
-    /// <summary>The first frequency listed for <paramref name="type"/>, or null if the airport has none.</summary>
+    /// <summary>The first primary frequency listed for <paramref name="type"/> (the one to name), or null if the airport has none.</summary>
     public AirportFrequency? FrequencyOf(AirportFrequencyType type)
     {
-        return Frequencies.FirstOrDefault(f => f.Type == type);
+        return Frequencies.FirstOrDefault(f => f.Type == type && f.Primary);
     }
 
     public bool HasFrequency(AirportFrequencyType type) => FrequencyOf(type) is not null;

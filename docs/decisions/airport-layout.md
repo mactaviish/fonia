@@ -90,6 +90,14 @@ Resultado do teste de rotas no MSFS 2020 (estacionamentos ligados até cada cabe
 
 As rotas fazem sentido com o que o mantenedor descreveu: em SBGR a rota até a pista de pouso 10R atravessa a 10L, e em SBCT a rota até a 15 atravessa uma pista. **O mapa serve onde o cenário tem nomes** (SBGR é o melhor caso visto) e quase nunca onde não tem; o comportamento sem mapa continua o padrão.
 
+## L2 (2026-10-18): o app usa o mapa e as frequências do simulador
+
+- **Fonte:** `IAirportLayoutSource` (Core). `MsfsAirportLayoutSource` pede ao MSFS e converte (5 s no máximo; qualquer falha é "sem mapa"); `CachedAirportLayoutSource` (`Fonia.Data`) pergunta ao simulador primeiro, porque o cenário pode ter mudado, e guarda a resposta em `%LOCALAPPDATA%\Fonia\layouts\<ICAO>.json` (o mesmo arquivo do `--dump-layout`); quando o simulador não responde, ou não há simulador (`--sim mock`, `--replay`, praticar fraseologia sem o MSFS), usa o arquivo guardado. Sem nenhum dos dois, não há mapa e o app é o de antes. O código do aeroporto só vira nome de arquivo se tiver de 3 a 8 letras ou números.
+- **No app:** o `AtcConsole` pede o mapa ao abrir e ao seguir um voo novo (como o METAR), mescla as frequências antes de criar o `AirportContext` e preenche o `Layout`. O cabeçalho diz quando há mapa. `--no-map` desliga tudo isso.
+- **Mesclagem das frequências (`AirportFrequencyMerge`):** para cada tipo de unidade que o simulador dá (Torre, Solo, Controle, ATIS, Tráfego), as frequências dele **substituem** as do OurAirports; o que ele não dá (AFIS, Operações, ILS, o resto) **fica como está**: um aeroporto nunca perde a unidade que o OurAirports tinha certa porque o simulador veio incompleto. As frequências UNICOM, MULTICOM e as outras do simulador não entram. Pendência conhecida: em SBIH o OurAirports tem uma Torre errada e o simulador não tem Torre, então a errada continua.
+- **A frequência que se diz (`AirportFrequency.Primary`):** toda frequência de uma unidade atende quando o piloto a sintoniza, mas só uma é **dita** ao passar o voo. É a que o OurAirports já tinha, se o simulador também a tem; senão a única; senão, para o **Controle** (os muitos setores de uma aproximação), nenhuma, para não mandar o piloto a um setor por acaso (fica o "decolado aos MM" de hoje); para os outros, a primeira que o simulador lista.
+- **Sem simulador:** a rota por taxiway precisa da posição da aeronave, que só o simulador dá; no modo de texto com o mapa guardado o mapa corrige as frequências, mas a autorização de táxi continua sem a rota. Treinar a rota sem o MSFS é o **L8**.
+
 ## O que não se sabia e o spike respondeu (etapa L0)
 
 - O que o **SimConnect.NET** expõe da API de instalações do SimConnect (`SimConnect_RequestFacilityData` e as definições `AIRPORT`, `RUNWAY`, `TAXI_PATH`, `TAXI_POINT`, `TAXI_NAME`, `TAXI_PARKING`): se dá para usar direto ou se é preciso chamar a biblioteca nativa, e como são os tipos e as unidades.

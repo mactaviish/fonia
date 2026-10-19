@@ -109,6 +109,18 @@ public class AirborneNoticeTests
         decision.NextContext.Phase.ShouldBe(FlightPhase.Airborne);
     }
 
+    // The Controle of a big airport has many sectors and the simulator does not say which is the departure: with none named, none is said.
+    [Fact]
+    public void An_approach_with_many_sectors_and_none_named_says_only_the_minute()
+    {
+        var sectors = Enumerable.Range(0, 3).Select(i => new AirportFrequency(AirportFrequencyType.Approach, new Frequency(119600 + (i * 150)), "CONTROLE")).ToArray();
+        var merged = AirportFrequencyMerge.Apply(WithApproach.Airport, sectors);
+        var onTower = FrequencyResolver.Apply(AirportContext.Create(merged), WithApproach.Airport.FrequencyOf(AirportFrequencyType.Tower)!.Frequency);
+
+        new AtcEngine().Handle(At(26), Cleared, onTower).Instruction.ShouldBe(new AirborneNotice(26, null));
+        FrequencyResolver.UnitOn(merged, new Frequency(119750)).ShouldBe(ServiceUnit.Approach);
+    }
+
     [Fact]
     public void An_airport_without_an_approach_says_only_the_minute_as_before()
     {

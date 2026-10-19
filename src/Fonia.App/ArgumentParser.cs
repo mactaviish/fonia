@@ -43,6 +43,7 @@ internal sealed record AppOptions(
     string? ModelsDir = null,
     Fonia.Core.Sim.Frequency? Com1 = null,
     bool NoMetar = false,
+    bool NoMap = false,
     bool ShowConfig = false,
     bool InitConfig = false,
     string? OnlyModels = null,
@@ -63,7 +64,7 @@ internal static class ArgumentParser
 
         Uso: fonia [opções]
              fonia                  (sem argumentos, num terminal: pega o indicativo e o aeroporto do simulador, ou pergunta, e conversa por voz)
-             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar]
+             fonia --atc <ICAO> [--runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar] [--no-map]
              fonia --config | --init-config | --cases
              fonia --dump-layout <ICAO> [--log-level <nível>]
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
@@ -96,6 +97,10 @@ internal static class ArgumentParser
                                  Com o METAR o controlador diz o vento e o ajuste de altímetro e a pista em uso é a que o
                                  vento favorece (--runway manda); sem ele, ou sem rede, essas partes ficam de fora. O último
                                  METAR fica guardado em %LOCALAPPDATA%\Fonia\cache e vale por até 3 horas sem rede.
+          --no-map               Não usa o mapa do aeródromo nem as frequências do simulador, só os dados do OurAirports. Por padrão,
+                                 com o MSFS aberto o Fonia pede ao simulador o mapa (taxiways) e as frequências do aeroporto e os guarda
+                                 em %LOCALAPPDATA%\Fonia\layouts; sem o simulador usa o que ficou guardado, e sem nenhum dos dois
+                                 funciona como sempre, com os dados do OurAirports.
           --com1 <MHz>           Frequência do rádio (COM1), por exemplo 118.55: quem responde é a unidade do aeroporto
                                  que usa essa frequência (Solo, Torre ou Rádio), e em outra ninguém responde. Com o
                                  simulador (--sim) a frequência vem do COM1 dele, ao vivo. No modo texto, "/com1 118.55"
@@ -192,6 +197,7 @@ internal static class ArgumentParser
         string? sttModel = null;
         var sttGpu = false;
         var noMetar = false;
+        var noMap = false;
         var noCases = false;
         var saveAudio = false;
         string? markKey = null;
@@ -250,6 +256,12 @@ internal static class ArgumentParser
             if (name == "--no-metar")
             {
                 noMetar = true;
+                continue;
+            }
+
+            if (name == "--no-map")
+            {
+                noMap = true;
                 continue;
             }
 
@@ -416,6 +428,16 @@ internal static class ArgumentParser
             }
 
             result = result with { NoMetar = true };
+        }
+
+        if (noMap)
+        {
+            if (result.AtcAirport is null)
+            {
+                return Failure("--no-map só vale no modo ATC: use também --atc <ICAO>.");
+            }
+
+            result = result with { NoMap = true };
         }
 
         if (noCases || saveAudio || markKey is not null)
