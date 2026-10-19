@@ -12,6 +12,20 @@ public sealed record LayoutRunway(LayoutRunwayEnd Low, LayoutRunwayEnd High, dou
 {
     /// <summary>"15/33".</summary>
     public string Name => $"{Low.Designator}/{High.Designator}";
+
+    /// <summary>Whether <paramref name="name"/> ("15/33" or "33/15", written as the airport data writes the designators) is this runway.</summary>
+    public bool Matches(string? name) => SameName(Name, name);
+
+    /// <summary>Whether two names of a runway, "15/33", are the same runway: the same two designators, in whichever order.</summary>
+    public static bool SameName(string? a, string? b)
+    {
+        var first = a?.Split('/');
+        var second = b?.Split('/');
+
+        return first is { Length: 2 } && second is { Length: 2 }
+            && ((RunwayDesignator.AreSame(first[0], second[0]) && RunwayDesignator.AreSame(first[1], second[1]))
+                || (RunwayDesignator.AreSame(first[0], second[1]) && RunwayDesignator.AreSame(first[1], second[0])));
+    }
 }
 
 public enum TaxiNodeKind
@@ -26,8 +40,12 @@ public enum TaxiNodeKind
     Parking,
 }
 
-/// <summary>A point of the taxi graph. <paramref name="Id"/> is unique in the layout.</summary>
-public sealed record TaxiNode(int Id, GeoPoint Position, TaxiNodeKind Kind);
+/// <summary>
+/// A point of the taxi graph. <paramref name="Id"/> is unique in the layout. <paramref name="Runway"/> is, for a holding point, the runway
+/// ("11/29") it holds short of; the simulator does not say it, so it is the runway nearest to the point. Null for the other nodes, and for a
+/// holding point that is not near any runway.
+/// </summary>
+public sealed record TaxiNode(int Id, GeoPoint Position, TaxiNodeKind Kind, string? Runway = null);
 
 public enum TaxiEdgeKind
 {

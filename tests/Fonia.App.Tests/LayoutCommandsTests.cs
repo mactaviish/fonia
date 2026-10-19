@@ -194,6 +194,100 @@ public sealed class LayoutCommandsTests : IDisposable
         output.ShouldContain("não deu para conferir");
     }
 
+    // A parking spot, taxiway A (named) north to a holding point 100 m from runway 15/33, which has a chain of runway nodes along it.
+    private static AirportFacility RoutableFacility(bool withParking = true)
+    {
+        RawTaxiPoint P(int index, int type, double east, double north) => new(index, type, 0, (float)east, (float)north);
+
+        return new AirportFacility(
+            new RawAirport("SBXX", "SB", "Curitiba Test", -25.5, -49.1, 900, 0, 1, 0, 7, 1, 7, 2),
+            [new RawRunway(-25.5, -49.1, 900, 315, 1000, 45, 4, 33, 0, 15, 0)],
+            [],
+            [P(0, 1, 320, -690), P(1, 1, 320, -500), P(2, 5, 320, -180), P(5, 1, -353, 353), P(6, 1, 0, 0), P(8, 1, 250, -250), P(7, 1, 353, -353)],
+            [
+                new RawTaxiPath(3, 25, 0, 0, 0, 0, 0),
+                new RawTaxiPath(4, 25, 0, 0, 0, 1, 1),
+                new RawTaxiPath(4, 25, 0, 0, 1, 2, 1),
+                new RawTaxiPath(4, 25, 0, 0, 2, 8, 0),
+                new RawTaxiPath(2, 45, 33, 0, 5, 6, 0),
+                new RawTaxiPath(2, 45, 33, 0, 6, 8, 0),
+                new RawTaxiPath(2, 45, 33, 0, 8, 7, 0),
+            ],
+            [new RawTaxiName(0, string.Empty), new RawTaxiName(1, "A")],
+            withParking ? [new RawParking(0, 3, 1, 1, 0, 1, 0, 180, 20, 320, -700)] : [],
+            [],
+            TimeSpan.FromSeconds(0.3));
+    }
+
+    [Fact]
+    public async Task The_layout_made_from_the_data_is_saved_next_to_the_raw_dump_and_reads_back()
+    {
+        var (code, output, _) = await RunAsync(new FakeSource(RoutableFacility()), OurAirport());
+
+        code.ShouldBe(0);
+
+        var path = Path.Combine(_root, "SBXX.json");
+        File.Exists(path).ShouldBeTrue();
+        output.ShouldContain($"Mapa gravado em {path}");
+
+        var layout = AirportLayoutJson.Read(await File.ReadAllTextAsync(path, Ct));
+        layout.Ident.ShouldBe("SBXX");
+        layout.Runways.Single().Name.ShouldBe("15/33");
+        layout.Nodes.Single(n => n.Id == 2).Runway.ShouldBe("15/33");
+    }
+
+    [Fact]
+    public async Task The_summary_of_the_map_counts_the_nodes_edges_and_the_holding_points_tied_to_a_runway()
+    {
+        var (_, output, _) = await RunAsync(new FakeSource(RoutableFacility()), OurAirport());
+
+        output.ShouldContain("Mapa convertido: 8 nós e 7 arestas (3 de taxiway, 3 de pista, 1 de estacionamento); 1 pontos de espera, 1 ligados a uma pista.");
+        output.ShouldContain("1 of 3 taxiway paths have no name");
+    }
+
+    [Fact]
+    public async Task The_test_of_routes_tries_every_parking_spot_against_every_runway_end_and_says_how_it_went()
+    {
+        var (_, output, _) = await RunAsync(new FakeSource(RoutableFacility()), OurAirport());
+
+        output.ShouldContain("Teste de rotas (de cada um dos 1 estacionamentos ligados");
+        output.ShouldContain("cabeceira 15: 1 de 1 com rota (0 atravessando pista)");
+        output.ShouldContain("cabeceira 33: 1 de 1 com rota (0 atravessando pista)");
+    }
+
+    [Fact]
+    public async Task A_route_that_cannot_be_said_is_counted_with_its_reason()
+    {
+        // Taxiway A without a name: the only way to the holding point is over unnamed taxiway.
+        var facility = RoutableFacility() with { TaxiNames = [new RawTaxiName(0, string.Empty), new RawTaxiName(1, string.Empty)] };
+
+        var (_, output, _) = await RunAsync(new FakeSource(facility), OurAirport());
+
+        output.ShouldContain("cabeceira 15: 0 de 1 com rota (0 atravessando pista); sem rota: taxiway sem nome 1");
+    }
+
+    [Fact]
+    public async Task Without_parking_spots_in_the_graph_there_are_no_routes_to_try()
+    {
+        var (_, output, _) = await RunAsync(new FakeSource(RoutableFacility(withParking: false)), OurAirport());
+
+        output.ShouldContain("Teste de rotas: sem estacionamento ligado ao grafo.");
+    }
+
+    [Fact]
+    public async Task When_the_data_cannot_make_a_map_the_report_says_why_and_no_map_is_saved()
+    {
+        var noRunway = RoutableFacility() with { Runways = [] };
+
+        var (code, output, _) = await RunAsync(new FakeSource(noRunway), OurAirport());
+
+        code.ShouldBe(1);
+        output.ShouldContain("Mapa: não deu para converter");
+        output.ShouldContain("no runway the layout can use");
+        File.Exists(Path.Combine(_root, "SBXX.json")).ShouldBeFalse();
+        File.Exists(Path.Combine(_root, "raw", "SBXX.raw.json")).ShouldBeTrue();
+    }
+
     [Fact]
     public async Task An_airport_the_simulator_does_not_have_fails_but_is_still_saved_for_a_look()
     {

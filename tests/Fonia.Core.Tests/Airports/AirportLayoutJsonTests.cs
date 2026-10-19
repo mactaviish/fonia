@@ -146,6 +146,28 @@ public class AirportLayoutJsonTests
     }
 
     [Fact]
+    public void A_holding_point_keeps_the_runway_it_is_tied_to()
+    {
+        var nodes = RoundTrip(TestLayouts.Toy()).Nodes;
+
+        nodes.Single(n => n.Id == 5).Runway.ShouldBe("15/33");
+        nodes.Single(n => n.Id == 1).Runway.ShouldBeNull();
+    }
+
+    [Fact]
+    public void A_holding_point_tied_to_a_runway_the_layout_does_not_have_is_refused()
+    {
+        Should.Throw<AirportLayoutFormatException>(() => AirportLayoutJson.Read(Broken(o => o["nodes"]![4]!["runway"] = "09/27")))
+            .Message.ShouldContain("09/27");
+    }
+
+    [Fact]
+    public void The_runway_of_a_holding_point_may_be_written_in_the_other_order()
+    {
+        AirportLayoutJson.Read(Broken(o => o["nodes"]![4]!["runway"] = "33/15")).Nodes.Single(n => n.Id == 5).Runway.ShouldBe("33/15");
+    }
+
+    [Fact]
     public void A_parking_that_enters_the_graph_at_a_missing_node_is_refused()
     {
         Should.Throw<AirportLayoutFormatException>(() => AirportLayoutJson.Read(Broken(o => o["parkings"]![0]!["node"] = 99)));
