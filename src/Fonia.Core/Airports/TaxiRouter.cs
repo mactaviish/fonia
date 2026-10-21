@@ -140,6 +140,63 @@ public static class TaxiRouter
             path.Meters));
     }
 
+    /// <summary>
+    /// The runway an aircraft has to cross to get from where it is to a parking position, when most of the ways to the parkings cross the same
+    /// one (<paramref name="minimumShare"/> of the parkings the graph connects to the aircraft): the controller then clears the crossing before
+    /// the pilot is told to call the Solo. A parking whose way has no crossing counts against it, and so does one that goes along a runway
+    /// instead of across it. Null when there is no such runway, when the aircraft is off the graph, or without taxiways: the caller does
+    /// what it does without a map.
+    /// </summary>
+    /// <returns>The runway as the layout names it ("10L/28R").</returns>
+    public static string? CrossingToApron(AirportLayout layout, GeoPoint from, double minimumShare = 0.8)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        ArgumentNullException.ThrowIfNull(from);
+
+        if (!layout.HasTaxiways)
+        {
+            return null;
+        }
+
+        var nodes = layout.Nodes.ToDictionary(n => n.Id);
+
+        var start = layout.Nodes
+            .Select(n => (Node: n, Meters: MetersBetween(from, n.Position)))
+            .OrderBy(x => x.Meters)
+            .FirstOrDefault();
+
+        if (start.Node is null || start.Meters > MaxDistanceToGraphMeters)
+        {
+            return null;
+        }
+
+        var runwaysAt = RunwaysAtNodes(layout);
+        var tree = ShortestTreeFrom(layout, nodes, start.Node.Id, null);
+        var reached = 0;
+        var firstCrossings = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var node in layout.Parkings.Where(p => p.Node is not null).Select(p => p.Node!.Value).Distinct())
+        {
+            if (tree.PathTo(node) is not { } path)
+            {
+                continue;
+            }
+
+            reached++;
+
+            var used = path.EdgeIndexes.Select(i => layout.Edges[i]).ToList();
+
+            if (CrossingsOf(layout, path.NodeIds, used, nodes, runwaysAt) is [{ Along: false } first, ..])
+            {
+                firstCrossings[first.Runway] = firstCrossings.GetValueOrDefault(first.Runway) + 1;
+            }
+        }
+
+        var top = firstCrossings.OrderByDescending(c => c.Value).ThenBy(c => c.Key, StringComparer.Ordinal).FirstOrDefault();
+
+        return reached > 0 && top.Key is not null && top.Value >= minimumShare * reached ? top.Key : null;
+    }
+
     // For each node, the runways whose edges touch it (the nodes where the route is on a runway).
     private static Dictionary<int, SortedSet<string>> RunwaysAtNodes(AirportLayout layout)
     {
@@ -172,8 +229,48 @@ public static class TaxiRouter
 
     private sealed record Path(IReadOnlyList<int> NodeIds, IReadOnlyList<int> EdgeIndexes, double Meters);
 
+    // What Dijkstra leaves: for each node reached, the node and the edge it was reached by, from which the way to it is rebuilt.
+    private sealed record ShortestTree(
+        AirportLayout Layout,
+        Dictionary<int, TaxiNode> Nodes,
+        int From,
+        HashSet<int> Settled,
+        Dictionary<int, (int Previous, int EdgeIndex)> CameBy)
+    {
+        public Path? PathTo(int to)
+        {
+            if (!Settled.Contains(to))
+            {
+                return null;
+            }
+
+            var nodeIds = new List<int> { to };
+            var edgeIndexes = new List<int>();
+
+            for (var at = to; at != From;)
+            {
+                var (previous, edgeIndex) = CameBy[at];
+
+                edgeIndexes.Add(edgeIndex);
+                nodeIds.Add(previous);
+                at = previous;
+            }
+
+            nodeIds.Reverse();
+            edgeIndexes.Reverse();
+
+            var length = edgeIndexes.Sum(i => MetersBetween(Nodes[Layout.Edges[i].From].Position, Nodes[Layout.Edges[i].To].Position));
+
+            return new Path(nodeIds, edgeIndexes, length);
+        }
+    }
+
+    private static Path? ShortestPath(AirportLayout layout, Dictionary<int, TaxiNode> nodes, int from, int to) =>
+        ShortestTreeFrom(layout, nodes, from, to).PathTo(to);
+
     // Dijkstra over the graph taken as two-way. The weight is the length of the edge, plus a penalty for a runway or a taxiway with no name.
-    private static Path? ShortestPath(AirportLayout layout, Dictionary<int, TaxiNode> nodes, int from, int to)
+    // Stops when it reaches stopAt; without one it settles every node it can reach.
+    private static ShortestTree ShortestTreeFrom(AirportLayout layout, Dictionary<int, TaxiNode> nodes, int from, int? stopAt)
     {
         var adjacency = nodes.Keys.ToDictionary(id => id, _ => new List<(int Neighbor, int EdgeIndex, double Cost)>());
 
@@ -201,7 +298,7 @@ public static class TaxiRouter
                 continue;
             }
 
-            if (current == to)
+            if (current == stopAt)
             {
                 break;
             }
@@ -219,29 +316,7 @@ public static class TaxiRouter
             }
         }
 
-        if (!settled.Contains(to))
-        {
-            return null;
-        }
-
-        var nodeIds = new List<int> { to };
-        var edgeIndexes = new List<int>();
-
-        for (var at = to; at != from;)
-        {
-            var (previous, edgeIndex) = cameBy[at];
-
-            edgeIndexes.Add(edgeIndex);
-            nodeIds.Add(previous);
-            at = previous;
-        }
-
-        nodeIds.Reverse();
-        edgeIndexes.Reverse();
-
-        var length = edgeIndexes.Sum(i => MetersBetween(nodes[layout.Edges[i].From].Position, nodes[layout.Edges[i].To].Position));
-
-        return new Path(nodeIds, edgeIndexes, length);
+        return new ShortestTree(layout, nodes, from, settled, cameBy);
     }
 
     private static double Penalty(TaxiEdge edge) => edge.Kind switch

@@ -45,6 +45,10 @@ public sealed class AtcEngine : IAtcEngine
             RequestStartup or RequestPushback or RequestTaxi when airport.Unit == ServiceUnit.Tower && airport.Airport.FrequencyOf(AirportFrequencyType.Ground) is { } ground
                 => Say(new CallTheSolo(ground.Frequency), Released(flight)),
 
+            // The runway is clear but the way to the apron crosses another one: the Torre clears the crossing, and the Solo comes after it.
+            ReportRunwayVacated when airport.Unit == ServiceUnit.Tower && CrossingBeforeTheApron(flight, airport, PositionOf(flight)) is { } crossing
+                => Vacated(Released(flight), crossing, keepPhase: true),
+
             // The runway is clear: the Torre passes the flight to the Solo; the Solo (or a Torre alone) takes it to the apron.
             ReportRunwayVacated when airport.Unit == ServiceUnit.Tower && airport.Airport.FrequencyOf(AirportFrequencyType.Ground) is { } ground
                 => Vacated(Released(flight), new HandoffToGround(ground.Frequency), keepPhase: true),
@@ -88,6 +92,11 @@ public sealed class AtcEngine : IAtcEngine
                 var landed = new LandedNotice(touchedDown.At.UtcDateTime.Minute, airport.Airport.FrequencyOf(AirportFrequencyType.Ground)?.Frequency);
 
                 return new AtcDecision(landed, flight with { Phase = FlightPhase.Landed, PendingReadback = landed, LastInstruction = landed });
+
+            // The aircraft is clear of the runway it landed on and the way to the apron crosses another: the Torre clears the crossing at once.
+            case RunwayVacated vacated when airport.Unit == ServiceUnit.Tower && flight.Phase == FlightPhase.Landed
+                && CrossingBeforeTheApron(flight, airport, vacated.Position ?? PositionOf(flight)) is { } crossing:
+                return new AtcDecision(crossing, flight with { PendingReadback = crossing, LastInstruction = crossing });
             default:
                 return new AtcDecision(new NoResponse(), flight);
         }
@@ -182,6 +191,47 @@ public sealed class AtcEngine : IAtcEngine
 
     private static AtcDecision Clearance(AtcInstruction instruction, FlightContext flight, FlightPhase phase, string runway) =>
         new(instruction, flight with { Phase = phase > flight.Phase || instruction is CircuitClearance or StraightInClearance ? phase : flight.Phase, PendingReadback = instruction, LastInstruction = instruction, AssignedRunway = runway });
+
+    private static GeoPoint? PositionOf(FlightContext flight) =>
+        flight.Aircraft is { OnGround: true } aircraft ? new GeoPoint(aircraft.LatitudeDegrees, aircraft.LongitudeDegrees) : null;
+
+    // The crossing to clear for an aircraft that landed and is clear of the runway: needs the map of the airport and where the aircraft is, and
+    // the runway that most of the ways to the apron cross (see TaxiRouter.CrossingToApron). Said once: after it the pilot is on the way to the Solo.
+    private static CrossRunway? CrossingBeforeTheApron(FlightContext flight, AirportContext airport, GeoPoint? position)
+    {
+        if (flight.Phase is not (FlightPhase.LandingCleared or FlightPhase.Landed) || flight.LastInstruction is CrossRunway
+            || airport.Layout is not { } layout || position is null)
+        {
+            return null;
+        }
+
+        if (TaxiRouter.CrossingToApron(layout, position) is not { } crossed
+            || layout.Runways.FirstOrDefault(r => r.Matches(crossed)) is not { } runway)
+        {
+            return null;
+        }
+
+        // The end said is the one the landings go the same way as: "cruze a pista uno zero esquerda" for an aircraft that landed on the 10R.
+        var landing = airport.RunwayForArrival is { } arrival
+            ? layout.Runways.SelectMany(r => new[] { r.Low, r.High }).FirstOrDefault(e => RunwayDesignator.AreSame(e.Designator, arrival))
+            : null;
+
+        // The aircraft has just left the runway it landed on: a way that goes back over it is the nearest node of the graph being on the far side,
+        // not a crossing to clear.
+        if (landing is not null
+            && (RunwayDesignator.AreSame(runway.Low.Designator, landing.Designator) || RunwayDesignator.AreSame(runway.High.Designator, landing.Designator)))
+        {
+            return null;
+        }
+
+        var end = landing is null
+            ? new[] { runway.Low, runway.High }.OrderBy(e => RunwayDesignator.TryParse(e.Designator, out var number, out _) ? number : int.MaxValue).First()
+            : new[] { runway.Low, runway.High }.OrderBy(e => HeadingDifference(e.TrueHeadingDegrees, landing.TrueHeadingDegrees)).First();
+
+        return new CrossRunway(RunwayDesignator.Normalize(end.Designator), airport.Airport.FrequencyOf(AirportFrequencyType.Ground)?.Frequency);
+    }
+
+    private static double HeadingDifference(double a, double b) => Math.Abs((a - b + 540) % 360 - 180);
 
     // After landing and only then: there is no runway to vacate before it. The flight starts over once taken to the apron.
     private static AtcDecision Vacated(FlightContext flight, AtcInstruction instruction, bool keepPhase)
@@ -320,6 +370,7 @@ public sealed class AtcEngine : IAtcEngine
         CircuitClearance circuit => RuleBasedNlu.MentionsCircuit(heard) && RunwayAgrees(heard, circuit.Runway),
         StraightInClearance straightIn => RuleBasedNlu.MentionsStraightIn(heard) && RunwayAgrees(heard, straightIn.Runway),
         LandingClearance landing => RuleBasedNlu.MentionsLanding(heard) && RunwayAgrees(heard, landing.Runway),
+        CrossRunway crossing => RuleBasedNlu.MentionsCrossing(heard) && RunwayAgrees(heard, crossing.Runway),
         _ => true,
     };
 

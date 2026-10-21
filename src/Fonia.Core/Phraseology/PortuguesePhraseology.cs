@@ -85,6 +85,10 @@ public sealed class PortuguesePhraseology : IPhraseology
         LandingClearance landing => $"{SpokenText.Runway(landing.Runway)}, pouso autorizado{WindPart(landing.Wind)}.",
         GoAroundNoted => "ciente.",
 
+        // The practice the maintainer gave, not the manual (see CrossRunway): "cruze a pista uno zero esquerda, após chame Solo em ...", without the airport.
+        CrossRunway { Solo: { } solo } crossing => $"cruze a {SpokenText.Runway(crossing.Runway)}, após chame Solo em {SpokenText.Frequency(solo)}.",
+        CrossRunway crossing => $"cruze a {SpokenText.Runway(crossing.Runway)}.",
+
         // Art. 134, II: "taxie para o pátio" (without the apron and the taxiway).
         TaxiToApron => "taxie para o pátio.",
 
