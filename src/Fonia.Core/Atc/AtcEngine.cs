@@ -1,6 +1,7 @@
 using Fonia.Core.Airports;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
+using Fonia.Core.Sim;
 
 namespace Fonia.Core.Atc;
 
@@ -60,6 +61,17 @@ public sealed class AtcEngine : IAtcEngine
             RequestLanding or ReportDownwind or ReportBaseLeg or ReportFinal or ReportGoingAround => CallTheTower(Released(flight), airport),
 
             // The departure belongs to the Torre; the Solo, asked for it, passes the flight on.
+            // Held short of a runway the way to the departure runway goes over: the Torre clears the crossing, and the line-up comes after it.
+            ReportHoldingShort or RequestDeparture when airport.Unit == ServiceUnit.Tower && CrossingBeforeTheTakeoff(flight, airport) is { } crossing
+                => new AtcDecision(
+                    crossing,
+                    flight with
+                    {
+                        Phase = crossing.LineUpRunway is null ? flight.Phase : FlightPhase.LineUpCleared,
+                        AssignedRunway = flight.AssignedRunway ?? airport.RunwayInUse,
+                        PendingReadback = crossing,
+                        LastInstruction = crossing,
+                    }),
             ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff when airport.Unit == ServiceUnit.Tower
                 => Departure(intent, Released(flight), airport),
             ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff => HoldingShort(Released(flight), airport),
@@ -231,6 +243,43 @@ public sealed class AtcEngine : IAtcEngine
         return new CrossRunway(RunwayDesignator.Normalize(end.Designator), airport.Airport.FrequencyOf(AirportFrequencyType.Ground)?.Frequency);
     }
 
+    // The aircraft taxiing out is stopped at the holding point of a runway the route to the departure runway goes over (not one it follows):
+    // needs the map and the position. The end said is the one that points the way the departure runway does.
+    private static CrossRunway? CrossingBeforeTheTakeoff(FlightContext flight, AirportContext airport)
+    {
+        var position = PositionOf(flight);
+        var runway = flight.AssignedRunway ?? airport.RunwayInUse;
+
+        if (flight.Phase < FlightPhase.Taxiing || flight.Phase >= FlightPhase.LineUpCleared
+            || airport.Layout is not { } layout || position is null || runway is null)
+        {
+            return null;
+        }
+
+        if (TaxiRouter.Find(layout, position, runway) is not TaxiRouteFound { Route: var route }
+            || route.Crossings.FirstOrDefault(c => !c.Along) is not { HoldShortNodeId: { } holdId } first
+            || layout.Nodes.FirstOrDefault(n => n.Id == holdId) is not { } hold
+            || Geo.DistanceKm(position.LatitudeDegrees, position.LongitudeDegrees, hold.Position.LatitudeDegrees, hold.Position.LongitudeDegrees) * 1000 > AtHoldingPointMeters
+            || layout.Runways.FirstOrDefault(r => r.Matches(first.Runway)) is not { } crossed)
+        {
+            return null;
+        }
+
+        var departing = layout.Runways.SelectMany(r => new[] { r.Low, r.High }).FirstOrDefault(e => RunwayDesignator.AreSame(e.Designator, runway));
+
+        var end = departing is null
+            ? new[] { crossed.Low, crossed.High }.OrderBy(e => RunwayDesignator.TryParse(e.Designator, out var number, out _) ? number : int.MaxValue).First()
+            : new[] { crossed.Low, crossed.High }.OrderBy(e => HeadingDifference(e.TrueHeadingDegrees, departing.TrueHeadingDegrees)).First();
+
+        var crossing = RunwayDesignator.Normalize(end.Designator);
+
+        // Someone ahead in the line: the crossing and then the wait at the holding point; nobody: the crossing and the line-up in one.
+        return airport.AircraftAhead ? new CrossRunway(crossing, null, HoldAfter: true) : new CrossRunway(crossing, null, LineUpRunway: runway);
+    }
+
+    // How close to the node of a holding point the aircraft has to be to count as held short there (the simulator's nodes are the lines, a little short of them).
+    private const double AtHoldingPointMeters = 75;
+
     private static double HeadingDifference(double a, double b) => Math.Abs((a - b + 540) % 360 - 180);
 
     // After landing and only then: there is no runway to vacate before it. The flight starts over once taken to the apron.
@@ -370,6 +419,8 @@ public sealed class AtcEngine : IAtcEngine
         CircuitClearance circuit => RuleBasedNlu.MentionsCircuit(heard) && RunwayAgrees(heard, circuit.Runway),
         StraightInClearance straightIn => RuleBasedNlu.MentionsStraightIn(heard) && RunwayAgrees(heard, straightIn.Runway),
         LandingClearance landing => RuleBasedNlu.MentionsLanding(heard) && RunwayAgrees(heard, landing.Runway),
+        // Two runways are named in "cruzando pista X, alinhando pista Y": only that both things were said is judged.
+        CrossRunway { LineUpRunway: not null } => RuleBasedNlu.MentionsCrossing(heard) && RuleBasedNlu.MentionsLineUp(heard),
         CrossRunway crossing => RuleBasedNlu.MentionsCrossing(heard) && RunwayAgrees(heard, crossing.Runway),
         _ => true,
     };

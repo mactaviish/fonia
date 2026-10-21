@@ -207,6 +207,12 @@ internal sealed class AtcConsole(
                 log?.StartFlight(context, callsign);
             }
 
+            if (IsQueueCommand(line))
+            {
+                context = HandleQueueCommand(line, context);
+                continue;
+            }
+
             if (IsPlaceCommand(line))
             {
                 practice = HandlePlaceCommand(line, practice, context, callsign, liveAircraft?.Invoke() is not null);
@@ -437,7 +443,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/evento livrou\", a pista livre; \"/em vaga 1\", \"/em espera 15\" ou \"/em pista 15\" põe a aeronave num ponto do mapa guardado; \"/errado\" marca a última troca como mal entendida).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/evento livrou\", a pista livre; \"/fila sim\" simula tráfego à frente para decolar; \"/em vaga 1\", \"/em espera 15\" ou \"/em pista 15\" põe a aeronave num ponto do mapa guardado; \"/errado\" marca a última troca como mal entendida).");
         }
     }
 
@@ -472,6 +478,38 @@ internal sealed class AtcConsole(
         var trimmed = line.TrimStart();
 
         return trimmed.StartsWith("/com1", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 5 || char.IsWhiteSpace(trimmed[5]));
+    }
+
+    private static bool IsQueueCommand(string line)
+    {
+        var trimmed = line.TrimStart();
+
+        return trimmed.StartsWith("/fila", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 5 || char.IsWhiteSpace(trimmed[5]));
+    }
+
+    // "/fila sim" puts someone ahead in the line for the takeoff, "/fila nao" takes them away: the app has no traffic of its own, and the Torre
+    // clears a crossing on the way to the takeoff with the line-up when nobody is ahead, and with the wait at the holding point when someone is.
+    private AirportContext HandleQueueCommand(string line, AirportContext context)
+    {
+        var argument = line.Trim()[5..].Trim().ToUpperInvariant();
+
+        if (argument.Length == 0)
+        {
+            output.WriteLine(context.AircraftAhead ? "Há alguém na frente na fila de decolagem." : "Ninguém na frente na fila de decolagem.");
+            return context;
+        }
+
+        if (argument is not ("SIM" or "NAO" or "NÃO"))
+        {
+            error.WriteLine("fonia: use /fila sim (alguém na frente) ou /fila nao (ninguém na frente).");
+            return context;
+        }
+
+        var ahead = argument == "SIM";
+
+        output.WriteLine(ahead ? "Há alguém na frente na fila de decolagem." : "Ninguém na frente na fila de decolagem.");
+
+        return context with { AircraftAhead = ahead };
     }
 
     private static bool IsPlaceCommand(string line)

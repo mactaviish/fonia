@@ -258,4 +258,30 @@ public class AtcConsoleLayoutTests
         result.Output.ShouldContain("a posição da aeronave vem dele");
         result.Output.ShouldNotContain("Aeronave parada");
     }
+
+    [Fact]
+    public async Task Fila_tells_whether_someone_is_ahead_and_changes_it()
+    {
+        var result = await RunAsync(Atc(), "/fila\n/fila sim\n/fila\n/fila nao\nsair\n", new FakeLayouts(null));
+
+        var lines = result.Output.Split('\n').Where(l => l.Contains("na frente na fila", StringComparison.Ordinal)).ToList();
+
+        lines.ShouldBe(
+        [
+            "Ninguém na frente na fila de decolagem.",
+            "Há alguém na frente na fila de decolagem.",
+            "Há alguém na frente na fila de decolagem.",
+            "Ninguém na frente na fila de decolagem.",
+        ]);
+        result.Error.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Fila_with_something_else_is_an_error_and_changes_nothing()
+    {
+        var result = await RunAsync(Atc(), "/fila talvez\nsair\n", new FakeLayouts(null));
+
+        result.Error.ShouldContain("use /fila sim");
+        result.Output.ShouldNotContain("na frente na fila");
+    }
 }

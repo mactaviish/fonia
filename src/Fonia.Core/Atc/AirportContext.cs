@@ -26,7 +26,8 @@ namespace Fonia.Core.Atc;
 /// The runway end that receives the landings, when it is not <paramref name="RunwayInUse"/>, which then is the one for takeoffs and taxi
 /// (an airport with parallel runways of different uses, see <see cref="RunwayUseRule"/>); null when one runway does both.
 /// </param>
-public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null, int? TemperatureCelsius = null, int? VisibilityMeters = null, Metar? Report = null, AirportLayout? Layout = null, string? ArrivalRunway = null)
+/// <param name="AircraftAhead">Whether another aircraft is ahead in the line for the takeoff; the app has no traffic of its own, so it is set by hand.</param>
+public sealed record AirportContext(Airport Airport, ServiceUnit Unit, string? RunwayInUse, Frequency? Tuned = null, Wind? Wind = null, int? Qnh = null, int? TemperatureCelsius = null, int? VisibilityMeters = null, Metar? Report = null, AirportLayout? Layout = null, string? ArrivalRunway = null, bool AircraftAhead = false)
 {
     // Up to five knots the wind is as good as calm for choosing the runway (a light tailwind is accepted): the default stays.
     private const int WindThatChoosesTheRunwayKnots = 6;
