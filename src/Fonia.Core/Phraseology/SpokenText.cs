@@ -293,6 +293,13 @@ public static class SpokenText
                 continue;
             }
 
+            // A flight number said as a whole ("mil duzentos e trinta e quatro") is 1234; digit by digit and in pairs are read piece by piece below.
+            if (SpokenCode.TryReadWholeNumber(tokens, ref index, out var whole))
+            {
+                code.Append(whole);
+                continue;
+            }
+
             if (SpokenCode.TryRead(tokens, ref index, out var value))
             {
                 code.Append(value);

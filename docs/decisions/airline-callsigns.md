@@ -27,7 +27,7 @@ A edição usada: **JO 7340.2N com as mudanças 1 a 3 (17/04/2025)**, <https://w
 ## Plano proposto (tarefas pequenas, uma branch cada)
 
 1. **Tabela de telefonia** (`data/telephony.csv`, embutida no Core): empresas brasileiras e estrangeiras que voam no Brasil, com a edição de origem. `SpokenText` lê dela, no lugar do dicionário fixo. (Feita.)
-2. **NLU do número do voo**: "Gol um dois três quatro", "Gol mil duzentos e trinta e quatro", "Gol doze trinta e quatro" viram `GLO1234`. O NLU já aceita a telefonia ("gol" é GLO); falta o número falado de formas diferentes.
+2. **NLU do número do voo (feita)**: "Gol um dois três quatro", "Gol mil duzentos e trinta e quatro", "Gol doze trinta e quatro" viram `GLO1234`. O NLU já aceita a telefonia ("gol" é GLO); falta o número falado de formas diferentes.
 3. **Leitura do simulador**: o MSFS tem `ATC AIRLINE` e `ATC FLIGHT NUMBER`. Se o voo tiver os dois, o indicativo é designador + número (com a telefonia da tabela); senão, a matrícula, como hoje. Sem simulador: `--callsign GLO1234` (já aceito) ou o `appsettings.json`.
 4. **Cotejo e abreviação**: hoje o controle abrevia a matrícula depois do contato (as duas últimas letras). Para o voo, a regra a decidir com o mantenedor é dizer sempre o designador e o número inteiro.
 
@@ -43,3 +43,7 @@ A edição usada: **JO 7340.2N com as mudanças 1 a 3 (17/04/2025)**, <https://w
 ## Pedido do mantenedor, ainda sem feature: estrangeiras em inglês
 
 "Qualquer companhia aérea estrangeira o controle deve falar em inglês." Hoje só o ATIS tem inglês (`AtisEnglish`); o Solo e a Torre falam só português (`PortuguesePhraseology`) e não há fraseologia de controle em inglês. É uma **feature própria**: uma `EnglishPhraseology` (ICAO Doc 4444 e a prática do DECEA em inglês, nunca inventada, com fonte e `TODO(fraseologia)` onde faltar), a escolha da língua pelo voo (a coluna `country` de `data/telephony.csv` já separa Brasil do resto; falta decidir o caso de empresa brasileira que fala inglês e o de piloto estrangeiro de matrícula estrangeira), o NLU do piloto em inglês (o STT do Whisper `small` é multilíngue) e a voz do TTS em inglês. Entra no roadmap depois das tarefas 2 a 4 do indicativo.
+
+## Tarefa 2 (feita): o número do voo falado de várias formas
+
+`SpokenCode.TryReadWholeNumber` lê o número dito por inteiro, com "mil" e centenas ("mil duzentos e trinta e quatro", "dois mil e quinhentos", "trezentos e quarenta", "cento e vinte"), e o `SpokenText` o usa ao ler o indicativo. Dígito a dígito ("um dois três quatro") e em pares ("doze trinta e quatro") já eram lidos. As três formas dão o mesmo `GLO1234`, e outro número não casa. O STT às vezes escreve algarismos ("Gol 1234"), que também funcionam.
