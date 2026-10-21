@@ -209,14 +209,33 @@ internal sealed class AtcConsole(
 
             if (IsQueueCommand(line))
             {
+                var wasWaiting = context.AircraftAhead || context.RunwayBusy;
+
                 context = HandleQueueCommand(line, context);
+
+                // The line cleared: the instruction that was waiting for it is given by the controller at once.
+                if (wasWaiting && !context.AircraftAhead && !context.RunwayBusy)
+                {
+                    flight = ApplyEvent(new TrafficCleared((timeProvider ?? TimeProvider.System).GetUtcNow()), flight, FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke()), announceSilence: false);
+                }
+
                 continue;
             }
 
             if (IsPlaceCommand(line))
             {
+                var placedBefore = practice;
+
                 practice = HandlePlaceCommand(line, practice, context, callsign, liveAircraft?.Invoke() is not null);
                 flight = practice is null ? flight : flight with { Aircraft = practice };
+
+                // Put close to a holding point or to the runway, the controller sees it, as the telemetry would show.
+                if (practice is not null && !ReferenceEquals(practice, placedBefore)
+                    && new RunwayApproachDetector().Observe(practice, context.Layout, context.RunwayInUse) is { } near)
+                {
+                    flight = ApplyEvent(near, flight, FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke()), announceSilence: false);
+                }
+
                 continue;
             }
 
@@ -443,7 +462,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/evento livrou\", a pista livre; \"/fila sim\" simula tráfego à frente para decolar; \"/em vaga 1\", \"/em espera 15\" ou \"/em pista 15\" põe a aeronave num ponto do mapa guardado; \"/errado\" marca a última troca como mal entendida).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/evento livrou\", a pista livre; \"/evento chegou\", perto da pista; \"/fila sim\" simula tráfego à frente para decolar; \"/em vaga 1\", \"/em espera 15\" ou \"/em pista 15\" põe a aeronave num ponto do mapa guardado; \"/errado\" marca a última troca como mal entendida).");
         }
     }
 
@@ -487,30 +506,40 @@ internal sealed class AtcConsole(
         return trimmed.StartsWith("/fila", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 5 || char.IsWhiteSpace(trimmed[5]));
     }
 
-    // "/fila sim" puts someone ahead in the line for the takeoff, "/fila nao" takes them away: the app has no traffic of its own, and the Torre
-    // clears a crossing on the way to the takeoff with the line-up when nobody is ahead, and with the wait at the holding point when someone is.
+    // "/fila sim" puts someone ahead in the line for the takeoff, "/fila pista" makes the runway busy (the aircraft may line up but not take off),
+    // "/fila nao" clears both: the app has no traffic of its own. With the way free the Torre clears the takeoff at once; with the runway busy, the
+    // line-up first; with someone ahead, it keeps quiet (and tells a pilot who calls to wait).
     private AirportContext HandleQueueCommand(string line, AirportContext context)
     {
         var argument = line.Trim()[5..].Trim().ToUpperInvariant();
 
         if (argument.Length == 0)
         {
-            output.WriteLine(context.AircraftAhead ? "Há alguém na frente na fila de decolagem." : "Ninguém na frente na fila de decolagem.");
+            output.WriteLine(DescribeQueue(context));
             return context;
         }
 
-        if (argument is not ("SIM" or "NAO" or "NÃO"))
+        var changed = argument switch
         {
-            error.WriteLine("fonia: use /fila sim (alguém na frente) ou /fila nao (ninguém na frente).");
+            "SIM" => context with { AircraftAhead = true, RunwayBusy = false },
+            "PISTA" => context with { AircraftAhead = false, RunwayBusy = true },
+            "NAO" or "NÃO" => context with { AircraftAhead = false, RunwayBusy = false },
+            _ => null,
+        };
+
+        if (changed is null)
+        {
+            error.WriteLine("fonia: use /fila sim (alguém na frente), /fila pista (pista ocupada) ou /fila nao (livre).");
             return context;
         }
 
-        var ahead = argument == "SIM";
+        output.WriteLine(DescribeQueue(changed));
 
-        output.WriteLine(ahead ? "Há alguém na frente na fila de decolagem." : "Ninguém na frente na fila de decolagem.");
-
-        return context with { AircraftAhead = ahead };
+        return changed;
     }
+
+    private static string DescribeQueue(AirportContext context) =>
+        context.AircraftAhead ? "Há alguém na frente na fila de decolagem." : context.RunwayBusy ? "Pista ocupada: pode alinhar, mas não decolar ainda." : "Ninguém na frente na fila de decolagem.";
 
     private static bool IsPlaceCommand(string line)
     {
@@ -585,22 +614,31 @@ internal sealed class AtcConsole(
             "DECOLOU" => new TookOff(now),
             "POUSOU" => new TouchedDown(now),
             "LIVROU" => new RunwayVacated(now, null),
+            "CHEGOU" => new NearRunway(now, null),
             _ => null,
         };
 
         if (flightEvent is null)
         {
-            error.WriteLine("fonia: evento desconhecido. Use /evento decolou, /evento pousou ou /evento livrou.");
+            error.WriteLine("fonia: evento desconhecido. Use /evento decolou, /evento pousou, /evento livrou ou /evento chegou.");
             return flight;
         }
 
+        return ApplyEvent(flightEvent, flight, onTheFrequency, announceSilence: true);
+    }
+
+    // What the controller does about an event: speaks, if there is anything to say, and takes the flight on. The commands that stand for the
+    // telemetry say when the controller keeps quiet; what follows from another command (a place, the line) does not.
+    private FlightContext ApplyEvent(FlightEvent flightEvent, FlightContext flight, AirportContext onTheFrequency, bool announceSilence)
+    {
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
         var decision = engine.Handle(flightEvent, flight, onTheFrequency);
 
         if (phraseology.Speak(decision.Instruction, new PhraseContext(flight.Callsign, onTheFrequency, now)) is { } utterance)
         {
             Show(utterance, onTheFrequency);
         }
-        else
+        else if (announceSilence)
         {
             output.WriteLine("(o controlador não diz nada sobre isso)");
         }

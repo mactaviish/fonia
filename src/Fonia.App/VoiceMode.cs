@@ -148,6 +148,7 @@ internal sealed class VoiceMode(
     {
         var events = new FlightEventDetector();
         var vacating = new RunwayVacatedDetector();
+        var approaching = new RunwayApproachDetector();
         var changes = new FlightChangeDetector();
         var announcements = new List<Task>();
 
@@ -162,6 +163,7 @@ internal sealed class VoiceMode(
                     log?.StartFlight(restart.Airport, restart.Flight.Callsign);
                     events = new FlightEventDetector();
                     vacating = new RunwayVacatedDetector();
+                    approaching = new RunwayApproachDetector();
                     events.Observe(change.State);
                     continue;
                 }
@@ -170,6 +172,12 @@ internal sealed class VoiceMode(
                 if (vacating.Observe(state, loop.Airport.Layout, loop.Airport.RunwayForArrival) is { } vacated)
                 {
                     announcements.Add(loop.AnnounceAsync(vacated, ct));
+                }
+
+                // Close to a holding point or to the runway: the controller gives the next instruction by itself, if it can (it needs the map).
+                if (approaching.Observe(state, loop.Airport.Layout, loop.Airport.RunwayInUse) is { } near)
+                {
+                    announcements.Add(loop.AnnounceAsync(near, ct));
                 }
 
                 if (events.Observe(state) is { } flightEvent)

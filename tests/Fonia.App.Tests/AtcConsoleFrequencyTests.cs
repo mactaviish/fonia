@@ -234,6 +234,7 @@ public class AtcConsoleFrequencyTests
             "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
             "Chamando Torre Curitiba, uno uno nove decimal cinco, Alfa Bravo Charlie",
             "/com1 119.5",
+            "/fila pista",
             "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, ponto de espera pista uno uno, pronto para partida",
             "alinhe e mantenha pista uno uno, Papa Romeo Alfa Bravo Charlie",
             "Papa Romeo Alfa Bravo Charlie, alinhado",
@@ -262,6 +263,7 @@ public class AtcConsoleFrequencyTests
             "Papa Romeo Alfa Bravo Charlie, pronto para o táxi",
             "Papa Romeo Alfa Bravo Charlie, no ponto de espera da pista uno uno",
             "/com1 119.5",
+            "/fila pista",
             "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, pronto para decolagem",
             "alinhe e mantenha pista uno cinco, Papa Romeo Alfa Bravo Charlie",
             "sair\n");
@@ -302,7 +304,7 @@ public class AtcConsoleFrequencyTests
     {
         var result = await RunAsync(Atc(), "/evento voou\nsair\n");
 
-        result.Error.ShouldContain("/evento decolou, /evento pousou ou /evento livrou");
+        result.Error.ShouldContain("/evento decolou, /evento pousou, /evento livrou ou /evento chegou");
     }
 
     [Fact]

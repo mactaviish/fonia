@@ -284,4 +284,42 @@ public class AtcConsoleLayoutTests
         result.Error.ShouldContain("use /fila sim");
         result.Output.ShouldNotContain("na frente na fila");
     }
+
+    [Fact]
+    public async Task Put_at_the_holding_point_the_controller_gives_the_next_instruction_without_the_pilot_calling()
+    {
+        var typed = "Solo Curitiba, PRABC, solicito táxi\n/em espera 11\n/com1 118.15\n/evento chegou\nsair\n";
+
+        var result = await RunAsync(Atc(new Frequency(118000)), typed, new FakeLayouts(SimulatorLayout()));
+
+        var output = result.Output;
+
+        output.IndexOf("chame Torre", StringComparison.Ordinal).ShouldBeGreaterThan(-1);
+        output.IndexOf("autorizado decolagem", StringComparison.Ordinal).ShouldBeGreaterThan(output.IndexOf("chame Torre", StringComparison.Ordinal));
+        output.ShouldNotContain("alinhe e mantenha");
+        result.Error.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task With_someone_ahead_the_controller_waits_and_speaks_by_itself_when_the_line_clears()
+    {
+        var typed = "Solo Curitiba, PRABC, solicito táxi\n/em espera 11\n/com1 118.15\n/fila sim\n/evento chegou\nPRABC, pronto para decolar\n/fila nao\nsair\n";
+
+        var result = await RunAsync(Atc(new Frequency(118000)), typed, new FakeLayouts(SimulatorLayout()));
+
+        var output = result.Output;
+        var wait = output.IndexOf("aguarde.", StringComparison.Ordinal);
+
+        wait.ShouldBeGreaterThan(-1);
+        output.IndexOf("autorizado decolagem", StringComparison.Ordinal).ShouldBeGreaterThan(wait);
+    }
+
+    [Fact]
+    public async Task Fila_pista_makes_the_runway_busy_and_fila_nao_frees_it()
+    {
+        var result = await RunAsync(Atc(), "/fila pista\n/fila\n/fila nao\nsair\n", new FakeLayouts(null));
+
+        result.Output.Split('\n').Count(l => l.StartsWith("Pista ocupada", StringComparison.Ordinal)).ShouldBe(2);
+        result.Output.ShouldContain("Ninguém na frente na fila de decolagem.");
+    }
 }

@@ -16,3 +16,12 @@ public sealed record TouchedDown(DateTimeOffset At) : FlightEvent;
 /// where it was then, which is where the way to the apron starts (see <see cref="RunwayVacatedDetector"/>).
 /// </summary>
 public sealed record RunwayVacated(DateTimeOffset At, GeoPoint? Position) : FlightEvent;
+
+/// <summary>
+/// The aircraft on the ground is close to a holding point or to the departure runway (see <see cref="RunwayApproachDetector"/>): the controller
+/// who sees it gives the next instruction at once, if it can. <paramref name="Position"/> is where it was; null means the position the flight has.
+/// </summary>
+public sealed record NearRunway(DateTimeOffset At, GeoPoint? Position) : FlightEvent;
+
+/// <summary>Nobody is ahead in the line for the takeoff any more: the instruction that was waiting for it can be given now.</summary>
+public sealed record TrafficCleared(DateTimeOffset At) : FlightEvent;

@@ -49,31 +49,31 @@ public class CrossingBeforeTakeoffTests
     }
 
     [Fact]
-    public void Held_short_of_the_departure_runway_after_the_crossing_the_torre_lines_up()
+    public void Held_short_of_the_departure_runway_after_the_crossing_the_torre_clears_the_takeoff()
     {
-        new AtcEngine().Handle(new ReportHoldingShort(Own, null), Taxiing(5), OnTower).Instruction.ShouldBeOfType<LineUpAndWait>();
+        new AtcEngine().Handle(new ReportHoldingShort(Own, null), Taxiing(5), OnTower).Instruction.ShouldBeOfType<TakeoffClearance>();
     }
 
     [Fact]
     public void On_the_far_side_of_the_crossed_runway_the_way_has_no_crossing_left()
     {
-        new AtcEngine().Handle(new ReportHoldingShort(Own, null), Taxiing(4), OnTower).Instruction.ShouldBeOfType<LineUpAndWait>();
+        new AtcEngine().Handle(new ReportHoldingShort(Own, null), Taxiing(4), OnTower).Instruction.ShouldBeOfType<TakeoffClearance>();
     }
 
     [Fact]
     public void An_aircraft_that_is_not_at_the_holding_point_gets_what_it_always_got()
     {
-        new AtcEngine().Handle(new ReportHoldingShort(Own, null), Taxiing(1), OnTower).Instruction.ShouldBeOfType<LineUpAndWait>();
+        new AtcEngine().Handle(new ReportHoldingShort(Own, null), Taxiing(1), OnTower).Instruction.ShouldBeOfType<TakeoffClearance>();
     }
 
     [Fact]
-    public void Without_the_map_or_the_position_the_torre_lines_up_as_before()
+    public void Without_the_map_or_the_position_the_torre_clears_the_takeoff_as_before()
     {
         var engine = new AtcEngine();
 
-        engine.Handle(new ReportHoldingShort(Own, null), Taxiing(2), OnTower with { Layout = null }).Instruction.ShouldBeOfType<LineUpAndWait>();
-        engine.Handle(new ReportHoldingShort(Own, null), Taxiing(2) with { Aircraft = null }, OnTower).Instruction.ShouldBeOfType<LineUpAndWait>();
-        engine.Handle(new ReportHoldingShort(Own, null), Taxiing(2) with { Aircraft = AtNode(2, onGround: false) }, OnTower).Instruction.ShouldBeOfType<LineUpAndWait>();
+        engine.Handle(new ReportHoldingShort(Own, null), Taxiing(2), OnTower with { Layout = null }).Instruction.ShouldBeOfType<TakeoffClearance>();
+        engine.Handle(new ReportHoldingShort(Own, null), Taxiing(2) with { Aircraft = null }, OnTower).Instruction.ShouldBeOfType<TakeoffClearance>();
+        engine.Handle(new ReportHoldingShort(Own, null), Taxiing(2) with { Aircraft = AtNode(2, onGround: false) }, OnTower).Instruction.ShouldBeOfType<TakeoffClearance>();
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class CrossingBeforeTakeoffTests
         phraseology.Speak(new CrossRunway("10R", null, LineUpRunway: "10L"), context)!.Text
             .ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, cruze a PISTA UNO ZERO DIREITA, alinhe e mantenha PISTA UNO ZERO ESQUERDA.");
         phraseology.Speak(new CrossRunway("10R", null, HoldAfter: true), context)!.Text
-            .ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, cruze a PISTA UNO ZERO DIREITA e mantenha no ponto de espera.");
+            .ShouldBe("PAPA ROMEO ALFA BRAVO CHARLIE, cruze a PISTA UNO ZERO DIREITA e mantenha antes da barra de parada.");
     }
 
     [Theory]

@@ -17,7 +17,7 @@ public class TowerDepartureTests
 
     private static Frequency TowerFrequency => SoloAndTower.Airport.FrequencyOf(AirportFrequencyType.Tower)!.Frequency;
 
-    private static readonly AirportContext OnTower = FrequencyResolver.Apply(SoloAndTower, TowerFrequency);
+    private static readonly AirportContext OnTower = FrequencyResolver.Apply(SoloAndTower, TowerFrequency) with { RunwayBusy = true };
 
     private static readonly FlightContext Handed = new(Own, FlightPhase.HandedToTower, "SBXX", null, null, null, "11");
 
@@ -283,7 +283,7 @@ public class TowerDepartureTests
     [Fact]
     public void An_airport_with_only_a_torre_does_the_whole_departure_after_the_taxi()
     {
-        var towerOnly = AirportContext.Create(TestAirports.Airport("SBXX", [TestAirports.Runway("11", "29", 9000)], AirportFrequencyType.Tower));
+        var towerOnly = AirportContext.Create(TestAirports.Airport("SBXX", [TestAirports.Runway("11", "29", 9000)], AirportFrequencyType.Tower)) with { RunwayBusy = true };
         var taxiing = new FlightContext(Own, FlightPhase.Taxiing, "SBXX", null, null, null, "11");
 
         _engine.Handle(new RequestDeparture(Own, null), taxiing, towerOnly).Instruction.ShouldBe(new LineUpAndWait("11"));

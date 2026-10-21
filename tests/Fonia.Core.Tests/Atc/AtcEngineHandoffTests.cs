@@ -151,11 +151,12 @@ public class AtcEngineHandoffTests
     }
 
     [Fact]
-    public void On_the_torre_the_report_of_the_holding_point_is_a_departure_to_line_up()
+    public void On_the_torre_the_report_of_the_holding_point_is_a_departure_the_runway_free_is_cleared_and_busy_is_lined_up()
     {
         var onTower = FrequencyResolver.Apply(SoloAndTower, Tower);
 
-        _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, onTower).Instruction.ShouldBeOfType<LineUpAndWait>();
+        _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, onTower).Instruction.ShouldBeOfType<TakeoffClearance>();
+        _engine.Handle(new ReportHoldingShort(Own, "11"), Taxiing, onTower with { RunwayBusy = true }).Instruction.ShouldBeOfType<LineUpAndWait>();
     }
 
     [Fact]
