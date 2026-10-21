@@ -42,6 +42,8 @@ public class LiveMsfsSessionTests
 
         public void OnIdentity(IdentityData data) => Publish(_assembler.OnIdentity(data));
 
+        public void OnAirline(AirlineData data) => Publish(_assembler.OnAirline(data));
+
         public void OnRadios(RadioData data) => Publish(_assembler.OnRadios(data));
 
         public void OnTransponder(TransponderData data) => Publish(_assembler.OnTransponder(data));

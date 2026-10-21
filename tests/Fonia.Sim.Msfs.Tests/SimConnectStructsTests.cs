@@ -37,6 +37,19 @@ public class SimConnectStructsTests
     }
 
     [Fact]
+    public void Airline_reads_the_atc_airline_and_flight_number_as_fixed_size_text()
+    {
+        Definitions<AirlineStruct>().ShouldBe(
+        [
+            ("Airline", "ATC AIRLINE", null, SimConnectDataType.String64),
+            ("FlightNumber", "ATC FLIGHT NUMBER", null, SimConnectDataType.String8),
+        ]);
+
+        new AirlineStruct { Airline = "Gol", FlightNumber = "1234" }.ToData().ShouldBe(new AirlineData("Gol", "1234"));
+        new AirlineStruct().ToData().ShouldBe(new AirlineData(string.Empty, string.Empty));
+    }
+
+    [Fact]
     public void Identity_reads_text_variables_with_fixed_string_sizes()
     {
         Definitions<IdentityStruct>().ShouldBe(

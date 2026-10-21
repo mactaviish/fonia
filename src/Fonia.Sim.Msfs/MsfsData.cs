@@ -17,6 +17,9 @@ internal readonly record struct MotionData(
 /// <summary>ATC ID (registration), ATC TYPE (manufacturer), ATC MODEL (type code or a translation key) and TITLE.</summary>
 internal sealed record IdentityData(string AtcId, string AtcType, string AtcModel, string Title);
 
+/// <summary>ATC AIRLINE (the airline set for the radio, a telephony such as "Gol") and ATC FLIGHT NUMBER.</summary>
+internal sealed record AirlineData(string Airline, string FlightNumber);
+
 /// <summary>COM ACTIVE/STANDBY FREQUENCY:1 and :2, read in Hz (the MHz unit returned wrong COM1 values through the library's struct path).</summary>
 internal readonly record struct RadioData(
     double Com1ActiveHz,

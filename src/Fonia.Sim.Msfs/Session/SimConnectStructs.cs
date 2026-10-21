@@ -58,6 +58,19 @@ public struct IdentityStruct
     internal readonly IdentityData ToData() => new(AtcId ?? string.Empty, AtcType ?? string.Empty, AtcModel ?? string.Empty, Title ?? string.Empty);
 }
 
+// Apart from the identity: the airline and the flight number are an extra (an aircraft without them is a registration), and if the
+// simulator refuses them the rest keeps being read.
+public struct AirlineStruct
+{
+    [SimConnect("ATC AIRLINE", SimConnectDataType.String64)]
+    public string Airline;
+
+    [SimConnect("ATC FLIGHT NUMBER", SimConnectDataType.String8)]
+    public string FlightNumber;
+
+    internal readonly AirlineData ToData() => new(Airline ?? string.Empty, FlightNumber ?? string.Empty);
+}
+
 public struct RadiosStruct
 {
     // Hz, never MHz: through the library's struct path the MHz unit returned wrong COM1 values.

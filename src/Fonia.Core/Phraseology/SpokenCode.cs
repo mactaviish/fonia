@@ -61,6 +61,20 @@ public static class SpokenCode
         ["noventa"] = 90,
     };
 
+    private static readonly Dictionary<string, int> Hundreds = new()
+    {
+        ["cem"] = 100,
+        ["cento"] = 100,
+        ["duzentos"] = 200,
+        ["trezentos"] = 300,
+        ["quatrocentos"] = 400,
+        ["quinhentos"] = 500,
+        ["seiscentos"] = 600,
+        ["setecentos"] = 700,
+        ["oitocentos"] = 800,
+        ["novecentos"] = 900,
+    };
+
     private static readonly Dictionary<string, char> LetterWords = new()
     {
         ["alfa"] = 'A',
@@ -301,6 +315,86 @@ public static class SpokenCode
         index++;
         return true;
     }
+
+    /// <summary>
+    /// Reads a whole number said with "mil" or hundreds, the way a flight number is: "mil duzentos e trinta e quatro" is 1234, "dois mil e
+    /// quinhentos" 2500, "trezentos e quarenta" 340. A number said digit by digit ("um dois três quatro") or in pairs ("doze trinta e quatro") is
+    /// not one of these: it returns false and <see cref="TryRead"/> reads it, one piece after the other.
+    /// </summary>
+    public static bool TryReadWholeNumber(IReadOnlyList<string> tokens, ref int index, out string digits)
+    {
+        digits = string.Empty;
+
+        if (index < 0 || index >= tokens.Count)
+        {
+            return false;
+        }
+
+        var at = index;
+        var total = 0;
+        var saw = false;
+
+        if (tokens[at] == "mil")
+        {
+            total = 1000;
+            at++;
+            saw = true;
+        }
+        else if (at + 1 < tokens.Count && DigitWords.TryGetValue(tokens[at], out var thousands) && thousands is not '0' && tokens[at + 1] == "mil")
+        {
+            total = (thousands - '0') * 1000;
+            at += 2;
+            saw = true;
+        }
+
+        var next = AfterConnector(tokens, at, saw);
+
+        if (next < tokens.Count && Hundreds.TryGetValue(tokens[next], out var hundreds))
+        {
+            total += hundreds;
+            at = next + 1;
+            saw = true;
+        }
+
+        if (!saw)
+        {
+            return false;
+        }
+
+        next = AfterConnector(tokens, at, true);
+
+        if (next < tokens.Count && Teens.TryGetValue(tokens[next], out var teen))
+        {
+            total += teen;
+            at = next + 1;
+        }
+        else if (next < tokens.Count && Tens.TryGetValue(tokens[next], out var tens))
+        {
+            total += tens;
+            at = next + 1;
+
+            var unit = AfterConnector(tokens, at, true);
+
+            if (unit < tokens.Count && DigitWords.TryGetValue(tokens[unit], out var one) && one is not '0')
+            {
+                total += one - '0';
+                at = unit + 1;
+            }
+        }
+        else if (next < tokens.Count && DigitWords.TryGetValue(tokens[next], out var digit) && digit is not '0')
+        {
+            total += digit - '0';
+            at = next + 1;
+        }
+
+        digits = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        index = at;
+        return true;
+    }
+
+    // The "e" that joins the parts of a number ("mil e duzentos"), taken only when something follows it.
+    private static int AfterConnector(IReadOnlyList<string> tokens, int at, bool afterAPart) =>
+        afterAPart && at + 1 < tokens.Count && tokens[at] == "e" ? at + 1 : at;
 
     /// <summary>
     /// Reads the longest sequence of numbers and letters starting at <paramref name="start"/> ("uno uno oito decimal uno"

@@ -20,14 +20,6 @@ public static class SpokenText
         "NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "X-RAY", "YANKEE", "ZULU",
     ];
 
-    // TODO(fraseologia): only the designators the manual shows as examples; the rest of the telephony table is pending.
-    private static readonly Dictionary<string, string> Telephony = new(StringComparer.Ordinal)
-    {
-        ["FAB"] = "FORÇA AÉREA",
-        ["GLO"] = "GOL",
-        ["TAM"] = "TAM",
-    };
-
     /// <summary>
     /// Digits one by one: "118.1" is "UNO UNO OITO DECIMAL UNO". With <paramref name="feminine"/> the last digit
     /// agrees with a feminine word that follows ("UMA", "DUAS").
@@ -190,7 +182,7 @@ public static class SpokenText
 
         var text = code.ToString();
 
-        if (text.Length > 3 && Telephony.TryGetValue(text[..3], out var company))
+        if (text.Length > 3 && Telephony.TryGet(text[..3], out var company))
         {
             return $"{company} {Spell(text[3..])}";
         }
@@ -301,6 +293,13 @@ public static class SpokenText
                 continue;
             }
 
+            // A flight number said as a whole ("mil duzentos e trinta e quatro") is 1234; digit by digit and in pairs are read piece by piece below.
+            if (SpokenCode.TryReadWholeNumber(tokens, ref index, out var whole))
+            {
+                code.Append(whole);
+                continue;
+            }
+
             if (SpokenCode.TryRead(tokens, ref index, out var value))
             {
                 code.Append(value);
@@ -314,8 +313,9 @@ public static class SpokenText
                 index++;
                 code.Append("FAB");
             }
-            else if (SpokenTelephonyDesignator(token) is { } designator)
+            else if (Telephony.TryRead(tokens, index - 1, out var designator, out var words))
             {
+                index += words - 1;
                 code.Append(designator);
             }
             else if (SpokenCode.TryReadSpelled(token, out var spelled))
@@ -330,7 +330,4 @@ public static class SpokenText
 
         return code.ToString();
     }
-
-    private static string? SpokenTelephonyDesignator(string token) =>
-        Telephony.FirstOrDefault(t => t.Key != "FAB" && string.Equals(t.Value, token, StringComparison.OrdinalIgnoreCase)).Key;
 }

@@ -2,4 +2,9 @@
 
   <!-- Fonia.Core must not reference any other project of the solution. -->
 
+  <ItemGroup>
+    <!-- The telephony of the companies: the data stays in data/, the core carries a copy so that it needs no file. -->
+    <EmbeddedResource Include="../../data/telephony.csv" LogicalName="telephony.csv" />
+  </ItemGroup>
+
 </Project>

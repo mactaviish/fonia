@@ -95,6 +95,7 @@ internal sealed partial class SimConnectNetSession(
         Subscribe<MotionStruct>(client, "Motion", s => sink.OnMotion(s.ToData()));
         Subscribe<IdentityStruct>(client, "Identity", s => sink.OnIdentity(s.ToData()));
         Subscribe<RadiosStruct>(client, "Radios", s => sink.OnRadios(s.ToData()));
+        SubscribeOptional<AirlineStruct>(client, "Airline", s => sink.OnAirline(s.ToData()));
         Subscribe<TransponderStruct>(client, "Transponder", s => sink.OnTransponder(s.ToData()));
 
         LogSubscribed();
@@ -224,6 +225,27 @@ internal sealed partial class SimConnectNetSession(
             TaskScheduler.Default);
     }
 
+    // A group the app can do without: if the simulator refuses it, it is logged and the session goes on.
+    private void SubscribeOptional<T>(SimConnectClient client, string group, Action<T> deliver)
+        where T : struct
+    {
+        try
+        {
+            var subscription = client.SimVars.Subscribe<T>(SimConnectPeriod.Second, value => Deliver(group, () => deliver(value)));
+            _subscriptions.Add(subscription);
+
+            _ = subscription.Completion.ContinueWith(
+                task => LogOptionalFailed(group, task.Exception?.GetBaseException().Message ?? string.Empty),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogOptionalFailed(group, ex.Message);
+        }
+    }
+
     // Runs on the library's threads: whatever the sink throws must not reach them.
     private void Deliver(string group, Action action)
     {
@@ -328,6 +350,9 @@ internal sealed partial class SimConnectNetSession(
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "Closing the SimConnect client failed: {Reason}")]
     private partial void LogDisposeFailed(string reason);
+
+    [LoggerMessage(EventId = 13, Level = LogLevel.Warning, Message = "The optional {Group} group could not be read ({Reason}); the aircraft is called by its registration.")]
+    private partial void LogOptionalFailed(string group, string reason);
 
     [LoggerMessage(EventId = 12, Level = LogLevel.Warning, Message = "Closing the SimConnect client did not finish in time; abandoning it.")]
     private partial void LogDisposeAbandoned();
