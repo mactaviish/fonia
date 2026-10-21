@@ -312,7 +312,7 @@ internal sealed class AtcConsole(
             return null;
         }
 
-        var callsign = Normalize(state.Registration) ?? currentCallsign;
+        var callsign = Normalize(state.Callsign) ?? currentCallsign;
         var target = current.Airport;
         var near = nearestAirport(state.LatitudeDegrees, state.LongitudeDegrees);
 

@@ -24,6 +24,7 @@ internal sealed class MsfsSnapshotAssembler(TimeProvider timeProvider)
     private bool _simRunning;
     private MotionData? _motion;
     private IdentityData? _identity;
+    private AirlineData? _airline;
     private RadioData? _radios;
     private TransponderData? _transponder;
 
@@ -72,6 +73,17 @@ internal sealed class MsfsSnapshotAssembler(TimeProvider timeProvider)
         }
     }
 
+    /// <summary>The airline and flight number are not needed for a snapshot: they only change how the aircraft is called.</summary>
+    public AircraftState? OnAirline(AirlineData airline)
+    {
+        lock (_gate)
+        {
+            var changed = !Equals(_airline, airline);
+            _airline = airline;
+            return changed ? Build() : null;
+        }
+    }
+
     public AircraftState? OnRadios(RadioData radios)
     {
         lock (_gate)
@@ -97,6 +109,7 @@ internal sealed class MsfsSnapshotAssembler(TimeProvider timeProvider)
     {
         _motion = null;
         _identity = null;
+        _airline = null;
         _radios = null;
         _transponder = null;
     }
@@ -127,7 +140,9 @@ internal sealed class MsfsSnapshotAssembler(TimeProvider timeProvider)
             Com2: MsfsConversions.ToRadio(radios.Com2ActiveHz, radios.Com2StandbyHz),
             TransponderCode: MsfsConversions.ToSquawk(transponder.CodeBco16),
             Registration: MsfsConversions.ToRegistration(identity.AtcId),
-            AircraftType: MsfsConversions.ToAircraftType(identity.AtcModel, identity.Title));
+            AircraftType: MsfsConversions.ToAircraftType(identity.AtcModel, identity.Title),
+            Airline: _airline?.Airline.Trim() is { Length: > 0 } airline ? airline : null,
+            FlightNumber: _airline?.FlightNumber.Trim() is { Length: > 0 } number ? number : null);
     }
 
     private static bool IsLoadedPosition(MotionData motion)

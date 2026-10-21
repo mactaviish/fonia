@@ -34,6 +34,50 @@ public class MsfsSnapshotAssemblerTests
     }
 
     [Fact]
+    public void Without_the_airline_the_snapshot_is_published_all_the_same_with_the_registration_as_the_callsign()
+    {
+        var (assembler, _) = Ready();
+
+        var state = assembler.OnMotion(Flying()).ShouldNotBeNull();
+
+        state.Airline.ShouldBeNull();
+        state.FlightNumber.ShouldBeNull();
+        state.Callsign.ShouldBe("PR-FAB");
+    }
+
+    [Fact]
+    public void The_airline_and_flight_number_change_how_the_aircraft_is_called()
+    {
+        var (assembler, _) = Ready();
+        assembler.OnMotion(Flying());
+
+        var state = assembler.OnAirline(new AirlineData(" Gol ", "1234")).ShouldNotBeNull();
+
+        state.Airline.ShouldBe("Gol");
+        state.FlightNumber.ShouldBe("1234");
+        state.Callsign.ShouldBe("GLO1234");
+        assembler.OnAirline(new AirlineData(" Gol ", "1234")).ShouldBeNull();
+    }
+
+    [Fact]
+    public void An_empty_airline_is_none_and_a_new_flight_forgets_the_old_one()
+    {
+        var (assembler, _) = Ready();
+        assembler.OnAirline(new AirlineData(string.Empty, string.Empty));
+
+        assembler.OnMotion(Flying())!.Airline.ShouldBeNull();
+
+        assembler.OnAirline(new AirlineData("Azul", "55"));
+        assembler.OnSimRunning(false);
+        assembler.OnSimRunning(true);
+        assembler.OnIdentity(Identity());
+        assembler.OnRadios(Radios());
+        assembler.OnTransponder(Transponder());
+
+        assembler.OnMotion(Flying())!.Airline.ShouldBeNull();
+    }
+
+    [Fact]
     public void A_complete_valid_set_is_published_on_the_next_motion_update()
     {
         var (assembler, _) = Ready();

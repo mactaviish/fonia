@@ -14,7 +14,7 @@ internal static class Telephony
 
     private static readonly IReadOnlyList<Entry> Entries = Load();
 
-    private static readonly Dictionary<string, Entry> ByDesignator = Entries.ToDictionary(e => e.Designator, StringComparer.Ordinal);
+    private static readonly Dictionary<string, Entry> ByDesignator = Entries.GroupBy(e => e.Designator, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
     // The longest names first, so that "lan cargo" is read before "lan".
     private static readonly IReadOnlyList<Entry> ForListening = [.. Entries.Where(e => e.Designator != "FAB").OrderByDescending(e => e.Words.Count)];
@@ -71,7 +71,15 @@ internal static class Telephony
                 continue;
             }
 
-            entries.Add(new Entry(fields[0].Trim().ToUpperInvariant(), fields[1].Trim(), SpokenTokens.Tokenize(fields[1])));
+            var designator = fields[0].Trim().ToUpperInvariant();
+
+            entries.Add(new Entry(designator, fields[1].Trim(), SpokenTokens.Tokenize(fields[1])));
+
+            // The name the register gives is also a way to call the company ("gol transporte"), as the simulator or the pilot may have it.
+            if (fields.Length > 2 && fields[2].Trim() is { Length: > 0 } registered && !string.Equals(registered, fields[1].Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                entries.Add(new Entry(designator, fields[1].Trim(), SpokenTokens.Tokenize(registered)));
+            }
         }
 
         return entries;

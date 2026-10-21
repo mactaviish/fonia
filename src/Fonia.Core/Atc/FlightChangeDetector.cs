@@ -39,7 +39,7 @@ public sealed class FlightChangeDetector
         ArgumentNullException.ThrowIfNull(state);
 
         var previous = _last;
-        var registration = Normalize(state.Registration);
+        var registration = Normalize(state.Callsign);
         var reading = Classify(previous, state, registration);
 
         _last = state;

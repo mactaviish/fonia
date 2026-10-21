@@ -37,6 +37,9 @@ internal interface ISimConnectSink
 
     void OnRadios(RadioData data);
 
+    /// <summary>The airline and flight number set for the radio; optional, a flight without them is called by its registration.</summary>
+    void OnAirline(AirlineData data);
+
     void OnTransponder(TransponderData data);
 
     /// <summary>The session cannot deliver data any more (a subscription failed or was rejected): rebuild it. Raised once.</summary>

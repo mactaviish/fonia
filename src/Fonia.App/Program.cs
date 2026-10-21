@@ -141,7 +141,7 @@ if (StartupWizard.ShouldAsk(args, terminal))
         catalog,
         new WizardDefaults(settings.Settings.Airport ?? LastValueStore.Airport.Read(), settings.Settings.Callsign ?? LastValueStore.Callsign.Read()),
         async ct => await session.ReadFirstStateAsync(options, TimeSpan.FromSeconds(5), ct) is { } state
-            ? new SimulatorFix(state.Registration, state.LatitudeDegrees, state.LongitudeDegrees)
+            ? new SimulatorFix(state.Callsign, state.LatitudeDegrees, state.LongitudeDegrees)
             : null,
         catalog.Nearest,
         LastValueStore.Airport.Remember,

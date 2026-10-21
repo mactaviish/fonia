@@ -28,7 +28,7 @@ A edição usada: **JO 7340.2N com as mudanças 1 a 3 (17/04/2025)**, <https://w
 
 1. **Tabela de telefonia** (`data/telephony.csv`, embutida no Core): empresas brasileiras e estrangeiras que voam no Brasil, com a edição de origem. `SpokenText` lê dela, no lugar do dicionário fixo. (Feita.)
 2. **NLU do número do voo (feita)**: "Gol um dois três quatro", "Gol mil duzentos e trinta e quatro", "Gol doze trinta e quatro" viram `GLO1234`. O NLU já aceita a telefonia ("gol" é GLO); falta o número falado de formas diferentes.
-3. **Leitura do simulador**: o MSFS tem `ATC AIRLINE` e `ATC FLIGHT NUMBER`. Se o voo tiver os dois, o indicativo é designador + número (com a telefonia da tabela); senão, a matrícula, como hoje. Sem simulador: `--callsign GLO1234` (já aceito) ou o `appsettings.json`.
+3. **Leitura do simulador (feita, falta validar no MSFS)**: o MSFS tem `ATC AIRLINE` e `ATC FLIGHT NUMBER`. Se o voo tiver os dois, o indicativo é designador + número (com a telefonia da tabela); senão, a matrícula, como hoje. Sem simulador: `--callsign GLO1234` (já aceito) ou o `appsettings.json`.
 4. **Cotejo e abreviação**: hoje o controle abrevia a matrícula depois do contato (as duas últimas letras). Para o voo, a regra a decidir com o mantenedor é dizer sempre o designador e o número inteiro.
 
 ## Decisões do mantenedor (2026-10-21)
@@ -47,3 +47,9 @@ A edição usada: **JO 7340.2N com as mudanças 1 a 3 (17/04/2025)**, <https://w
 ## Tarefa 2 (feita): o número do voo falado de várias formas
 
 `SpokenCode.TryReadWholeNumber` lê o número dito por inteiro, com "mil" e centenas ("mil duzentos e trinta e quatro", "dois mil e quinhentos", "trezentos e quarenta", "cento e vinte"), e o `SpokenText` o usa ao ler o indicativo. Dígito a dígito ("um dois três quatro") e em pares ("doze trinta e quatro") já eram lidos. As três formas dão o mesmo `GLO1234`, e outro número não casa. O STT às vezes escreve algarismos ("Gol 1234"), que também funcionam.
+
+## Tarefa 3 (feita, sem validação no simulador): o voo vindo do MSFS
+
+O MSFS guarda em `ATC AIRLINE` a companhia **como telefonia** ("Gol"), não o designador ICAO, e em `ATC FLIGHT NUMBER` o número. `AirlineCallsign.From` procura a telefonia na tabela (a falada ou a registrada: "Gol" ou "Gol Transporte") e monta `GLO` + número. `AircraftState` ganhou `Airline`, `FlightNumber` e `Callsign` (o voo, ou a matrícula quando falta a companhia, o número, ou a telefonia não está na tabela). O `AtcConsole`, o assistente de início, o `SimSession` e o `FlightChangeDetector` usam `Callsign`; outro número de voo na mesma aeronave é um voo novo.
+
+Os dois campos são lidos numa **assinatura à parte** (`AirlineStruct`, opcional): se o simulador recusar `ATC AIRLINE` ou `ATC FLIGHT NUMBER`, é só um aviso no log (`The optional Airline group could not be read`) e o resto segue com a matrícula. Sem simulador: `--callsign GLO1234` (ou o `appsettings.json`), coberto por teste. **A validar com o MSFS aberto:** que as duas variáveis chegam e o que vem nelas numa aeronave de linha (a empresa e o número se configuram no ATC options do voo).

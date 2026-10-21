@@ -322,4 +322,15 @@ public class AtcConsoleLayoutTests
         result.Output.Split('\n').Count(l => l.StartsWith("Pista ocupada", StringComparison.Ordinal)).ShouldBe(2);
         result.Output.ShouldContain("Ninguém na frente na fila de decolagem.");
     }
+
+    [Fact]
+    public async Task Without_a_simulator_a_flight_callsign_is_given_by_the_option_and_answered_by_its_telephony()
+    {
+        var options = new AppOptions(AtcAirport: "SBXX", Callsign: "GLO1234", Com1: new Frequency(118000));
+
+        var result = await RunAsync(options, "Solo Curitiba, Gol mil duzentos e trinta e quatro, solicito acionamento\nsair\n", new FakeLayouts(null));
+
+        result.Output.ShouldContain("GOL UNO DOIS TRÊS QUATRO");
+        result.Error.ShouldBeEmpty();
+    }
 }

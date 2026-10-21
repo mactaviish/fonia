@@ -443,6 +443,14 @@ public sealed partial class MsfsSimAdapter : ISimAdapter
             }
         }
 
+        public void OnAirline(AirlineData data)
+        {
+            if (!_closed)
+            {
+                owner.Publish(owner._assembler.OnAirline(data));
+            }
+        }
+
         public void OnRadios(RadioData data)
         {
             if (!_closed)

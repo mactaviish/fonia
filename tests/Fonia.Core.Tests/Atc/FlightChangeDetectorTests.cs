@@ -130,4 +130,15 @@ public class FlightChangeDetectorTests
         Geo.DistanceKm(0, 0, 1, 0).ShouldBe(111.2, 0.3);
         Geo.DistanceKm(Lat, Lon, Lat, Lon).ShouldBe(0, 0.001);
     }
+
+    [Fact]
+    public void Another_flight_number_on_the_same_aircraft_is_a_new_flight()
+    {
+        var detector = new FlightChangeDetector();
+        var first = State(Lat, Lon, 0) with { Airline = "Gol", FlightNumber = "1234" };
+
+        detector.Observe(first).ShouldBeNull();
+        detector.Observe(first with { Timestamp = first.Timestamp.AddSeconds(1), FlightNumber = "1234" }).ShouldBeNull();
+        detector.Observe(first with { Timestamp = first.Timestamp.AddSeconds(2), FlightNumber = "5678" }).ShouldNotBeNull();
+    }
 }
