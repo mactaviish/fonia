@@ -1,6 +1,7 @@
 using Fonia.Core.Airports;
 using Fonia.Core.Nlu;
 using Fonia.Core.Phraseology;
+using Fonia.Core.Sim;
 
 namespace Fonia.Core.Atc;
 
@@ -60,6 +61,9 @@ public sealed class AtcEngine : IAtcEngine
             RequestLanding or ReportDownwind or ReportBaseLeg or ReportFinal or ReportGoingAround => CallTheTower(Released(flight), airport),
 
             // The departure belongs to the Torre; the Solo, asked for it, passes the flight on.
+            // Held short of a runway the way to the departure runway goes over: the Torre clears the crossing, and the line-up comes after it.
+            ReportHoldingShort or RequestDeparture when airport.Unit == ServiceUnit.Tower && CrossingBeforeTheTakeoff(flight, airport) is { } crossing
+                => CrossingDecision(crossing, flight, airport),
             ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff when airport.Unit == ServiceUnit.Tower
                 => Departure(intent, Released(flight), airport),
             ReportHoldingShort or RequestDeparture or ReportLinedUp or ReportTakingOff => HoldingShort(Released(flight), airport),
@@ -97,10 +101,93 @@ public sealed class AtcEngine : IAtcEngine
             case RunwayVacated vacated when airport.Unit == ServiceUnit.Tower && flight.Phase == FlightPhase.Landed
                 && CrossingBeforeTheApron(flight, airport, vacated.Position ?? PositionOf(flight)) is { } crossing:
                 return new AtcDecision(crossing, flight with { PendingReadback = crossing, LastInstruction = crossing });
+
+            // The controller sees the aircraft: the next instruction is given as soon as it can be, without the pilot saying "pronto".
+            case NearRunway near:
+                return Initiative(flight, airport, near.Position ?? PositionOf(flight));
+            case TrafficCleared:
+                return Initiative(flight, airport, PositionOf(flight));
             default:
                 return new AtcDecision(new NoResponse(), flight);
         }
     }
+
+    private static AtcDecision CrossingDecision(CrossRunway crossing, FlightContext flight, AirportContext airport) =>
+        new(
+            crossing,
+            flight with
+            {
+                Phase = crossing.LineUpRunway is null ? flight.Phase : FlightPhase.LineUpCleared,
+                AssignedRunway = flight.AssignedRunway ?? airport.RunwayInUse,
+                PendingReadback = crossing,
+                LastInstruction = crossing,
+            });
+
+    // The aircraft taxiing out is close to a holding point or to the runway. The Solo passes it to the Torre; the Torre clears the crossing,
+    // the line-up and then the takeoff, each as soon as it can (nobody ahead). What cannot be given yet is not said: the controller waits, and
+    // says "aguarde" only if the pilot calls (see Departure). The same event comes again while the aircraft stays, so nothing is said twice.
+    private static AtcDecision Initiative(FlightContext flight, AirportContext airport, GeoPoint? position)
+    {
+        var silent = new AtcDecision(new NoResponse(), flight);
+        var runway = flight.AssignedRunway ?? airport.RunwayInUse;
+
+        if (position is null || airport.Layout is not { } layout || flight.Aircraft is not { OnGround: true } || runway is null
+            || flight.Phase < FlightPhase.Taxiing || flight.Phase >= FlightPhase.TakeoffCleared)
+        {
+            return silent;
+        }
+
+        if (!RunwayApproachDetector.IsClose(position, layout, runway))
+        {
+            return silent;
+        }
+
+        if (airport.Unit == ServiceUnit.Ground)
+        {
+            return flight.Phase == FlightPhase.Taxiing && airport.Airport.FrequencyOf(AirportFrequencyType.Tower) is not null && RunwayApproachDetector.IsNearAHoldingPoint(position, layout)
+                ? HoldingShort(flight, airport)
+                : silent;
+        }
+
+        if (airport.Unit != ServiceUnit.Tower)
+        {
+            return silent;
+        }
+
+        if (flight.Phase < FlightPhase.LineUpCleared)
+        {
+            if (CrossingBeforeTheTakeoff(flight, airport) is { } crossing)
+            {
+                return Equals(flight.LastInstruction, crossing) ? silent : CrossingDecision(crossing, flight, airport);
+            }
+
+            return !airport.AircraftAhead && NoCrossingLeft(layout, position, runway)
+                ? Departure(new ReportHoldingShort(flight.Callsign, null), flight, airport)
+                : silent;
+        }
+
+        // Told to line up (on its own or with the crossing): the takeoff as soon as the aircraft gets to the runway, lined up or not. The pilot
+        // has to have read the line-up back first, unless the aircraft is already on the runway (moving on without answering is not a reason to wait).
+        var lineUpSaid = flight.LastInstruction is LineUpAndWait or CrossRunway { LineUpRunway: not null };
+
+        if (!lineUpSaid || airport.AircraftAhead || airport.RunwayBusy || RunwayGeometry.RunwayOf(layout, runway) is not { } found)
+        {
+            return silent;
+        }
+
+        var meters = RunwayGeometry.MetersFromCenterline(found, position.LatitudeDegrees, position.LongitudeDegrees);
+
+        return meters <= RunwayApproachDetector.CloseToRunwayMeters && (flight.PendingReadback is null || meters <= found.WidthMeters / 2 + OnRunwayMarginMeters)
+            ? Departure(new ReportLinedUp(flight.Callsign, null), flight, airport)
+            : silent;
+    }
+
+    // Within this of the edge of the runway the aircraft is on it.
+    private const double OnRunwayMarginMeters = 10;
+
+    // The route from here to the departure runway has no runway left to cross.
+    private static bool NoCrossingLeft(AirportLayout layout, GeoPoint position, string runway) =>
+        TaxiRouter.Find(layout, position, runway) is not TaxiRouteFound { Route: var route } || !route.Crossings.Any(c => !c.Along);
 
     // A request with the right callsign is what the pilot says now; one held for the callsign is dropped.
     private static FlightContext Released(FlightContext flight) => flight with { AwaitingCallsign = null };
@@ -141,8 +228,17 @@ public sealed class AtcEngine : IAtcEngine
             return Say(new NoRunwayAvailable(), flight);
         }
 
-        // Lined up (said so, or was told to and is ready again): the takeoff. Otherwise: the line-up.
-        if (intent is ReportLinedUp || flight.Phase >= FlightPhase.LineUpCleared)
+        var lined = intent is ReportLinedUp || flight.Phase >= FlightPhase.LineUpCleared;
+
+        // Someone is ahead in the line: told to wait (the controller gives the next instruction by itself once it can).
+        if (airport.AircraftAhead)
+        {
+            return Say(new Standby(), flight);
+        }
+
+        // Lined up (said so, or was told to and is ready again), or the runway free for the takeoff already: the takeoff, without the line-up
+        // before it. Otherwise (the runway is busy): the line-up.
+        if (lined || !airport.RunwayBusy)
         {
             var clearance = new TakeoffClearance(runway, airport.Wind);
 
@@ -229,6 +325,40 @@ public sealed class AtcEngine : IAtcEngine
             : new[] { runway.Low, runway.High }.OrderBy(e => HeadingDifference(e.TrueHeadingDegrees, landing.TrueHeadingDegrees)).First();
 
         return new CrossRunway(RunwayDesignator.Normalize(end.Designator), airport.Airport.FrequencyOf(AirportFrequencyType.Ground)?.Frequency);
+    }
+
+    // The aircraft taxiing out is stopped at the holding point of a runway the route to the departure runway goes over (not one it follows):
+    // needs the map and the position. The end said is the one that points the way the departure runway does.
+    private static CrossRunway? CrossingBeforeTheTakeoff(FlightContext flight, AirportContext airport)
+    {
+        var position = PositionOf(flight);
+        var runway = flight.AssignedRunway ?? airport.RunwayInUse;
+
+        if (flight.Phase < FlightPhase.Taxiing || flight.Phase >= FlightPhase.LineUpCleared
+            || airport.Layout is not { } layout || position is null || runway is null)
+        {
+            return null;
+        }
+
+        if (TaxiRouter.Find(layout, position, runway) is not TaxiRouteFound { Route: var route }
+            || route.Crossings.FirstOrDefault(c => !c.Along) is not { HoldShortNodeId: { } holdId } first
+            || layout.Nodes.FirstOrDefault(n => n.Id == holdId) is not { } hold
+            || Geo.DistanceKm(position.LatitudeDegrees, position.LongitudeDegrees, hold.Position.LatitudeDegrees, hold.Position.LongitudeDegrees) * 1000 > RunwayApproachDetector.CloseMeters
+            || layout.Runways.FirstOrDefault(r => r.Matches(first.Runway)) is not { } crossed)
+        {
+            return null;
+        }
+
+        var departing = layout.Runways.SelectMany(r => new[] { r.Low, r.High }).FirstOrDefault(e => RunwayDesignator.AreSame(e.Designator, runway));
+
+        var end = departing is null
+            ? new[] { crossed.Low, crossed.High }.OrderBy(e => RunwayDesignator.TryParse(e.Designator, out var number, out _) ? number : int.MaxValue).First()
+            : new[] { crossed.Low, crossed.High }.OrderBy(e => HeadingDifference(e.TrueHeadingDegrees, departing.TrueHeadingDegrees)).First();
+
+        var crossing = RunwayDesignator.Normalize(end.Designator);
+
+        // Someone ahead in the line: the crossing and then the wait at the holding point; nobody: the crossing and the line-up in one.
+        return airport.AircraftAhead ? new CrossRunway(crossing, null, HoldAfter: true) : new CrossRunway(crossing, null, LineUpRunway: runway);
     }
 
     private static double HeadingDifference(double a, double b) => Math.Abs((a - b + 540) % 360 - 180);
@@ -370,6 +500,8 @@ public sealed class AtcEngine : IAtcEngine
         CircuitClearance circuit => RuleBasedNlu.MentionsCircuit(heard) && RunwayAgrees(heard, circuit.Runway),
         StraightInClearance straightIn => RuleBasedNlu.MentionsStraightIn(heard) && RunwayAgrees(heard, straightIn.Runway),
         LandingClearance landing => RuleBasedNlu.MentionsLanding(heard) && RunwayAgrees(heard, landing.Runway),
+        // Two runways are named in "cruzando pista X, alinhando pista Y": only that both things were said is judged.
+        CrossRunway { LineUpRunway: not null } => RuleBasedNlu.MentionsCrossing(heard) && RuleBasedNlu.MentionsLineUp(heard),
         CrossRunway crossing => RuleBasedNlu.MentionsCrossing(heard) && RunwayAgrees(heard, crossing.Runway),
         _ => true,
     };

@@ -123,7 +123,7 @@ public class ArrivalRunwayTests
 
     // The Torre: the circuit and the landing on the arrival runway, the line-up and the takeoff on the departure runway.
     private static AirportContext OnTower() =>
-        FrequencyResolver.Apply(Context("10L").WithRunwayUse(Rules, keepRunway: false), Parallel.FrequencyOf(AirportFrequencyType.Tower)!.Frequency);
+        FrequencyResolver.Apply(Context("10L").WithRunwayUse(Rules, keepRunway: false), Parallel.FrequencyOf(AirportFrequencyType.Tower)!.Frequency) with { RunwayBusy = true };
 
     private static FlightContext Flying() => new(Own, FlightPhase.Airborne, "SBXX", null);
 

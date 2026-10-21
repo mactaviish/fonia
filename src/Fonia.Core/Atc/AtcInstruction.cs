@@ -130,13 +130,20 @@ public sealed record LandedNotice(int Minute, Frequency? Solo) : AtcInstruction;
 /// <summary>The Torre passes a flight that cleared the runway to the Solo: "chame Solo ..." (Art. 133). Like the handoff to the Torre, no readback is asked.</summary>
 public sealed record HandoffToGround(Frequency Frequency) : AtcInstruction;
 
+/// <summary>"Aguarde": the pilot called and the next instruction cannot be given yet (someone is ahead in the line).</summary>
+// TODO(fraseologia): the word is the practice the maintainer gave, not the MCA 100-16.
+public sealed record Standby : AtcInstruction;
+
 /// <summary>
 /// "Cruze a pista 10L, após chame Solo ...": the Torre clears the aircraft that vacated the landing runway to cross another one on its way to
 /// the apron, and says where to call after the crossing. <paramref name="Solo"/> is null when the airport has no Solo, and then nothing more is said.
+/// On the way to the takeoff the crossing goes with what comes after it: <paramref name="LineUpRunway"/> (line up and wait on that runway) or
+/// <paramref name="HoldAfter"/> (hold at the holding point, someone is ahead).
 /// </summary>
 // TODO(fraseologia): the phrase is the practice the maintainer gave (an arrival that vacated 10R and is told to cross 10L), not the MCA 100-16;
-// the one for a departure that has to cross a runway is still to come.
-public sealed record CrossRunway(string Runway, Frequency? Solo) : AtcInstruction;
+// the departure that has to cross a runway is the maintainer's too: "cruze a pista X, alinhe e mantenha pista Y" with nobody ahead, "cruze a
+// pista X e mantenha antes da barra de parada" with someone ahead.
+public sealed record CrossRunway(string Runway, Frequency? Solo, string? LineUpRunway = null, bool HoldAfter = false) : AtcInstruction;
 
 /// <summary>The pilot cleared the runway and is taken to the apron: "taxie para o pátio" (Art. 134, II).</summary>
 // TODO(fraseologia): the manual says "taxie para o pátio 1 via taxiway D"; the airport data has neither the apron nor the taxiways, so both are left out.

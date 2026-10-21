@@ -35,13 +35,13 @@ public sealed class RunwayVacatedDetector
             _wasOnRunway = false;
         }
 
-        if (layout is null || runway is null || !state.OnGround || RunwayOf(layout, runway) is not { } found)
+        if (layout is null || runway is null || !state.OnGround || RunwayGeometry.RunwayOf(layout, runway) is not { } found)
         {
             _wasOnRunway = false;
             return null;
         }
 
-        var meters = MetersFromCenterline(found, state.LatitudeDegrees, state.LongitudeDegrees);
+        var meters = RunwayGeometry.MetersFromCenterline(found, state.LatitudeDegrees, state.LongitudeDegrees);
 
         if (meters <= found.WidthMeters / 2 + OnRunwayMarginMeters)
         {
@@ -57,23 +57,5 @@ public sealed class RunwayVacatedDetector
         _wasOnRunway = false;
 
         return new RunwayVacated(state.Timestamp, new GeoPoint(state.LatitudeDegrees, state.LongitudeDegrees));
-    }
-
-    private static LayoutRunway? RunwayOf(AirportLayout layout, string designator) =>
-        layout.Runways.FirstOrDefault(r => RunwayDesignator.AreSame(r.Low.Designator, designator) || RunwayDesignator.AreSame(r.High.Designator, designator));
-
-    // The distance from the point to the segment between the two thresholds, on a flat map around the runway (good to the meter at this size).
-    private static double MetersFromCenterline(LayoutRunway runway, double latitude, double longitude)
-    {
-        var origin = runway.Low.Position;
-        var metersPerDegreeLongitude = 111_320 * Math.Cos(origin.LatitudeDegrees * Math.PI / 180);
-
-        var (endX, endY) = ((runway.High.Position.LongitudeDegrees - origin.LongitudeDegrees) * metersPerDegreeLongitude, (runway.High.Position.LatitudeDegrees - origin.LatitudeDegrees) * 110_540);
-        var (x, y) = ((longitude - origin.LongitudeDegrees) * metersPerDegreeLongitude, (latitude - origin.LatitudeDegrees) * 110_540);
-
-        var length = endX * endX + endY * endY;
-        var along = length == 0 ? 0 : Math.Clamp((x * endX + y * endY) / length, 0, 1);
-
-        return Math.Sqrt(Math.Pow(x - along * endX, 2) + Math.Pow(y - along * endY, 2));
     }
 }

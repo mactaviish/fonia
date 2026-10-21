@@ -87,6 +87,10 @@ public sealed class PortuguesePhraseology : IPhraseology
 
         // The practice the maintainer gave, not the manual (see CrossRunway): "cruze a pista uno zero esquerda, após chame Solo em ...", without the airport.
         CrossRunway { Solo: { } solo } crossing => $"cruze a {SpokenText.Runway(crossing.Runway)}, após chame Solo em {SpokenText.Frequency(solo)}.",
+        Standby => "aguarde.",
+
+        CrossRunway { LineUpRunway: { } lineUp } crossing => $"cruze a {SpokenText.Runway(crossing.Runway)}, alinhe e mantenha {SpokenText.Runway(lineUp)}.",
+        CrossRunway { HoldAfter: true } crossing => $"cruze a {SpokenText.Runway(crossing.Runway)} e mantenha antes da barra de parada.",
         CrossRunway crossing => $"cruze a {SpokenText.Runway(crossing.Runway)}.",
 
         // Art. 134, II: "taxie para o pátio" (without the apron and the taxiway).
