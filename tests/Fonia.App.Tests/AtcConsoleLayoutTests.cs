@@ -214,4 +214,48 @@ public class AtcConsoleLayoutTests
 
         result.Output.ShouldNotContain("via taxiway");
     }
+
+    [Fact]
+    public async Task Without_a_simulator_em_puts_the_aircraft_on_a_holding_point_of_the_map()
+    {
+        var result = await RunAsync(Atc(), "/em espera 11\n/em pista 29\nsair\n", new FakeLayouts(SimulatorLayout()));
+
+        result.Output.ShouldContain("Aeronave parada em: ponto de espera da pista 11.");
+        result.Output.ShouldContain("Aeronave parada em: cabeceira da pista 29.");
+        result.Error.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("/em", "onde?")]
+    [InlineData("/em vaga", "onde?")]
+    [InlineData("/em vaga 99", "não achei 'vaga 99'")]
+    [InlineData("/em vaga x", "não achei 'vaga x'")]
+    [InlineData("/em espera 09", "não achei 'espera 09'")]
+    [InlineData("/em hangar 2", "não achei 'hangar 2'")]
+    public async Task A_place_the_map_does_not_have_is_said_and_nothing_else_happens(string typed, string said)
+    {
+        var result = await RunAsync(Atc(), $"{typed}\nsair\n", new FakeLayouts(SimulatorLayout()));
+
+        result.ExitCode.ShouldBe(0);
+        result.Error.ShouldContain(said);
+        result.Output.ShouldNotContain("Aeronave parada");
+    }
+
+    [Fact]
+    public async Task Without_the_map_there_is_no_place_to_put_the_aircraft()
+    {
+        var result = await RunAsync(Atc(), "/em espera 11\nsair\n", new FakeLayouts(null));
+
+        result.Error.ShouldContain("sem o mapa do aeródromo guardado");
+        result.Output.ShouldNotContain("Aeronave parada");
+    }
+
+    [Fact]
+    public async Task With_the_simulator_the_position_is_its_own_and_em_changes_nothing()
+    {
+        var result = await RunAsync(Atc(), "/em espera 11\nsair\n", new FakeLayouts(SimulatorLayout()), () => OnTheApron());
+
+        result.Output.ShouldContain("a posição da aeronave vem dele");
+        result.Output.ShouldNotContain("Aeronave parada");
+    }
 }
