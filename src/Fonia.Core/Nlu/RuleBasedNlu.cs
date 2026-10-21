@@ -24,7 +24,7 @@ public sealed class RuleBasedNlu : INlu
 
     // The pilot is repeating what the controller said, or acknowledging it.
     private static readonly string[] ReadbackStems =
-        ["autorizad", "aprovad", "ciente", "cient", "sient", "copiad", "coteja", "chame", "chamo", "chamar", "chamand", "report", "repart", "portar", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
+        ["autorizad", "aprovad", "ciente", "cient", "sient", "copiad", "coteja", "chame", "chamo", "chamar", "chamand", "report", "repart", "portar", "cruze", "cruzo", "cruzand", "aguardo", "aguardando", "mantenho", "afirmo", "negativo"];
 
     private static readonly string[] PushbackStems = ["pushback", "push", "empurr", "recu"];
     // "cionament" because the recognizer glues "solicito acionamento" into "solicitocionamento".
@@ -329,6 +329,9 @@ public sealed class RuleBasedNlu : INlu
 
     /// <summary>True when the words mention landing ("pouso autorizado", "autorizado pousar").</summary>
     internal static bool MentionsLanding(IReadOnlyList<string> tokens) => HasAny(tokens, ["pous"]);
+
+    /// <summary>True when the words mention crossing a runway ("cruze a pista", "cruzando").</summary>
+    internal static bool MentionsCrossing(IReadOnlyList<string> tokens) => HasAny(tokens, ["cruze", "cruzo", "cruzand", "cruzar"]);
 
     /// <summary>True when the words mention the apron ("taxie para o pátio").</summary>
     internal static bool MentionsApron(IReadOnlyList<string> tokens) => HasAny(tokens, ["patio"]);

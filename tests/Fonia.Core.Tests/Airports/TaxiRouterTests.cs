@@ -326,4 +326,42 @@ public class TaxiRouterTests
         route.NodeIds.ShouldBe([3, 4, 5]);
         route.Crossings.ShouldBeEmpty();
     }
+
+    // Where the aircraft that landed on 15/33 goes to the apron: the way crosses 11/29, and the Torre clears that crossing.
+    [Fact]
+    public void From_the_far_side_of_a_runway_the_way_to_the_apron_crosses_it()
+    {
+        TaxiRouter.CrossingToApron(Toy, At(5)).ShouldBe("11/29");
+    }
+
+    [Fact]
+    public void From_the_apron_side_there_is_nothing_to_cross()
+    {
+        TaxiRouter.CrossingToApron(Toy, At(2)).ShouldBeNull();
+    }
+
+    [Fact]
+    public void A_crossing_that_not_enough_of_the_parkings_need_is_not_said()
+    {
+        var withAParkingOnThisSide = Toy with { Parkings = [.. Toy.Parkings, new Parking("PATIO 2", 2, At(5), 5, ParkingKind.Ramp)] };
+
+        TaxiRouter.CrossingToApron(withAParkingOnThisSide, At(5)).ShouldBeNull();
+        TaxiRouter.CrossingToApron(withAParkingOnThisSide, At(5), 0.5).ShouldBe("11/29");
+    }
+
+    [Fact]
+    public void Without_taxiways_a_parking_to_reach_or_a_place_on_the_graph_no_crossing_is_found()
+    {
+        TaxiRouter.CrossingToApron(TestLayouts.RunwaysOnly(), At(5)).ShouldBeNull();
+        TaxiRouter.CrossingToApron(Toy with { Parkings = [] }, At(5)).ShouldBeNull();
+        TaxiRouter.CrossingToApron(Toy, new GeoPoint(-25.4, -49.0)).ShouldBeNull();
+    }
+
+    [Fact]
+    public void A_parking_the_graph_does_not_connect_does_not_count()
+    {
+        var cut = Without(Toy, e => e is { From: 3, To: 4 });
+
+        TaxiRouter.CrossingToApron(cut, At(5)).ShouldBeNull();
+    }
 }

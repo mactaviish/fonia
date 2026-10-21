@@ -427,7 +427,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/errado\" marca a última troca como mal entendida).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/evento livrou\", a pista livre; \"/errado\" marca a última troca como mal entendida).");
         }
     }
 
@@ -473,7 +473,7 @@ internal sealed class AtcConsole(
         return trimmed.StartsWith("/evento", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 7 || char.IsWhiteSpace(trimmed[7]));
     }
 
-    // "/evento decolou" and "/evento pousou" stand for what the telemetry shows with a simulator: the aircraft left, or touched, the ground, now.
+    // "/evento decolou", "/evento pousou" and "/evento livrou" stand for what the telemetry shows with a simulator: the aircraft left, or touched, the ground, or got clear of the runway, now.
     private FlightContext HandleEventCommand(string line, FlightContext flight, AirportContext onTheFrequency)
     {
         var argument = line.Trim()[7..].Trim();
@@ -484,12 +484,13 @@ internal sealed class AtcConsole(
         {
             "DECOLOU" => new TookOff(now),
             "POUSOU" => new TouchedDown(now),
+            "LIVROU" => new RunwayVacated(now, null),
             _ => null,
         };
 
         if (flightEvent is null)
         {
-            error.WriteLine("fonia: evento desconhecido. Use /evento decolou ou /evento pousou.");
+            error.WriteLine("fonia: evento desconhecido. Use /evento decolou, /evento pousou ou /evento livrou.");
             return flight;
         }
 

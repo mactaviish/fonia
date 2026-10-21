@@ -302,7 +302,7 @@ public class AtcConsoleFrequencyTests
     {
         var result = await RunAsync(Atc(), "/evento voou\nsair\n");
 
-        result.Error.ShouldContain("/evento decolou ou /evento pousou");
+        result.Error.ShouldContain("/evento decolou, /evento pousou ou /evento livrou");
     }
 
     [Fact]
@@ -363,6 +363,31 @@ public class AtcConsoleFrequencyTests
         text.ShouldContain("SOLO Curitiba: PAPA ROMEO ALFA BRAVO CHARLIE, taxie para o pátio.");
         text.ShouldNotContain("repita");
         text.ShouldNotContain("negativo");
+        result.Error.ShouldBeEmpty();
+    }
+
+    // Without the map of the airport and the position of the aircraft (no simulator) the telemetry event of the runway vacated says nothing:
+    // the pilot reports it and goes to the Solo, as before.
+    [Fact]
+    public async Task Without_the_map_the_event_of_the_runway_vacated_says_nothing_and_the_report_still_goes_to_the_solo()
+    {
+        var typed = string.Join(
+            '\n',
+            "/com1 119.5",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, instruções para pouso",
+            "autorizado circuito de tráfego pista uno uno, Papa Romeo Alfa Bravo Charlie",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, final",
+            "pista uno uno, pouso autorizado, Papa Romeo Alfa Bravo Charlie",
+            "/evento pousou",
+            "/evento livrou",
+            "Torre Curitiba, Papa Romeo Alfa Bravo Charlie, pista livre",
+            "sair\n");
+
+        var result = await RunAsync(Atc(), typed);
+
+        result.Output.ShouldContain("(o controlador não diz nada sobre isso)");
+        result.Output.ShouldNotContain("cruze");
+        result.Output.ShouldContain("chame Solo Curitiba UNO UNO OITO DECIMAL ZERO.");
         result.Error.ShouldBeEmpty();
     }
 

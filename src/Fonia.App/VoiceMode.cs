@@ -147,6 +147,7 @@ internal sealed class VoiceMode(
         CancellationToken ct)
     {
         var events = new FlightEventDetector();
+        var vacating = new RunwayVacatedDetector();
         var changes = new FlightChangeDetector();
         var announcements = new List<Task>();
 
@@ -160,8 +161,15 @@ internal sealed class VoiceMode(
                     loop.StartFlight(restart.Airport, restart.Flight);
                     log?.StartFlight(restart.Airport, restart.Flight.Callsign);
                     events = new FlightEventDetector();
+                    vacating = new RunwayVacatedDetector();
                     events.Observe(change.State);
                     continue;
+                }
+
+                // Clear of the runway the landings use: the Torre may clear a crossing on the way to the apron (it needs the map of the airport).
+                if (vacating.Observe(state, loop.Airport.Layout, loop.Airport.RunwayForArrival) is { } vacated)
+                {
+                    announcements.Add(loop.AnnounceAsync(vacated, ct));
                 }
 
                 if (events.Observe(state) is { } flightEvent)
