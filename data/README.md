@@ -32,3 +32,18 @@ O arquivo cobre os aeroportos que têm **Solo ou Torre** nos dados. É mantido �
 **Como atualizar:** edite o `spoken_name`, troque `reviewed` para `sim` e, se quiser, ajuste `source` e `notes`. Para um aeroporto novo, acrescente uma linha. Um aeroporto que não está no arquivo cai no município dos dados, com um aviso no log.
 
 Fontes de conferência: o nome oficial da localidade nas publicações do DECEA (AISWEB) e o que as torres falam de fato.
+
+## `telephony.csv`: telefonia das empresas aéreas
+
+O que o controle diz para o designador de três letras do indicativo ("GLO1234" -> "GOL ..."), e o que o NLU lê quando o piloto fala o nome da empresa. Embutido no `Fonia.Core` (não é lido do disco).
+
+| Coluna | Significado |
+|---|---|
+| `designator` | O designador ICAO de três letras (`GLO`). |
+| `spoken` | O que o controle fala (`GOL`). Pode ter mais de uma palavra (`AIR CANADA`). |
+| `registered` | A telefonia registrada, quando difere da falada (`GOL TRANSPORTE`). |
+| `country` | País da empresa. |
+| `source` | De onde veio: `FAA JO 7340.2N` (capítulo 3, domínio público, que reproduz o ICAO Doc 8585) ou `MCA 100-16`. |
+| `notes` | Observações. |
+
+Edição de origem: JO 7340.2N com as mudanças 1 a 3 (17/04/2025). A FAA publica os acréscimos todo mês. Só entram designadores conferidos no registro; veja `docs/decisions/airline-callsigns.md`.
