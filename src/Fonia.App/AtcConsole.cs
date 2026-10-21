@@ -154,6 +154,9 @@ internal sealed class AtcConsole(
         // What the user set (--com1, or /com1 in the session) wins over what the simulator reports.
         var manualCom1 = options.Com1;
 
+        // Without a simulator, "/em" puts the aircraft on the stored map to practice the route and the crossings: this is where it is.
+        AircraftState? practice = null;
+
         var startingRadio = manualCom1 ?? liveCom1?.Invoke();
 
         if (startingRadio is not null)
@@ -204,6 +207,13 @@ internal sealed class AtcConsole(
                 log?.StartFlight(context, callsign);
             }
 
+            if (IsPlaceCommand(line))
+            {
+                practice = HandlePlaceCommand(line, practice, context, callsign, liveAircraft?.Invoke() is not null);
+                flight = practice is null ? flight : flight with { Aircraft = practice };
+                continue;
+            }
+
             if (IsMarkCommand(line))
             {
                 output.WriteLine(log is null
@@ -222,7 +232,7 @@ internal sealed class AtcConsole(
             // Who answers is who is on the frequency the radio is on at this moment.
             var onTheFrequency = FrequencyResolver.Apply(context, manualCom1 ?? liveCom1?.Invoke());
             // What the simulator shows now goes with the flight, so that a readback is judged by the situation.
-            flight = liveAircraft?.Invoke() is { } shown ? flight with { Aircraft = shown } : flight;
+            flight = liveAircraft?.Invoke() is { } shown ? flight with { Aircraft = shown } : practice is null ? flight : flight with { Aircraft = practice };
 
             var before = flight;
             var intent = nlu.Interpret(line, flight);
@@ -427,7 +437,7 @@ internal sealed class AtcConsole(
 
         if (voiceMode is null)
         {
-            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/evento livrou\", a pista livre; \"/errado\" marca a última troca como mal entendida).");
+            output.WriteLine("Digite a fala do piloto (\"sair\" encerra; \"/com1 118.55\" muda a frequência do rádio; \"/evento decolou\" simula a decolagem; \"/evento pousou\", o pouso; \"/evento livrou\", a pista livre; \"/em vaga 1\", \"/em espera 15\" ou \"/em pista 15\" põe a aeronave num ponto do mapa guardado; \"/errado\" marca a última troca como mal entendida).");
         }
     }
 
@@ -462,6 +472,58 @@ internal sealed class AtcConsole(
         var trimmed = line.TrimStart();
 
         return trimmed.StartsWith("/com1", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 5 || char.IsWhiteSpace(trimmed[5]));
+    }
+
+    private static bool IsPlaceCommand(string line)
+    {
+        var trimmed = line.TrimStart();
+
+        return trimmed.StartsWith("/em", StringComparison.OrdinalIgnoreCase) && (trimmed.Length == 3 || char.IsWhiteSpace(trimmed[3]));
+    }
+
+    // "/em vaga 12", "/em espera 15", "/em pista 15": the aircraft stands there (stopped, on the ground), as if the simulator showed it. With a
+    // simulator the position comes from it, and without the stored map of the airport there is no place to put it.
+    private AircraftState? HandlePlaceCommand(string line, AircraftState? current, AirportContext context, string callsign, bool simulatorShowsIt)
+    {
+        const string Usage = "Use /em vaga <número>, /em espera <pista> ou /em pista <pista>, por exemplo /em espera 15.";
+
+        if (simulatorShowsIt)
+        {
+            output.WriteLine("Com o simulador, a posição da aeronave vem dele: /em só vale sem simulador.");
+            return current;
+        }
+
+        if (context.Layout is not { } layout)
+        {
+            error.WriteLine("fonia: sem o mapa do aeródromo guardado não há onde pôr a aeronave. O mapa vem de uma sessão com o simulador (ou --no-map está ligado).");
+            return current;
+        }
+
+        var parts = line.Trim()[3..].Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length != 2)
+        {
+            error.WriteLine($"fonia: onde? {Usage}");
+            return current;
+        }
+
+        var place = parts[0].ToUpperInvariant() switch
+        {
+            "VAGA" => int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? PracticePlaces.Parking(layout, number) : null,
+            "ESPERA" => PracticePlaces.HoldingPoint(layout, parts[1]),
+            "PISTA" => PracticePlaces.Threshold(layout, parts[1]),
+            _ => null,
+        };
+
+        if (place is null)
+        {
+            error.WriteLine($"fonia: não achei '{parts[0]} {parts[1]}' no mapa de {layout.Ident}. {Usage}");
+            return current;
+        }
+
+        output.WriteLine($"Aeronave parada em: {place.Description}.");
+
+        return new AircraftState((timeProvider ?? TimeProvider.System).GetUtcNow(), place.Position.LatitudeDegrees, place.Position.LongitudeDegrees, 0, 0, 0, 0, true, null, null, 1200, callsign, "C172");
     }
 
     private static bool IsMarkCommand(string line) => line.Trim().Equals("/errado", StringComparison.OrdinalIgnoreCase);
