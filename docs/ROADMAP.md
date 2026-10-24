@@ -118,6 +118,17 @@ Ideia do mantenedor em 2026-10-15, vinda do voo de teste em SBCT: o Solo manda "
 
 **Pronto quando:** em Curitiba, o piloto pede táxi do pátio e ouve a rota completa, para no ponto de espera antes da pista que a rota atravessa, pede e recebe a autorização de cruzar, segue até a cabeceira da 15, e tudo isso funciona também sem o mapa (só com a pista correta).
 
+## M7: Espaço aéreo (setores, TMA e CTR)
+
+Fora do MVP, mas necessário para a aplicação: hoje o app só sabe de um aeroporto por vez, com as frequências dele, e não sabe em que espaço aéreo o voo está. A fonte é o **AIXM** da AISWEB, que tem as unidades de controle, os serviços por setor, os canais de rádio com frequência e os espaços aéreos com polígono; como ler o pacote e onde ele trava está em [`decisions/approach-frequencies.md`](decisions/approach-frequencies.md) §4b (pesquisa de 2026-10-24). Licença e atribuição são as de `data/aisweb/` (`CLAUDE.md`, princípio 6, e `NOTICE`). Cada tarefa, uma por PR; sem simulador o app usa os dados embutidos, como hoje.
+
+- [ ] **A1. Dados: script do AIXM** (`tools/update-aisweb-aixm.cs`): baixa a emenda em vigor (`pub&type=AIXM`, zip de 56 MB, XML de 334 MB lido em fluxo) e grava em `data/aisweb/` CSVs pequenos: unidades e serviços (APP, ACC, TWR) com o setor, o nome falado e as frequências (sem o 121,5), e os espaços aéreos (TMA, CTR, ATZ...) com o polígono simplificado e os limites verticais. **Pronto quando** o CSV de SBCT diz "Controle Curitiba" com as frequências e o polígono da TMA, e o arquivo cabe em poucas centenas de KB (senão, só a região de interesse).
+- [ ] **A2. Modelo e consulta** (Core, lógica pura): `Airspace` e `ControlUnit` como `record`s; dado uma posição e uma altitude, "em que CTR/TMA/setor estou" (ponto em polígono, esfera); dado um aeroporto, qual APP o atende (pelo `clientAirport` e, quando falta, pelo polígono). Testes com polígonos sintéticos. **Pronto quando** a consulta devolve o mesmo APP que os dados de hoje para os aeroportos que o OurAirports já tem, e "nenhum" onde não há dado, nunca um palpite.
+- [ ] **A3. Setores do APP**: escolher a frequência do setor pela posição/altitude/rumo quando o APP tem vários; sem saber, o app não cita um setor (como hoje). Depende de como o DECEA descreve o setor (nome e polígono); pode ser que só a lista de frequências exista, e então fica na regra atual.
+- [ ] **A4. Entrada e saída do espaço aéreo**: detectar pela telemetria a entrada na CTR/TMA e a saída; o controlador passa o voo ao órgão seguinte ("chame o Controle ...", "chame o Centro ...", Art. 127) e autoriza entrar na CTR quando o espaço exige. A fraseologia é `TODO(fraseologia)` até haver referência no MCA 100-16; perguntar ao mantenedor antes.
+- [ ] **A5. Centro (ACC)**: o handoff do APP para o Centro e do Centro para o APP do destino, que hoje o app não faz (item em aberto do M5).
+- [ ] **A6. Atualização**: a emenda muda a cada ciclo AIRAC (28 dias); a rotina de atualização do CSV vai junto com a dos demais de `data/aisweb/`.
+
 ## Backlog / ideias
 
 - Sotaques e vozes diferentes por posição e aeroporto
