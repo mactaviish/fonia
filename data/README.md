@@ -13,6 +13,13 @@ Os serviços de comunicação de cada aeródromo no ROTAER, com o nome oficial e
 | `frequency_mhz` | A frequência em MHz. Um serviço pode ter várias, uma linha para cada. |
 | `note` | O complemento do ROTAER para aquela frequência (`EMERG.` para 121,5; `SRY`, `ALTN`, `PRI`, `DCL.`, `D-ATIS`...). Vazio quando não há. |
 
+**Como o app usa** (embutido no `Fonia.Data`, lido pelo `AirportCatalog`): para cada tipo de serviço que o arquivo traz (Torre, Solo, Tráfego, ATIS, AFIS, Rádio, Operações), as frequências dele **substituem** as do OurAirports naquele aeródromo; o que ele não traz (o APP, por exemplo) fica como estava. O simulador, quando há, vence os dois. Regras da nota:
+- `EMERG`, `Emergência`, `ACFT MIL`: a frequência não entra. O 121,5 também não entra nunca, com ou sem nota.
+- `SRY`, `ALTN`, `Alternativa`, `reserva`, `secundária`: entra e atende quando sintonizada, mas o app não a cita no "chame a Torre ...".
+- `PRI`, `Principal`, `primária`: é a que o app cita. Sem nenhuma marcada, é a primeira sem nota de secundária.
+- Horários e telefones na nota são ignorados por enquanto.
+- `Pátio` e `FCA` não são órgãos que o piloto chama e não entram. O nome falado **não** vem daqui (o `callsign` do ROTAER é inconsistente): continua o `atc-names.csv`.
+
 **Como atualizar** (a cada ciclo AIRAC): defina `FONIA_AISWEB_KEY` e `FONIA_AISWEB_PASS` (nunca no repositório) e rode `dotnet run tools/update-aisweb.cs`. São cerca de uma chamada por aeródromo, uma por segundo. A lista pedida é a dos aeroportos do OurAirports com voo regular, porte grande ou médio, alguma frequência ou nome falado. Para só alguns: `-- --icao SBGR,SBSP`.
 
 ## `runway-use.csv`: pista de pouso e pista de decolagem

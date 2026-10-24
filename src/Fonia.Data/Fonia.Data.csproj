@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Airport data (OurAirports, public domain) and the spoken names of the controlled airports, embedded in the
+  <!-- Airport data (OurAirports, public domain), the frequencies of the ROTAER (AISWEB/DECEA, see NOTICE) and the spoken names of the controlled airports, embedded in the
        assembly: the app works offline and as a single file. Refresh with tools/update-ourairports.cs. -->
 
   <ItemGroup>
@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\data\ourairports\br-*.csv" LogicalName="Fonia.Data.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\data\aisweb\br-aisweb-frequencies.csv" LogicalName="Fonia.Data.br-aisweb-frequencies.csv" />
     <EmbeddedResource Include="..\..\data\atc-names.csv" LogicalName="Fonia.Data.atc-names.csv" />
     <EmbeddedResource Include="..\..\data\runway-use.csv" LogicalName="Fonia.Data.runway-use.csv" />
   </ItemGroup>
