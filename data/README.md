@@ -1,5 +1,20 @@
 # Dados
 
+## `aisweb/br-aisweb-frequencies.csv`: frequências e nomes oficiais (AISWEB/DECEA)
+
+Os serviços de comunicação de cada aeródromo no ROTAER, com o nome oficial e as frequências. **Os dados são do DECEA**, obtidos pela API do AISWEB e usados nos termos da Política de Uso (§10); não estão sob a Apache-2.0 (veja o `NOTICE`) e **não servem para navegação real**. `aisweb/snapshot.txt` guarda a data da coleta e as datas de atualização dos aeródromos.
+
+| Coluna | Significado |
+|---|---|
+| `icao` | Código do aeródromo. |
+| `name`, `city`, `uf` | Nome oficial, município e estado. |
+| `service` | O serviço, como o ROTAER o chama (`Torre`, `Solo`, `Tráfego`, `ATIS`, `Operações`, `Pátio`...). |
+| `callsign` | O nome falado do órgão no ROTAER (`Guarulhos`, `São Paulo`). |
+| `frequency_mhz` | A frequência em MHz. Um serviço pode ter várias, uma linha para cada. |
+| `note` | O complemento do ROTAER para aquela frequência (`EMERG.` para 121,5; `SRY`, `ALTN`, `PRI`, `DCL.`, `D-ATIS`...). Vazio quando não há. |
+
+**Como atualizar** (a cada ciclo AIRAC): defina `FONIA_AISWEB_KEY` e `FONIA_AISWEB_PASS` (nunca no repositório) e rode `dotnet run tools/update-aisweb.cs`. São cerca de uma chamada por aeródromo, uma por segundo. A lista pedida é a dos aeroportos do OurAirports com voo regular, porte grande ou médio, alguma frequência ou nome falado. Para só alguns: `-- --icao SBGR,SBSP`.
+
 ## `runway-use.csv`: pista de pouso e pista de decolagem
 
 Aeroportos com pistas paralelas de usos diferentes, onde a mesma direção tem uma pista para os pousos e outra para as decolagens (Guarulhos: com a 10 em uso, a 10R recebe os pousos e a 10L as decolagens; com a 28, a 28L e a 28R). O vento ou o usuário escolhe a direção; a tabela diz quem faz o quê. Um aeroporto que não está no arquivo usa uma pista só para os dois, como sempre.

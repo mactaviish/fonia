@@ -35,12 +35,13 @@ Tipos das frequências: AFIS 79, APP 65, TWR 62, GND 34, ATIS 28, OPS 23, RDO 12
   - §13, b: usar robôs, crawlers ou ferramentas de coleta e extração, ou impor carga excessiva, é violação. Nada de raspar páginas.
   - §4: a API pode ser cobrada em uso comercial; o site é ferramenta de planejamento, e o COMAER se isenta de danos.
   - §12: os direitos autorais são do DECEA. O selo CC BY 4.0 no rodapé do site contradiz o texto; vale a política, que é de cumprimento obrigatório.
-- O princípio 6 do `CLAUDE.md` pede dados com licença aberta. Os da AISWEB têm licença própria, concedida só a quem usa a API. **Decisão:** nenhum dado da AISWEB (CSV, código ou texto copiado) entra no repositório até as condições abaixo estarem resolvidas.
-- **Condições para embutir uma tabela de frequências derivada da API** (gerada pelo mantenedor, com a chave dele, por script em `tools/`, poucas chamadas):
-  1. Confirmar com o DECEA, por escrito, que terceiros podem receber e usar a tabela distribuída com o Fonia, e se isso conta como uso comercial (§4).
-  2. O mantenedor atualizar o princípio 6 do `CLAUDE.md` para admitir dados com licença própria e permissão expressa.
-  3. Arquivo separado (`data/aisweb/`), com atribuição ao DECEA no `NOTICE`, aviso de que não serve para navegação real e rotina de atualização (ciclo AIRAC).
-- Alternativa sem depender do item 1: cada usuário usa a própria chave da API, com cache local e retorno ao OurAirports quando faltar.
+- Os dados da AISWEB têm licença própria, concedida a quem tem acesso autorizado à API. **Atualização (2026-10-24):** o mantenedor recebeu o acesso em 19/10/2026, "inclusive para fins comerciais, em nome de: Pessoal". Como o §10 autoriza incluir os dados em base própria e distribuí-los pela Internet (o que só faz sentido se terceiros os receberem), a tabela derivada da API passa a ir no repositório, com estas condições, já cumpridas:
+  1. Princípio 6 do `CLAUDE.md` atualizado para admitir essa exceção.
+  2. Arquivos só em `data/aisweb/`, gerados por `tools/update-aisweb.cs` (formato próprio em CSV, não o XML bruto, por causa do "de forma customizada"), com atribuição ao DECEA no `NOTICE` e aviso de que não servem para navegação real.
+  3. Atualização a cada ciclo AIRAC, com a chave do mantenedor (variáveis `FONIA_AISWEB_KEY` e `FONIA_AISWEB_PASS`, nunca no repositório), uma chamada por aeródromo e uma por segundo (§13).
+- **Em aberto, sem bloquear:** a política não fala em *embutir* os dados num aplicativo. Vale perguntar ao DECEA pelo canal de dúvidas da API; se discordarem, remove-se `data/aisweb/` e o app volta ao OurAirports.
+- **Como a API responde** (`area=rotaer&icaoCode=XXXX`, XML): `https://aisweb.decea.gov.br/api/` aceita https. Cada serviço de comunicação (`service type="COM"`) tem tipo (`Torre`, `Solo`, `Tráfego`, `ATIS`...), nome falado e frequências; cada frequência pode apontar para um complemento. **O complemento muda o sentido da frequência:** o 121,5 da Torre vem com `EMERG.`, e há `SRY` (secundária), `ALTN`, `PRI`, `DCL.` (autorização de tráfego), `D-ATIS`. O app não pode tratar toda frequência de Torre como frequência de contato.
+- Alternativa que continua possível, para uma fase futura: o usuário usar a própria chave, com cache local, para renovar os dados entre versões do app.
 
 ## 4. O que fazemos com isso
 
