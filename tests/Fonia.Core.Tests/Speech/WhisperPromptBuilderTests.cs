@@ -17,6 +17,15 @@ public class WhisperPromptBuilderTests
     }
 
     [Fact]
+    public void The_telephony_of_a_company_the_user_added_goes_in_as_the_pilot_says_it()
+    {
+        var table = Fonia.Core.Phraseology.TelephonyTable.BuiltIn.With("WVR", "Wave Air");
+
+        WhisperPromptBuilder.Build(new TranscriptionContext(Callsign: "WVR1234"), table).ShouldContain("Wave Air Uno Dois Três Quatro");
+        WhisperPromptBuilder.Build(new TranscriptionContext(Callsign: "WVR1234")).ShouldContain("Whiskey Victor Romeo");
+    }
+
+    [Fact]
     public void The_callsign_goes_in_as_it_is_spoken_because_that_is_what_the_recognizer_has_to_write()
     {
         var prompt = WhisperPromptBuilder.Build(new TranscriptionContext(Callsign: "PR-ABC"));

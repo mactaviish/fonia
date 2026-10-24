@@ -24,6 +24,46 @@ internal static class SettingsApplier
             result = result with { Callsign = callsign };
         }
 
+        if (settings.Registration is { } registration && !given.Contains("registration"))
+        {
+            if (StartupWizard.NormalizeCallsign(registration).Length == 0)
+            {
+                return Refuse("registration", "precisa de 3 a 10 letras e números, por exemplo PR-ABC.");
+            }
+
+            result = result with { Registration = registration };
+        }
+
+        if (settings.Telephony.Count > 0)
+        {
+            // What the command line said for a designator wins over the file.
+            var companies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (designator, spoken) in settings.Telephony)
+            {
+                companies[designator] = spoken;
+            }
+
+            foreach (var (designator, spoken) in result.Telephony ?? new Dictionary<string, string>())
+            {
+                companies[designator] = spoken;
+            }
+
+            try
+            {
+                foreach (var (designator, spoken) in companies)
+                {
+                    _ = Fonia.Core.Phraseology.TelephonyTable.BuiltIn.With(designator, spoken);
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                return Refuse("telephony", ex.Message);
+            }
+
+            result = result with { Telephony = companies.ToDictionary(c => c.Key.ToUpperInvariant(), c => c.Value) };
+        }
+
         if (settings.LogLevel is { } level && !given.Contains("log-level"))
         {
             result = result with { LogLevel = ArgumentParser.ParseLogLevel(level, out problem) };

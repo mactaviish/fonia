@@ -12,6 +12,12 @@ internal sealed class AppSettings
     /// <summary>The aircraft's callsign when it is not read from the simulator (<c>--callsign</c>).</summary>
     public string? Callsign { get; set; }
 
+    /// <summary>The aircraft's registration (<c>--registration</c>), for when the callsign is a flight (WVR1234) and not the registration.</summary>
+    public string? Registration { get; set; }
+
+    /// <summary>The companies added to the telephony table, designator to name (<c>--telephony</c>): { "WVR": "Wave Air" } for a virtual airline.</summary>
+    public Dictionary<string, string> Telephony { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>trace, debug, information, warning, error, critical or none (<c>--log-level</c>).</summary>
     public string? LogLevel { get; set; }
 

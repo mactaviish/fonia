@@ -169,7 +169,7 @@ public static class SpokenText
     /// WHISKEY"). With <paramref name="abbreviate"/>, a registration is cut to its last three characters, which the
     /// manual allows once contact is established; company callsigns are never abbreviated.
     /// </summary>
-    public static string Callsign(string callsign, bool abbreviate = false)
+    public static string Callsign(string callsign, bool abbreviate = false, TelephonyTable? telephony = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(callsign);
 
@@ -182,7 +182,7 @@ public static class SpokenText
 
         var text = code.ToString();
 
-        if (text.Length > 3 && Telephony.TryGet(text[..3], out var company))
+        if (text.Length > 3 && (telephony ?? TelephonyTable.BuiltIn).TryGet(text[..3], out var company))
         {
             return $"{company} {Spell(text[3..])}";
         }
@@ -195,10 +195,10 @@ public static class SpokenText
     /// The full callsign matches; so does its last three or more characters when they are letters, because pilots
     /// abbreviate registrations after the first contact.
     /// </summary>
-    public static bool IsSameCallsign(string heard, string own)
+    public static bool IsSameCallsign(string heard, string own, TelephonyTable? telephony = null)
     {
-        var heardCode = Normalize(heard);
-        var ownCode = Normalize(own);
+        var heardCode = Normalize(heard, telephony);
+        var ownCode = Normalize(own, telephony);
 
         if (heardCode.Length == 0 || ownCode.Length == 0)
         {
@@ -214,10 +214,10 @@ public static class SpokenText
     /// Alfa" for PRFAB). The exact and the abbreviated forms are <see cref="IsSameCallsign"/>; this is the last resort, and only for a
     /// registration of letters long enough that one letter cannot be another aircraft: the session has a single pilot.
     /// </summary>
-    public static bool IsCloseCallsign(string heard, string own)
+    public static bool IsCloseCallsign(string heard, string own, TelephonyTable? telephony = null)
     {
-        var heardCode = Normalize(heard);
-        var ownCode = Normalize(own);
+        var heardCode = Normalize(heard, telephony);
+        var ownCode = Normalize(own, telephony);
 
         return ownCode.Length >= 5
             && ownCode.All(char.IsAsciiLetter)
@@ -258,27 +258,28 @@ public static class SpokenText
     /// Whether the words end with the last two letters of this aircraft's callsign ("... Romeo Alfa" for PRFAB). A weaker sign than the
     /// whole callsign: it is used only to take a readback that is right in everything else.
     /// </summary>
-    public static bool EndsWithCallsignTail(IReadOnlyList<string> tokens, string own)
+    public static bool EndsWithCallsignTail(IReadOnlyList<string> tokens, string own, TelephonyTable? telephony = null)
     {
         ArgumentNullException.ThrowIfNull(tokens);
 
         const int Letters = 2;
-        var ownCode = Normalize(own);
+        var ownCode = Normalize(own, telephony);
 
         if (ownCode.Length < Letters + 3 || !ownCode.All(char.IsAsciiLetter) || tokens.Count < Letters)
         {
             return false;
         }
 
-        var heard = Normalize(string.Join(' ', tokens.Skip(tokens.Count - Letters)));
+        var heard = Normalize(string.Join(' ', tokens.Skip(tokens.Count - Letters)), telephony);
 
         return heard == ownCode[^Letters..];
     }
 
     // Phonetic and digit words become characters ("papa romeo alfa" is PRA); the telephony of a company becomes its
     // designator ("gol" is GLO); any other word is taken as the letters themselves ("pr abc" is PRABC).
-    private static string Normalize(string callsign)
+    private static string Normalize(string callsign, TelephonyTable? telephony)
     {
+        var companies = telephony ?? TelephonyTable.BuiltIn;
         var tokens = SpokenTokens.Tokenize(callsign);
         var code = new StringBuilder();
         var index = 0;
@@ -313,7 +314,7 @@ public static class SpokenText
                 index++;
                 code.Append("FAB");
             }
-            else if (Telephony.TryRead(tokens, index - 1, out var designator, out var words))
+            else if (companies.TryRead(tokens, index - 1, out var designator, out var words))
             {
                 index += words - 1;
                 code.Append(designator);

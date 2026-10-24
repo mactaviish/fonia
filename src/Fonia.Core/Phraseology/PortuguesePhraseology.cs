@@ -8,14 +8,14 @@ namespace Fonia.Core.Phraseology;
 /// of each one is in docs/phraseology/solo-pt-br.md. Numbers, letters and callsigns come from <see cref="SpokenText"/>
 /// and are written in capitals, the words of the phrase in lowercase.
 /// </summary>
-public sealed class PortuguesePhraseology : IPhraseology
+public sealed class PortuguesePhraseology(TelephonyTable? telephony = null) : IPhraseology
 {
     public Utterance? Speak(AtcInstruction instruction, PhraseContext context)
     {
         ArgumentNullException.ThrowIfNull(instruction);
         ArgumentNullException.ThrowIfNull(context);
 
-        var callsign = SpokenText.Callsign(context.Callsign);
+        var callsign = SpokenText.Callsign(context.Callsign, telephony: telephony);
 
         return instruction switch
         {

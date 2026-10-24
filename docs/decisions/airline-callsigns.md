@@ -48,6 +48,17 @@ A edição usada: **JO 7340.2N com as mudanças 1 a 3 (17/04/2025)**, <https://w
 
 `SpokenCode.TryReadWholeNumber` lê o número dito por inteiro, com "mil" e centenas ("mil duzentos e trinta e quatro", "dois mil e quinhentos", "trezentos e quarenta", "cento e vinte"), e o `SpokenText` o usa ao ler o indicativo. Dígito a dígito ("um dois três quatro") e em pares ("doze trinta e quatro") já eram lidos. As três formas dão o mesmo `GLO1234`, e outro número não casa. O STT às vezes escreve algarismos ("Gol 1234"), que também funcionam.
 
+## Companhias virtuais (2026-10-24): indicativo livre, matrícula à parte, telefonia do usuário
+
+O Fonia é para simulação, e cada piloto voa por uma companhia virtual com o seu indicativo (o mantenedor voa de `Wave Air`, voos `WVR1234`). Decidido com ele:
+
+- O indicativo (`--callsign`) é **livre**: o que o Solo e a Torre falam e o que o NLU espera ouvir.
+- `--registration` (ou `registration` no `appsettings.json`) guarda a **matrícula**: é o indicativo quando não há `--callsign` e aparece no cabeçalho ("Aeronave WVR1234 (matrícula PRABC)"). Como o `--callsign`, dispensa o simulador.
+- A telefonia de um designador que não está em `data/telephony.csv` vem do usuário: `--telephony "Wave Air"` (o designador são as três letras do início do `--callsign`), `--telephony WVR="Wave Air"`, ou `"telephony": { "WVR": "Wave Air" }` no arquivo (a linha de comando vale mais). Dita em maiúsculas, como as outras: "WAVE AIR UNO DOIS TRÊS QUATRO". Sem ela o indicativo é soletrado ("WHISKEY VICTOR ROMEO UNO ..."), e o NLU entende as duas formas.
+- Com o MSFS, um `ATC AIRLINE` igual à telefonia do usuário ("Wave Air") também vira `WVR` + número do voo.
+- Implementação: `TelephonyTable` (instância imutável, `BuiltIn.With`) no lugar da tabela estática, passada ao `SpokenText`, ao `RuleBasedNlu`, à `PortuguesePhraseology`, ao `WhisperPromptBuilder` e a `AircraftState.CallsignWith`. Validação: o designador tem três letras e a telefonia pelo menos uma palavra.
+- Limite: quando o simulador carrega outro voo, o indicativo passa a ser o dele (o do simulador), mesmo que o usuário tenha dado `--callsign`. Se o `ATC AIRLINE` do voo for a telefonia do usuário, o resultado é o mesmo indicativo.
+
 ## Tarefa 3 (feita, sem validação no simulador): o voo vindo do MSFS
 
 O MSFS guarda em `ATC AIRLINE` a companhia **como telefonia** ("Gol"), não o designador ICAO, e em `ATC FLIGHT NUMBER` o número. `AirlineCallsign.From` procura a telefonia na tabela (a falada ou a registrada: "Gol" ou "Gol Transporte") e monta `GLO` + número. `AircraftState` ganhou `Airline`, `FlightNumber` e `Callsign` (o voo, ou a matrícula quando falta a companhia, o número, ou a telefonia não está na tabela). O `AtcConsole`, o assistente de início, o `SimSession` e o `FlightChangeDetector` usam `Callsign`; outro número de voo na mesma aeronave é um voo novo.

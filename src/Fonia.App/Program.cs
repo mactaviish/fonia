@@ -164,7 +164,7 @@ if (options.AtcAirport is not null)
     if (!options.NoCases)
     {
         CaseLog.Prune(CaseLog.DefaultRoot, TimeProvider.System, TimeSpan.FromDays(30), 200L * 1024 * 1024);
-        cases = (airport, callsign) => new CaseLog(CaseLog.DefaultRoot, TimeProvider.System, new PortuguesePhraseology(), airport, callsign, options.SaveAudio);
+        cases = (airport, callsign) => new CaseLog(CaseLog.DefaultRoot, TimeProvider.System, new PortuguesePhraseology(Companies.From(options)), airport, callsign, options.SaveAudio);
     }
 
     VoiceModeHandle? voice = null;
@@ -192,12 +192,13 @@ if (options.AtcAirport is not null)
         staleFor: TimeSpan.FromHours(3));
 
     var airports = AirportCatalog.Load();
+    var companies = Companies.From(options);
 
     var atc = new AtcConsole(
         airports,
-        new RuleBasedNlu(),
+        new RuleBasedNlu(companies),
         new AtcEngine(),
-        new PortuguesePhraseology(),
+        new PortuguesePhraseology(companies),
         Console.In,
         Console.Out,
         Console.Error,

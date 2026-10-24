@@ -11,7 +11,7 @@ public static class AirlineCallsign
     /// The callsign, or null when the airline is not a telephony of the table or the flight number has no digits: then the registration is the
     /// callsign, as it always was.
     /// </summary>
-    public static string? From(string? airline, string? flightNumber)
+    public static string? From(string? airline, string? flightNumber, TelephonyTable? telephony = null)
     {
         var number = new string([.. (flightNumber ?? string.Empty).Where(char.IsAsciiLetterOrDigit).Select(char.ToUpperInvariant)]);
 
@@ -22,7 +22,7 @@ public static class AirlineCallsign
 
         var tokens = SpokenTokens.Tokenize(airline);
 
-        return tokens.Count > 0 && Telephony.TryRead(tokens, 0, out var designator, out var words) && words == tokens.Count
+        return tokens.Count > 0 && (telephony ?? TelephonyTable.BuiltIn).TryRead(tokens, 0, out var designator, out var words) && words == tokens.Count
             ? designator + number
             : null;
     }

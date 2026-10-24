@@ -105,7 +105,7 @@ internal sealed class AtcConsole(
 
         try
         {
-            callsign = Normalize(options.Callsign ?? await callsignFromSim(options, ct));
+            callsign = Normalize(options.Callsign ?? options.Registration ?? await callsignFromSim(options, ct));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -118,7 +118,7 @@ internal sealed class AtcConsole(
             return 1;
         }
 
-        WriteHeader(context, callsign, options.NoMetar ? null : weather, metarSource is not null && !options.NoMetar);
+        WriteHeader(context, callsign, options.NoMetar ? null : weather, metarSource is not null && !options.NoMetar, Normalize(options.Registration));
 
         var flight = new FlightContext(callsign, FlightPhase.Parked, airport.Ident, PendingReadback: null);
 
@@ -312,7 +312,7 @@ internal sealed class AtcConsole(
             return null;
         }
 
-        var callsign = Normalize(state.Callsign) ?? currentCallsign;
+        var callsign = Normalize(state.CallsignWith(Companies.From(options))) ?? currentCallsign;
         var target = current.Airport;
         var near = nearestAirport(state.LatitudeDegrees, state.LongitudeDegrees);
 
@@ -427,11 +427,11 @@ internal sealed class AtcConsole(
         }
     }
 
-    private void WriteHeader(AirportContext context, string callsign, MetarReading? weather, bool weatherWasAsked)
+    private void WriteHeader(AirportContext context, string callsign, MetarReading? weather, bool weatherWasAsked, string? registration = null)
     {
         var airport = context.Airport;
 
-        output.WriteLine($"Fonia ATC - {airport.Ident} {airport.Name}. Aeronave {callsign}.");
+        output.WriteLine($"Fonia ATC - {airport.Ident} {airport.Name}. Aeronave {callsign}{(registration is not null && registration != callsign ? $" (matrícula {registration})" : string.Empty)}.");
         output.WriteLine(context.Unit == ServiceUnit.None
             ? "Sem serviço de controle neste aeródromo: ninguém responde."
             : $"Responde: {phraseology.UnitName(context)}. {DescribeRunways(context)}");

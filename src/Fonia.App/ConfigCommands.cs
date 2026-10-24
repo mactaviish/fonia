@@ -14,6 +14,13 @@ internal static class ConfigCommands
           // Indicativo da aeronave: sugerido quando o simulador não está aberto; com --callsign, vale também no modo ATC.
           // "callsign": "PR-ABC",
 
+          // Matrícula da aeronave, para quando o indicativo é um voo (WVR1234) e não a matrícula. Sem indicativo, a matrícula é o indicativo.
+          // "registration": "PR-ABC",
+
+          // Companhias virtuais: o designador de três letras e como o controlador as fala. Sem isto, uma companhia que o Fonia
+          // não conhece é soletrada (WVR1234 vira "WHISKEY VICTOR ROMEO ...").
+          // "telephony": { "WVR": "Wave Air" },
+
           // trace, debug, information, warning, error, critical ou none.
           // "logLevel": "warning",
 
@@ -78,6 +85,13 @@ internal static class ConfigCommands
 
         Add(set, "airport", settings.Airport);
         Add(set, "callsign", settings.Callsign);
+        Add(set, "registration", settings.Registration);
+
+        foreach (var (designator, spoken) in settings.Telephony)
+        {
+            Add(set, $"telephony.{designator}", spoken);
+        }
+
         Add(set, "logLevel", settings.LogLevel);
         Add(set, "voice.pttKey", settings.Voice.PttKey);
         Add(set, "voice.micDevice", settings.Voice.MicDevice);

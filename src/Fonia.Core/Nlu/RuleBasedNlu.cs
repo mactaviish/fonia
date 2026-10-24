@@ -8,9 +8,10 @@ namespace Fonia.Core.Nlu;
 /// Understands what the pilot said, without rules about how they must say it: it looks for the callsign, the
 /// request words and the data (runway, parking position) wherever they are, and accepts "bom dia", "ok", extra words,
 /// a different order and an abbreviated callsign. It never decides the ATC answer. When it cannot find anything it
-/// returns <see cref="Unknown"/>, and the controller asks the pilot to say again.
+/// returns <see cref="Unknown"/>, and the controller asks the pilot to say again. With <paramref name="telephony"/> it also knows the
+/// companies the user added (a virtual airline); without, the table of the repository.
 /// </summary>
-public sealed class RuleBasedNlu : INlu
+public sealed class RuleBasedNlu(TelephonyTable? telephony = null) : INlu
 {
     private const int LongestCallsignInTokens = 12;
     private const int GluedStemLength = 5;
@@ -188,8 +189,8 @@ public sealed class RuleBasedNlu : INlu
     }
 
     // The callsign was not found but the words end with its last two letters: only the start of it was written badly.
-    private static bool TailOnly(string? callsign, IReadOnlyList<string> tokens, FlightContext flight) =>
-        callsign is null && SpokenText.EndsWithCallsignTail(tokens, flight.Callsign);
+    private bool TailOnly(string? callsign, IReadOnlyList<string> tokens, FlightContext flight) =>
+        callsign is null && SpokenText.EndsWithCallsignTail(tokens, flight.Callsign, telephony);
 
     // What the pilot says at the holding point and on the runway: ready for departure, lined up, taking off. A readback (which
     // has words like "autorizado") is none of these, and neither is the repeating of the line-up or the takeoff clearance.
@@ -424,7 +425,7 @@ public sealed class RuleBasedNlu : INlu
 
     // Finds the longest stretch of words that is this aircraft's callsign and takes it out of the sentence, so its
     // digits and letters are not mistaken for a runway or a position.
-    private static List<string> RemoveCallsign(IReadOnlyList<string> tokens, string callsign, out bool found)
+    private List<string> RemoveCallsign(IReadOnlyList<string> tokens, string callsign, out bool found)
     {
         found = false;
 
@@ -441,8 +442,8 @@ public sealed class RuleBasedNlu : INlu
                     // A callsign that is only close must end where the callsign ends: "Papa Romeo Alfa Bravo" is one letter from PRFAB, but
                     // in "Papa Romeo Alfa Bravo Charlie" it is the start of another aircraft.
                     var matched = close
-                        ? SpokenText.IsCloseCallsign(candidate, callsign) && !LetterOrNumberFollows(tokens, start + length)
-                        : SpokenText.IsSameCallsign(candidate, callsign);
+                        ? SpokenText.IsCloseCallsign(candidate, callsign, telephony) && !LetterOrNumberFollows(tokens, start + length)
+                        : SpokenText.IsSameCallsign(candidate, callsign, telephony);
 
                     if (matched)
                     {

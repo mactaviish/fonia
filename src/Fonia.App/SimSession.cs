@@ -28,7 +28,7 @@ internal sealed class SimSession(ISimSourceFactory sourceFactory, TimeProvider t
     /// open. Returns null if no state came within the time allowed.
     /// </summary>
     public async Task<string?> ReadCallsignAsync(AppOptions options, CancellationToken ct) =>
-        (await ReadFirstStateAsync(options, timeout, ct))?.Callsign;
+        (await ReadFirstStateAsync(options, timeout, ct))?.CallsignWith(Companies.From(options));
 
     /// <summary>
     /// Connects and waits up to <paramref name="wait"/> for the first state of a loaded flight, keeping the connection open: the

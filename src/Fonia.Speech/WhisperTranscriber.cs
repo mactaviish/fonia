@@ -35,7 +35,7 @@ public sealed class WhisperTranscriber(WhisperOptions options) : ITranscriber, I
             throw WhisperModelLocator.NotFound(options.ModelPath);
         }
 
-        var prompt = WhisperPromptBuilder.Build(context);
+        var prompt = WhisperPromptBuilder.Build(context, options.Telephony);
 
         await _gate.WaitAsync(ct);
 

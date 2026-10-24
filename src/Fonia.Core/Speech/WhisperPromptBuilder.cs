@@ -17,7 +17,7 @@ public static class WhisperPromptBuilder
 
     private const string RunwayExample = "Pista uno cinco.";
 
-    public static string Build(TranscriptionContext context)
+    public static string Build(TranscriptionContext context, TelephonyTable? telephony = null)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -30,7 +30,7 @@ public static class WhisperPromptBuilder
 
         if (context.Callsign is { } callsign && callsign.Any(char.IsAsciiLetterOrDigit))
         {
-            prompt.Append(' ').Append(Capitalize(SpokenText.Callsign(callsign))).Append('.');
+            prompt.Append(' ').Append(Capitalize(SpokenText.Callsign(callsign, telephony: telephony))).Append('.');
         }
 
         prompt.Append(' ').Append(RunwayExample);
