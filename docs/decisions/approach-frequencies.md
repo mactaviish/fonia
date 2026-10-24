@@ -52,6 +52,17 @@ Tipos das frequências: AFIS 79, APP 65, TWR 62, GND 34, ATIS 28, OPS 23, RDO 12
 4. **Complemento por configuração** (frequência de Controle ou Centro por aeroporto em `appsettings.json`) fica fora desta fase. Quem quiser usa o AIP por conta própria; a decisão sobre o produto é do mantenedor.
 5. **Continua em aberto:** a formulação da Torre quando o voo vai para o Centro sem APP. É `TODO(fraseologia)` até haver referência.
 
+## 4b. AIXM da AISWEB: a fonte de APP, setores, TMA e CTR (pesquisa de 2026-10-24)
+
+O `rotaer` não traz o APP. O que traz é o pacote **AIXM 5.1** do DECEA. **Fora do MVP**, mas é daqui que vêm os setores, a TMA e a CTR quando a aplicação precisar deles.
+
+- **Como obter:** `area=pub&type=AIXM` (com a chave) devolve um item por emenda, com um link `https://aisweb.decea.gov.br/download/?public=<id>.zip&p=Completo` (o texto do link vem com `">Completo` colado no fim; cortar na aspa). O link não precisa de chave. A emenda em vigor tem a data de ciclo mais recente que já passou (em 2026-10-24: AMDT 40-26, de 2026-10-01). O zip tem **56 MB**, e o `BL__decoded.xml` dentro dele **334 MB**; ler em fluxo (`XmlReader`), nunca carregar inteiro.
+- **O que há** (peças `aixm:...TimeSlice`): `Unit` 589 (tipos ATSU 221, APP 45, TWR 23, ACC 5, ATCC 1...), `AirTrafficControlService` e `InformationService` 1.241 (APP 203, TWR 81, ATIS 48, AFIS 127...), `RadioCommunicationChannel` 1.594, `Airspace` 1.852 (TMA, CTR, ATZ...), `AirportHeliport` 6.042.
+- **Como as peças se ligam** (por `xlink:href="urn:uuid:..."`): o serviço aponta para a unidade (`serviceProvider`), para os canais (`radioCommunication`, com `frequencyTransmission` em MHz e `rank`), para os aeródromos atendidos (`clientAirport`) e para o espaço aéreo (`clientAirspace`). O nome falado está no serviço, em `call-sign` com `language=por` ("CONTROLE SAO PAULO", em caixa alta e sem acento). O nome do serviço indica o setor ("SAO PAULO 1 S4", "BELO HORIZONTE S5"). Pegar o **último** `timeSlice` de cada peça.
+- **Onde trava (por isso não entrou no MVP):** só **15 dos 203** serviços de APP têm `clientAirport` (18 aeroportos); os demais apontam para uma TMA ou CTR em `clientAirspace`. Para saber qual APP atende um aeroporto é preciso ver se a posição dele cai dentro do polígono do espaço aéreo (GML, em `Airspace`). SBGR, SBSP, SBGL, SBKP e SBPA não têm ligação direta. Uma unidade pode ter vários serviços (setores) e dezenas de frequências sem uma marcada como principal; o 121,5 aparece nos APP e tem de ser excluído como na Torre.
+- **Comparação com o OurAirports:** o OurAirports tem APP em 60 aeroportos; o AIXM os liga diretamente em 16 e acrescenta 2. Para o MVP o OurAirports cobre mais.
+- **Para quando for a hora** (setores, TMA, CTR): script em `tools/` que baixa o zip e gera um CSV pequeno em `data/aisweb/` (unidade, serviço/setor, nome falado, frequência, aeroportos atendidos, polígono ou aeroportos dentro dele). Licença e atribuição são as do restante de `data/aisweb/`.
+
 ## 5. Fontes
 
 - MCA 100-16 (edição 2025), Art. 127, 129 e as seções de vetoração e de espaço aéreo G (PDF local, `docs/fontes-locais`).
