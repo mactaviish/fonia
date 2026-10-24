@@ -1,6 +1,7 @@
 icao,spoken_name,source,reviewed,airport_name,notes
 SBAF,Afonsos,sugestao,nao,Campo Délio Jardim de Mattos Airport,
 SBAN,Anápolis,sugestao,nao,Anápolis Airbase,
+SBAR,Aracaju,sugestao,nao,Aracaju - Santa Maria Airport,Torre veio do ROTAER (AISWEB); confirmar o nome falado.
 SBBE,Belém,sugestao,nao,Val de Cans/Júlio Cezar Ribeiro International Airport,
 SBBH,Pampulha,sugestao,nao,Pampulha - Carlos Drummond de Andrade Airport,
 SBBI,Bacacheri,sugestao,nao,Bacacheri Airport,
@@ -24,6 +25,7 @@ SBGR,Guarulhos,vatsim-br,nao,São Paulo/Guarulhos–Governor André Franco Monto
 SBGW,Guaratinguetá,sugestao,nao,Edu Chaves Field,
 SBIH,Itaituba,sugestao,nao,Itaituba Airport,
 SBJD,Jundiaí,sugestao,nao,Comte. Rolim Adolfo Amaro–Jundiaí State Airport,
+SBJR,Jacarepaguá,sugestao,nao,Jacarepaguá - Roberto Marinho Airport,Torre e Solo vieram do ROTAER (AISWEB); confirmar o nome falado.
 SBJP,João Pessoa,sugestao,nao,Presidente Castro Pinto International Airport,
 SBKP,Viracopos,sugestao,nao,Viracopos International Airport,
 SBLO,Londrina,sugestao,nao,Governor José Richa Airport,

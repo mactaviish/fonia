@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Reflection;
 using Fonia.Core.Airports;
 using Fonia.Core.Sim;
+using Fonia.Data.Aisweb;
 
 namespace Fonia.Data;
 
@@ -36,8 +37,9 @@ public sealed class AirportCatalog : IAirportCatalog
         using var runways = Open("br-runways.csv");
         using var frequencies = Open("br-airport-frequencies.csv");
         using var names = Open("atc-names.csv");
+        using var aisweb = Open("br-aisweb-frequencies.csv");
 
-        return Create(airports, runways, frequencies, names);
+        return Create(airports, runways, frequencies, names, aisweb);
     }
 
     /// <summary>
@@ -63,14 +65,18 @@ public sealed class AirportCatalog : IAirportCatalog
         return best is null ? null : (best, bestKm);
     }
 
-    /// <summary>Loads from four CSV streams (airports, runways, frequencies, names), in the OurAirports layout.</summary>
+    /// <summary>
+    /// Loads from four CSV streams (airports, runways, frequencies, names), in the OurAirports layout, and, when given, the frequencies of the
+    /// ROTAER (<c>data/aisweb</c>), which replace the OurAirports ones for each kind of unit they have.
+    /// </summary>
     /// <exception cref="DataFormatException">A file is not valid CSV (for example, empty).</exception>
-    public static AirportCatalog Create(Stream airports, Stream runways, Stream frequencies, Stream names)
+    public static AirportCatalog Create(Stream airports, Stream runways, Stream frequencies, Stream names, Stream? aisweb = null)
     {
         var warnings = new List<string>();
         var spokenNames = ReadNames(CsvTable.Read(names), warnings);
         var runwaysByAirport = ReadRunways(CsvTable.Read(runways));
         var frequenciesByAirport = ReadFrequencies(CsvTable.Read(frequencies), warnings);
+        var rotaerFrequencies = aisweb is null ? [] : AiswebFrequencyTable.Read(CsvTable.Read(aisweb), warnings);
         var byIdent = new Dictionary<string, Airport>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var row in CsvTable.Read(airports).Rows)
@@ -123,11 +129,18 @@ public sealed class AirportCatalog : IAirportCatalog
                 SpokenNameSource: source,
                 SpokenNameReviewed: reviewed,
                 Runways: runwaysByAirport.GetValueOrDefault(ident)?.Select(r => r.Runway).ToList() ?? [],
-                Frequencies: frequenciesByAirport.GetValueOrDefault(ident)?.Select(f => f.Frequency).ToList() ?? []);
+                Frequencies: AiswebFrequencyTable.Apply(
+                    frequenciesByAirport.GetValueOrDefault(ident)?.Select(f => f.Frequency).ToList() ?? [],
+                    rotaerFrequencies.GetValueOrDefault(ident)));
         }
 
         ReportOrphans(runwaysByAirport, "runway", byIdent, warnings);
         ReportOrphans(frequenciesByAirport, "frequency", byIdent, warnings);
+
+        foreach (var ident in rotaerFrequencies.Keys.Where(k => !byIdent.ContainsKey(k)))
+        {
+            warnings.Add($"frequencies of {ident} in the AISWEB file ignored: no such airport in the data.");
+        }
 
         foreach (var ident in spokenNames.Keys.Where(k => !byIdent.ContainsKey(k)))
         {
