@@ -18,7 +18,7 @@ Os serviços de comunicação de cada aeródromo no ROTAER, com o nome oficial e
 - `SRY`, `ALTN`, `Alternativa`, `reserva`, `secundária`: entra e atende quando sintonizada, mas o app não a cita no "chame a Torre ...".
 - `PRI`, `Principal`, `primária`: é a que o app cita. Sem nenhuma marcada, é a primeira sem nota de secundária.
 - Horários e telefones na nota são ignorados por enquanto.
-- `Pátio` e `FCA` não são órgãos que o piloto chama e não entram. O nome falado **não** vem daqui (o `callsign` do ROTAER é inconsistente): continua o `atc-names.csv`.
+- `Pátio` e `FCA` não são órgãos que o piloto chama e não entram. O nome falado **não** vem daqui (o `callsign` do ROTAER vem em caixa alta, abreviado e às vezes diferente para Torre e Solo): continua o `atc-names.csv`, e a coluna `callsign` fica só para conferência.
 
 **Como atualizar** (a cada ciclo AIRAC): defina `FONIA_AISWEB_KEY` e `FONIA_AISWEB_PASS` (nunca no repositório) e rode `dotnet run tools/update-aisweb.cs`. São cerca de uma chamada por aeródromo, uma por segundo. A lista pedida é a dos aeroportos do OurAirports com voo regular, porte grande ou médio, alguma frequência ou nome falado. Para só alguns: `-- --icao SBGR,SBSP`.
 
