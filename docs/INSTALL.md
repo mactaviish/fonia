@@ -60,6 +60,7 @@ Para ver os microfones e alto-falantes e escolher outro: `fonia --mic-list`, dep
 | "Ninguém responde em 124.85…" | O COM1 do simulador não está na frequência do aeroporto. Sintonize a que o programa mostrou ao abrir. |
 | "repita" com frequência | Fale mais perto do microfone, sem pressa, com o indicativo no começo ou no fim. `fonia --mic-test teste.wav` grava um trecho para você ouvir. |
 | O indicativo não é reconhecido | O programa lê a matrícula do simulador. Confira em `fonia --config` e, se precisar, fixe `"callsign"` no arquivo. |
+| Voo de companhia virtual (WVR1234) soletrado em vez do nome | O Fonia só conhece as companhias da tabela dele. Diga o nome com `--telephony "Wave Air"` (ou `"telephony": { "WVR": "Wave Air" }` no arquivo) e a matrícula com `--registration PR-ABC`. |
 | "não consegui o indicativo da aeronave no simulador" | O MSFS precisa estar aberto com um voo **carregado**, ou use `--callsign PR-ABC`. |
 | Reclama de modelo faltando | Rode `fonia --download-models`. |
 | Sem METAR | Sem internet o controlador só deixa de dizer vento e altímetro. `--no-metar` evita a tentativa. |

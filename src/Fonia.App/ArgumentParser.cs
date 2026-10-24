@@ -1,5 +1,6 @@
 using System.Globalization;
 using Fonia.Audio;
+using Fonia.Core.Phraseology;
 using Fonia.Core.Speech;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,8 @@ internal enum SimSourceKind
 
 /// <summary>What the command line asks for.</summary>
 /// <param name="Speed">Replay speed: 1 is real time, <see cref="double.PositiveInfinity"/> is "as fast as possible".</param>
+/// <param name="Registration">The aircraft's registration (<c>--registration</c>): the callsign when <c>--callsign</c> is not given, and shown next to it when it is.</param>
+/// <param name="Telephony">The companies the user adds to the table, designator to telephony (<c>--telephony</c> and the <c>telephony</c> setting): a virtual airline.</param>
 internal sealed record AppOptions(
     SimSourceKind Source = SimSourceKind.Msfs,
     string? ReplayPath = null,
@@ -52,7 +55,9 @@ internal sealed record AppOptions(
     bool SaveAudio = false,
     string MarkKey = PushToTalkKey.DefaultMarkName,
     bool ShowCases = false,
-    string? DumpLayoutAirport = null);
+    string? DumpLayoutAirport = null,
+    string? Registration = null,
+    IReadOnlyDictionary<string, string>? Telephony = null);
 
 /// <summary>The outcome of reading the command line: options, a message about what is wrong, or a request for help.</summary>
 internal sealed record ParsedArguments(AppOptions? Options, string? Error, bool ShowHelp, bool ShowVersion = false);
@@ -65,7 +70,7 @@ internal static class ArgumentParser
 
         Uso: fonia [opções]
              fonia                  (sem argumentos, num terminal: pega o indicativo e o aeroporto do simulador, ou pergunta, e conversa por voz)
-             fonia --atc <ICAO> [--runway <pista>] [--arrival-runway <pista>] [--callsign <indicativo>] [--com1 <MHz>] [--no-metar] [--no-map]
+             fonia --atc <ICAO> [--runway <pista>] [--arrival-runway <pista>] [--callsign <indicativo>] [--registration <matrícula>] [--telephony <nome>] [--com1 <MHz>] [--no-metar] [--no-map]
              fonia --config | --init-config | --cases
              fonia --dump-layout <ICAO> [--log-level <nível>]
              fonia --mic-test <arquivo.wav> [--mic-device <n>] [--ptt-key <tecla>]
@@ -109,8 +114,13 @@ internal static class ArgumentParser
                                  que usa essa frequência (Solo, Torre ou Rádio), e em outra ninguém responde. Com o
                                  simulador (--sim) a frequência vem do COM1 dele, ao vivo. No modo texto, "/com1 118.55"
                                  muda durante a sessão. Sem rádio, responde a unidade padrão do aeroporto.
-          --callsign <indicativo>  Indicativo da aeronave (ex.: PR-ABC). Sem ele, vem da matrícula
-                                 da aeronave no simulador (--sim). Com ele, não usa simulador.
+          --callsign <indicativo>  Indicativo da aeronave (ex.: PR-ABC, ou WVR1234 de uma companhia virtual). Sem ele,
+                                 vem da matrícula da aeronave no simulador (--sim). Com ele, não usa simulador.
+          --registration <matrícula>  Matrícula da aeronave (ex.: PR-ABC), quando o indicativo (--callsign) é outro, como
+                                 o voo de uma companhia. Sem --callsign, a matrícula é o indicativo.
+          --telephony <nome>     Como a companhia do --callsign se fala: --callsign WVR1234 --telephony "Wave Air" diz
+                                 "WAVE AIR UNO DOIS TRÊS QUATRO". Com outro designador: --telephony WVR="Wave Air". Sem ele,
+                                 uma companhia que não está na tabela do Fonia é soletrada. No appsettings.json: "telephony".
 
           --mic-test <arquivo.wav>  Testa o microfone e o push-to-talk: segure a tecla, fale, solte, e a
                                  fala é salva no arquivo. Só no Windows.
@@ -192,6 +202,8 @@ internal static class ArgumentParser
         string? runway = null;
         string? arrivalRunway = null;
         string? callsign = null;
+        string? registration = null;
+        string? telephony = null;
         Fonia.Core.Sim.Frequency? com1 = null;
         string? micTest = null;
         string? pttKey = null;
@@ -302,7 +314,7 @@ internal static class ArgumentParser
                 return Failure($"argumento inesperado: '{args[i]}'. Use --help para ver as opções.");
             }
 
-            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--arrival-runway" or "--callsign" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1" or "--only" or "--mark-key"))
+            if (name is not ("--sim" or "--replay" or "--speed" or "--record" or "--duration" or "--log-level" or "--atc" or "--runway" or "--arrival-runway" or "--callsign" or "--registration" or "--telephony" or "--mic-test" or "--mic-device" or "--ptt-key" or "--transcribe" or "--stt-dir" or "--stt-model" or "--speak" or "--speak-out" or "--tts-voice" or "--tts-dir" or "--radio-effect" or "--audio-out" or "--models-dir" or "--com1" or "--only" or "--mark-key"))
             {
                 return Failure($"opção desconhecida: '{name}'. Use --help para ver as opções.");
             }
@@ -338,6 +350,12 @@ internal static class ArgumentParser
                     break;
                 case "--callsign":
                     callsign = value;
+                    break;
+                case "--registration":
+                    registration = value;
+                    break;
+                case "--telephony":
+                    telephony = value;
                     break;
                 case "--mic-test":
                     micTest = value;
@@ -436,6 +454,41 @@ internal static class ArgumentParser
             }
 
             result = result with { NoMetar = true };
+        }
+
+        if (registration is not null || telephony is not null)
+        {
+            if (result.AtcAirport is null)
+            {
+                return Failure("--registration e --telephony só valem no modo ATC: use também --atc <ICAO>.");
+            }
+
+            if (registration is not null && callsign is null && source is not null)
+            {
+                return Failure("--registration dispensa o simulador: remova --sim, ou remova --registration para usar a matrícula do simulador.");
+            }
+
+            if (registration is not null)
+            {
+                if (StartupWizard.NormalizeCallsign(registration).Length == 0)
+                {
+                    return Failure("--registration precisa de 3 a 10 letras e números, por exemplo PR-ABC.");
+                }
+
+                result = result with { Registration = registration };
+            }
+
+            if (telephony is not null)
+            {
+                var company = ParseTelephony(telephony, callsign, out var problem);
+
+                if (problem is not null)
+                {
+                    return Failure(problem);
+                }
+
+                result = result with { Telephony = company };
+            }
         }
 
         if (arrivalRunway is not null)
@@ -681,6 +734,49 @@ internal static class ArgumentParser
         }
 
         return new ParsedArguments(new AppOptions(source ?? SimSourceKind.Msfs, LogLevel: logLevel, AtcAirport: atc, Runway: runway, Callsign: callsign, Com1: com1), null, ShowHelp: false);
+    }
+
+    /// <summary>
+    /// <c>--telephony</c>: "WVR=Wave Air", or just "Wave Air" for the designator at the start of <c>--callsign</c> (WVR1234). The table
+    /// refuses a designator that is not three letters.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string>? ParseTelephony(string value, string? callsign, out string? problem)
+    {
+        problem = null;
+        var equals = value.IndexOf('=', StringComparison.Ordinal);
+        string designator;
+        string spoken;
+
+        if (equals > 0)
+        {
+            designator = value[..equals];
+            spoken = value[(equals + 1)..];
+        }
+        else
+        {
+            var letters = (callsign ?? string.Empty).Where(char.IsAsciiLetterOrDigit).Take(3).ToArray();
+
+            if (letters.Length < 3)
+            {
+                problem = "--telephony \"<nome>\" usa as três letras do início do --callsign (WVR1234 é WVR): informe o --callsign, ou use --telephony WVR=\"<nome>\".";
+                return null;
+            }
+
+            designator = new string(letters);
+            spoken = value;
+        }
+
+        try
+        {
+            _ = TelephonyTable.BuiltIn.With(designator, spoken);
+        }
+        catch (ArgumentException ex)
+        {
+            problem = $"--telephony: {ex.Message}";
+            return null;
+        }
+
+        return new Dictionary<string, string> { [designator.Trim().ToUpperInvariant()] = spoken.Trim() };
     }
 
     private static (string Name, string? Value) Split(string argument)

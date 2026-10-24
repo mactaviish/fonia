@@ -30,8 +30,8 @@ internal static class SttCommands
             return 2;
         }
 
-        await using var transcriber = new WhisperTranscriber(new WhisperOptions(modelPath, options.SttGpu));
+        await using var transcriber = new WhisperTranscriber(new WhisperOptions(modelPath, options.SttGpu, Telephony: Companies.From(options)));
 
-        return await new TranscribeCommand(transcriber, new RuleBasedNlu(), output, error).RunAsync(options.TranscribePath!, options.Callsign, ct);
+        return await new TranscribeCommand(transcriber, new RuleBasedNlu(Companies.From(options)), output, error).RunAsync(options.TranscribePath!, options.Callsign, ct);
     }
 }

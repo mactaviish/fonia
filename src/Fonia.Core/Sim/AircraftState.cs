@@ -32,5 +32,8 @@ public sealed record AircraftState(
     /// How the aircraft is called on the radio: the company and the flight number when the simulator has them and the company is a telephony the
     /// app knows ("GLO1234"), otherwise the registration.
     /// </summary>
-    public string Callsign => Phraseology.AirlineCallsign.From(Airline, FlightNumber) ?? Registration;
+    public string Callsign => CallsignWith(null);
+
+    /// <summary>The same as <see cref="Callsign"/>, knowing the companies the user added to the table.</summary>
+    public string CallsignWith(Phraseology.TelephonyTable? telephony) => Phraseology.AirlineCallsign.From(Airline, FlightNumber, telephony) ?? Registration;
 }

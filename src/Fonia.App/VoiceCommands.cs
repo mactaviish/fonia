@@ -52,6 +52,7 @@ internal static class VoiceCommands
             return null;
         }
 
+        var companies = Companies.From(options);
         var resources = new List<IDisposable>();
         var asyncResources = new List<IAsyncDisposable>();
 
@@ -73,7 +74,7 @@ internal static class VoiceCommands
 
             var player = new NAudioPlayer(options.AudioOut);
             asyncResources.Add(player);
-            var transcriber = new WhisperTranscriber(new WhisperOptions(sttModel, options.SttGpu));
+            var transcriber = new WhisperTranscriber(new WhisperOptions(sttModel, options.SttGpu, Telephony: companies));
             asyncResources.Add(transcriber);
             var synthesizer = new KokoroSynthesizer(new KokoroOptions(ttsFiles.Model, ttsFiles.Voices));
             asyncResources.Add(synthesizer);
@@ -85,9 +86,9 @@ internal static class VoiceCommands
                 transcriber,
                 synthesizer,
                 player,
-                new RuleBasedNlu(),
+                new RuleBasedNlu(companies),
                 new AtcEngine(),
-                new PortuguesePhraseology(),
+                new PortuguesePhraseology(companies),
                 voices,
                 options.RadioEffect,
                 options.PttKey,

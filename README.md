@@ -112,6 +112,7 @@ Para conversar com o controlador por texto (ATC do M2, sem áudio): você digita
 dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC          # sem simulador
 dotnet run --project src/Fonia.App -- --atc SBCT --runway 15                # indicativo da matrícula no MSFS
 dotnet run --project src/Fonia.App -- --atc SBCT --callsign PR-ABC --com1 118.55   # rádio na frequência da Torre de Curitiba
+dotnet run --project src/Fonia.App -- --atc SBCT --callsign WVR1234 --registration PR-ABC --telephony "Wave Air"   # companhia virtual
 ```
 
 Quem responde depende da **frequência do rádio**: o Solo na dele, a Torre na dela, ninguém em outra. Com o simulador (`--sim msfs`) ela vem do COM1 ao vivo; sem ele, use `--com1 <MHz>` ou digite `/com1 118.55` durante a sessão. O voo vai do acionamento ao táxi, "no ponto de espera da pista uno cinco" (o Solo manda chamar a Torre), alinhar e decolar, circuito, pouso e volta ao pátio. Quando o simulador mostra a decolagem ou o pouso, a Torre fala sozinha ("decolado aos ...", "no solo aos ..."); sem simulador, `/evento decolou` e `/evento pousou` fazem esse papel. Em aeroportos com pistas paralelas e mapa, a Torre também manda cruzar a pista no caminho do pátio ("cruze a pista uno zero esquerda, após chame Solo em ..."). Sem simulador, com o mapa do aeródromo guardado, `/em vaga 12`, `/em espera 15` e `/em pista 15` põem a aeronave num ponto do mapa para treinar a rota e a travessia.
