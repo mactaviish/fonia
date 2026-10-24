@@ -2,3 +2,10 @@ Fonia
 Copyright 2026 Leonardo Yuri Dalla Corte Brancalione
 
 This product includes software developed by Leonardo Yuri Dalla Corte Brancalione.
+
+The files in data/aisweb/ are not covered by the Apache License. They hold aeronautical
+data (frequencies and names of aerodromes) obtained from the AISWEB API of the
+Departamento de Controle do Espaco Aereo (DECEA), whose copyright belongs to the
+Uniao/DECEA, and are used under the Politica de Uso do AISWEB, which allows users with
+authorized access to the API to keep the data in their own database and distribute it.
+They are for flight simulation only and must not be used for real navigation.

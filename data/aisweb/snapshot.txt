@@ -1,0 +1,4 @@
+Source: AISWEB API (area rotaer), DECEA - https://aisweb.decea.gov.br/
+Retrieved: 2026-10-24 (UTC)
+Aerodromes asked: 202; with communication services: 139; frequencies: 319
+Update dates of the aerodromes: 2018-07-19 to 2026-10-22

@@ -1,0 +1,320 @@
+icao,name,city,uf,service,callsign,frequency_mhz,note
+SBAC,Aeroporto Regional de Canoa Quebrada Dragão do Mar,Aracati,CE,Rádio,Aracati,131.250,
+SBAE,Bauru - Arealva,Bauru,SP,Rádio,AREALVA,126.600,
+SBAF,Campo Délio Jardim de Mattos,Rio de Janeiro,RJ,Solo,AFONSOS,121.850,
+SBAF,Campo Délio Jardim de Mattos,Rio de Janeiro,RJ,Operações,AFONSOS,122.950,
+SBAF,Campo Délio Jardim de Mattos,Rio de Janeiro,RJ,Rádio,AFONSOS,118.900,Principal
+SBAF,Campo Délio Jardim de Mattos,Rio de Janeiro,RJ,Rádio,AFONSOS,121.850,Alternativa
+SBAN,Campo Marechal Márcio de Souza e Mello,Anápolis,GO,Torre,Anápolis,118.300,
+SBAN,Campo Marechal Márcio de Souza e Mello,Anápolis,GO,Torre,Anápolis,121.250,
+SBAN,Campo Marechal Márcio de Souza e Mello,Anápolis,GO,Torre,Anápolis,121.500,
+SBAN,Campo Marechal Márcio de Souza e Mello,Anápolis,GO,Solo,Anápolis,121.900,
+SBAQ,Bartolomeu de Gusmão,Araraquara,SP,Rádio,ARARAQUARA,125.925,
+SBAR,Santa Maria,Aracaju,SE,Torre,ARACAJU,118.800,
+SBAR,Santa Maria,Aracaju,SE,Torre,ARACAJU,118.100,
+SBAT,Piloto Osvaldo Marques Dias,Alta Floresta,MT,Rádio,FLORESTA,126.600,OPR NAV BRASIL; DLY 1015-2145
+SBAU,Araçatuba,Araçatuba,SP,Rádio,Araçatuba,130.600,
+SBAX,Romeu Zema,Araxá,MG,Rádio,Araxá,130.350,
+SBBE,Val de Cans - Júlio Cezar Ribeiro,Belém,PA,Torre,Belém,118.700,
+SBBE,Val de Cans - Júlio Cezar Ribeiro,Belém,PA,Torre,Belém,121.500,EMERG
+SBBE,Val de Cans - Júlio Cezar Ribeiro,Belém,PA,Solo,Belém,121.900,
+SBBE,Val de Cans - Júlio Cezar Ribeiro,Belém,PA,ATIS,Belém,127.600,
+SBBG,Comandante Gustavo Kraemer,Bagé,RS,Rádio,Bagé,125.850,
+SBBH,Pampulha - Carlos Drummond de Andrade,Belo Horizonte,MG,Torre,Belo Horizonte,118.000,
+SBBH,Pampulha - Carlos Drummond de Andrade,Belo Horizonte,MG,Solo,Belo Horizonte,121.600,
+SBBH,Pampulha - Carlos Drummond de Andrade,Belo Horizonte,MG,ATIS,Belo Horizonte,127.450,
+SBBI,Bacacheri,Curitiba,PR,Torre,BACACHERI,118.900,
+SBBI,Bacacheri,Curitiba,PR,Solo,BACACHERI,121.800,
+SBBI,Bacacheri,Curitiba,PR,ATIS,Curitiba,132.325,
+SBBQ,Major Brigadeiro Doorgal Borges,Barbacena,MG,AFIS,Barbacena,125.900,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Torre,Brasília,118.100,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Torre,Brasília,118.450,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Torre,Brasília,118.750,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Torre,Brasília,121.500,EMERG.
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Solo,Brasília,121.800,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Solo,Brasília,121.950,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Operações,Brasília,135.850,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Operações,Brasília,122.500,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,Tráfego,Brasília,121.000,
+SBBR,Presidente Juscelino Kubitschek,Brasília,DF,ATIS,Brasília,127.800,
+SBBU,Bauru,Bauru,SP,ATIS,Bauru,127.875,
+SBBU,Bauru,Bauru,SP,AFIS,Bauru,121.300,
+SBBV,Atlas Brasil Cantanhede,Boa Vista,RR,Torre,Boa Vista,118.300,
+SBBV,Atlas Brasil Cantanhede,Boa Vista,RR,Torre,Boa Vista,118.100,
+SBBV,Atlas Brasil Cantanhede,Boa Vista,RR,Torre,Boa Vista,121.500,EMERG
+SBBV,Atlas Brasil Cantanhede,Boa Vista,RR,Operações,Boa Vista,122.500,
+SBBV,Atlas Brasil Cantanhede,Boa Vista,RR,ATIS,Boa Vista,127.600,D-ATIS
+SBCA,Aeroporto Regional do Oeste - Coronel Adalberto Mendes da Silva,Cascavel,PR,Rádio,Cascavel,131.850,
+SBCB,Cabo Frio,Cabo Frio,RJ,Rádio,Cabo Frio,132.150,
+SBCC,Campo de Provas Brigadeiro Veloso (CPBV),Guarantã do Norte,MT,Rádio,CACHIMBO,125.900,
+SBCF,Tancredo Neves,Belo Horizonte,MG,Torre,CONFINS,118.200,
+SBCF,Tancredo Neves,Belo Horizonte,MG,Torre,CONFINS,121.500,EMERG; DCL
+SBCF,Tancredo Neves,Belo Horizonte,MG,Solo,CONFINS,121.900,
+SBCF,Tancredo Neves,Belo Horizonte,MG,Tráfego,Confins,121.000,
+SBCF,Tancredo Neves,Belo Horizonte,MG,ATIS,CONFINS,127.850,
+SBCG,Campo Grande - Ueze Elias Zahran,Campo Grande,MS,Torre,Campo Grande,118.100,
+SBCG,Campo Grande - Ueze Elias Zahran,Campo Grande,MS,Torre,Campo Grande,121.500,EMERG
+SBCG,Campo Grande - Ueze Elias Zahran,Campo Grande,MS,Solo,Campo Grande,121.900,"(MON,TUE,WED,THU,FRI 1200-2200)"
+SBCG,Campo Grande - Ueze Elias Zahran,Campo Grande,MS,ATIS,Campo Grande,127.600,
+SBCH,Serafin Enoss Bertaso,Chapecó,SC,Rádio,Chapecó,130.850,
+SBCJ,Carajás,Parauapebas,PA,Rádio,CARAJÁS,131.700,
+SBCN,Nelson Rodrigues Guimarâes,Caldas Novas,GO,Rádio,CALDAS,130.050,
+SBCO,CAMPO NOSSA SENHORA DE FÁTIMA,Canoas,RS,Torre,CANOAS,118.500,
+SBCO,CAMPO NOSSA SENHORA DE FÁTIMA,Canoas,RS,Torre,CANOAS,122.800,ACFT MIL
+SBCO,CAMPO NOSSA SENHORA DE FÁTIMA,Canoas,RS,Solo,CANOAS,121.700,
+SBCP,Bartolomeu Lisandro,Campos dos Goytacazes,RJ,Rádio,Campos,125.700,
+SBCR,Corumbá,Corumbá,MS,Rádio,Corumbá,119.500,
+SBCT,Afonso Pena,Curitiba,PR,Torre,Curitiba,118.150,
+SBCT,Afonso Pena,Curitiba,PR,Torre,Curitiba,121.500,EMERG
+SBCT,Afonso Pena,Curitiba,PR,Solo,Curitiba,121.900,
+SBCT,Afonso Pena,Curitiba,PR,Tráfego,Curitiba,119.300,
+SBCT,Afonso Pena,Curitiba,PR,ATIS,Curitiba,127.800,
+SBCX,Hugo Cantergiani,Caxias do Sul,RS,Rádio,CAXIAS,131.600,
+SBCY,Marechal Rondon,Cuiabá,MT,Torre,Cuiabá,118.100,
+SBCY,Marechal Rondon,Cuiabá,MT,Torre,Cuiabá,121.500,EMERG
+SBCY,Marechal Rondon,Cuiabá,MT,Solo,Cuiabá,121.900,
+SBCY,Marechal Rondon,Cuiabá,MT,ATIS,Cuiabá,127.850,
+SBCZ,CRUZEIRO DO SUL,Cruzeiro do Sul,AC,Rádio,Cruzeiro do Sul,125.700,OPR NAV Brasil
+SBDB,BONITO,Bonito,MS,Rádio,Bonito,130.600,
+SBDN,Presidente Prudente,Presidente Prudente,SP,Torre,PRUDENTE,118.450,
+SBDN,Presidente Prudente,Presidente Prudente,SP,AFIS,PRUDENTE,125.450,
+SBEG,Eduardo Gomes,Manaus,AM,Torre,EDUARDO GOMES,118.300,
+SBEG,Eduardo Gomes,Manaus,AM,Solo,EDUARDO GOMES,121.900,
+SBEG,Eduardo Gomes,Manaus,AM,Operações,Manaus,122.500,
+SBEG,Eduardo Gomes,Manaus,AM,ATIS,Manaus,127.650,
+SBES,Tenente Jorge Henrique Möller,São Pedro da Aldeia,RJ,Torre,ALDEIA,118.300,
+SBES,Tenente Jorge Henrique Möller,São Pedro da Aldeia,RJ,Torre,ALDEIA,122.800,ACFT MIL
+SBES,Tenente Jorge Henrique Möller,São Pedro da Aldeia,RJ,Torre,ALDEIA,121.500,EMERG
+SBES,Tenente Jorge Henrique Möller,São Pedro da Aldeia,RJ,Solo,ALDEIA,121.900,
+SBFI,Cataratas,Foz do Iguaçu,PR,Torre,Foz do Iguaçu,118.800,
+SBFI,Cataratas,Foz do Iguaçu,PR,Torre,Foz do Iguaçu,118.200,
+SBFL,Hercílio Luz,Florianópolis,SC,Torre,Florianópolis,118.700,EMERG.
+SBFL,Hercílio Luz,Florianópolis,SC,Torre,Florianópolis,121.500,
+SBFL,Hercílio Luz,Florianópolis,SC,Torre,Florianópolis,122.800,Somente ACFT MIL.
+SBFL,Hercílio Luz,Florianópolis,SC,Solo,Florianópolis,121.700,
+SBFL,Hercílio Luz,Florianópolis,SC,Operações,Florianópolis,122.500,
+SBFL,Hercílio Luz,Florianópolis,SC,ATIS,Florianópolis,127.450,
+SBFN,FERNANDO DE NORONHA,Fernando de Noronha,PE,Rádio,Fernando de Noronha,125.900,
+SBFZ,Pinto Martins,Fortaleza,CE,Torre,Fortaleza,121.500,EMERG
+SBFZ,Pinto Martins,Fortaleza,CE,Torre,Fortaleza,129.000,
+SBFZ,Pinto Martins,Fortaleza,CE,Solo,Fortaleza,121.950,
+SBFZ,Pinto Martins,Fortaleza,CE,Operações,Fortaleza,122.500,
+SBFZ,Pinto Martins,Fortaleza,CE,ATIS,Fortaleza,127.700,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Torre,Rio de Janeiro,121.000,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Torre,Rio de Janeiro,121.650,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Torre,Rio de Janeiro,118.000,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Torre,Rio de Janeiro,118.200,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Torre,Rio de Janeiro,121.500,EMERG.
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Solo,Galeão,121.650,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Solo,Galeão,128.350,SRY
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Tráfego,Galeão,135.100,SRY
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Tráfego,Galeão,121.000,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,ATIS,Rio de Janeiro,127.600,
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Pátio,Galeão,121.950,PRI
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Pátio,Galeão,130.675,SRY
+SBGL,Galeão - Antônio Carlos Jobim,Rio de Janeiro,RJ,Pátio,Galeão,131.050,ALTN
+SBGM,GUAJARA-MIRIM,Guajará-Mirim,RO,Rádio,GuajaráMirim,125.900,
+SBGO,SANTA GENOVEVA,Goiânia,GO,Torre,Goiânia,118.700,Não autorizado apresentação de plano de voo simplificado por radiotelefonia
+SBGO,SANTA GENOVEVA,Goiânia,GO,Torre,Goiânia,121.500,EMERG
+SBGO,SANTA GENOVEVA,Goiânia,GO,Solo,Goiânia,121.700,
+SBGO,SANTA GENOVEVA,Goiânia,GO,Tráfego,Goiânia,121.050,(DLY 1000-0100)
+SBGO,SANTA GENOVEVA,Goiânia,GO,ATIS,Goiânia,127.675,
+SBGP,EMBRAER - Unidade Gavião Peixoto,Gavião Peixoto,SP,Rádio,GAVIAO,118.950,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Torre,Guarulhos,118.400,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Torre,Guarulhos,121.500,EMERG.
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Torre,Guarulhos,132.750,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Torre,Guarulhos,135.200,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Solo,Guarulhos,121.700,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Solo,Guarulhos,126.900,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Operações,Guarulhos,122.500,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,Tráfego,Guarulhos,121.000,
+SBGR,Guarulhos - Governador André Franco Montoro,São Paulo,SP,ATIS,São Paulo,127.750,
+SBGV,Coronel Altino Machado,Governador Valadares,MG,Rádio,Valadares,132.050,
+SBGW,Campo Edu Chaves,Guaratinguetá,SP,Torre,GUARÁ,118.150,
+SBGW,Campo Edu Chaves,Guaratinguetá,SP,Operações,GUARÁ,122.975,
+SBGW,Campo Edu Chaves,Guaratinguetá,SP,AFIS,GUARÁ,120.150,
+SBHT,ALTAMIRA,Altamira,PA,Rádio,Altamira,125.850,OPR NAV BRASIL; DLY 1000-2145
+SBIH,ITAITUBA,Itaituba,PA,Rádio,Itaituba,125.500,
+SBIL,Jorge Amado,Ilhéus,BA,AFIS,Ilhéus,120.100,
+SBIT,Hidrelétrica de Itumbiara,Itumbiara,GO,Rádio,Itumbiara,130.300,
+SBIZ,PREFEITO RENATO MOREIRA,Imperatriz,MA,Rádio,Imperatriz,125.650,
+SBJA,Regional Sul,Jaguaruna,SC,Rádio,Jaguaruna,130.700,(DLY 1000-2200)
+SBJD,Comandante Rolim Adolfo Amaro,Jundiaí,SP,Torre,Jundiaí,118.750,
+SBJD,Comandante Rolim Adolfo Amaro,Jundiaí,SP,Solo,Jundiaí,121.650,(DLY 1015-2145)
+SBJD,Comandante Rolim Adolfo Amaro,Jundiaí,SP,Rádio,Jundiaí,118.750,
+SBJE,Comandante Ariston Pessoa,Cruz,CE,Rádio,JERICOACOARA,131.050,DLY 1230-2230
+SBJF,FRANCISCO DE ASSIS,Juiz de Fora,MG,FCA,,128.100,
+SBJH,SAO PAULO CATARINA AEROPORTO EXECUTIVO,São Roque,SP,Rádio,CATARINA,131.800,RDO-JH TEL +55 11 4130-4874 ou +55 11 93447-0820.
+SBJI,JI-PARANA,Ji-Paraná,RO,Rádio,Ji Paraná,131.750,"(DLY 1000-2200) TEL: (69) 31800158, (69) 993567880 ou (69) 993567866"
+SBJP,PRESIDENTE CASTRO PINTO,João Pessoa,PB,Torre,João Pessoa,118.300,
+SBJR,JACAREPAGUA-ROBERTO MARINHO,Rio de Janeiro,RJ,Torre,JACAREPAGUÁ,118.400,
+SBJR,JACAREPAGUA-ROBERTO MARINHO,Rio de Janeiro,RJ,Solo,JACAREPAGUÁ,121.600,
+SBJR,JACAREPAGUA-ROBERTO MARINHO,Rio de Janeiro,RJ,ATIS,Rio de Janeiro,132.850,
+SBJU,Orlando Bezerra de Menezes,Juazeiro do Norte,CE,Rádio,JUAZEIRO,131.750,
+SBJV,LAURO CARNEIRO DE LOYOLA,Joinville,SC,AFIS,Joinville,118.000,OPR NAV Brasil; 0850-0245
+SBKG,Presidente João Suassuna,Campina Grande,PB,Rádio,Campina Grande,125.500,Tel (83) 3332-9026
+SBKP,Viracopos,Campinas,SP,Torre,Campinas,118.250,
+SBKP,Viracopos,Campinas,SP,Solo,Campinas,121.900,
+SBKP,Viracopos,Campinas,SP,Tráfego,Campinas,121.100,CLRD
+SBKP,Viracopos,Campinas,SP,ATIS,Campinas,127.825,
+SBLO,Governador José Richa,Londrina,PR,Torre,Londrina,118.400,Não serão aceitos pela TWR Londrina PLN e suas atualizações por RTF
+SBLO,Governador José Richa,Londrina,PR,ATIS,Londrina,127.675,
+SBLO,Governador José Richa,Londrina,PR,AFIS,Londrina,129.700,
+SBLS,LAGOA SANTA,Lagoa Santa,MG,Rádio,Lagoa Santa,122.800,
+SBMA,JOÃO CORREA DA ROCHA,Marabá,PA,Rádio,Marabá,125.900,AFIS H24 (1500-2059 SER prestado pelo APP MARABÁ (não aceita PLN AFIL neste horário). 2100-1459 SER prestado pela RDO MARABÁ).; PRI
+SBMA,JOÃO CORREA DA ROCHA,Marabá,PA,Rádio,Marabá,119.200,AFIS H24 (1500-2059 SER prestado pelo APP MARABÁ (não aceita PLN AFIL neste horário). 2100-1459 SER prestado pela RDO MARABÁ).; SRY
+SBME,Macaé/Rio de Janeiro - Joaquim de Azevedo Mancebo,Macaé,RJ,Torre,Macaé,118.450,
+SBME,Macaé/Rio de Janeiro - Joaquim de Azevedo Mancebo,Macaé,RJ,ATIS,Macaé,127.775,
+SBME,Macaé/Rio de Janeiro - Joaquim de Azevedo Mancebo,Macaé,RJ,AFIS,Macaé,119.200,
+SBMG,Silvio Name Junior,Maringá,PR,Torre,Maringá,118.750,
+SBMG,Silvio Name Junior,Maringá,PR,AFIS,MARINGÁ,118.750,
+SBMK,MARIO RIBEIRO,Montes Claros,MG,Rádio,Montes Claros,131.700,
+SBML,FRANK MILOYE MILENKOVICH,Marília,SP,Rádio,Marília,130.450,
+SBMN,Campo Ponta Pelada,Manaus,AM,Torre,Ponta Pelada,118.600,
+SBMO,Zumbi dos Palmares,Maceió,AL,Torre,Maceió,118.000,
+SBMO,Zumbi dos Palmares,Maceió,AL,Torre,Maceió,118.250,
+SBMQ,Alberto Alcolumbre,Macapá,AP,Torre,Macapá,118.000,OPR Nav Brasil
+SBMQ,Alberto Alcolumbre,Macapá,AP,Rádio,Macapá,119.000,OPR Nav Brasil
+SBMS,DIX-SEPT ROSADO,Mossoró,RN,Rádio,Mossoró,125.800,
+SBMT,CAMPO DE MARTE,São Paulo,SP,Torre,MARTE,133.350,
+SBMT,CAMPO DE MARTE,São Paulo,SP,Solo,MARTE,121.600,
+SBMT,CAMPO DE MARTE,São Paulo,SP,Tráfego,São Paulo,118.700,
+SBMT,CAMPO DE MARTE,São Paulo,SP,ATIS,São Paulo,127.725,
+SBNF,Ministro Victor Konder,Navegantes,SC,Torre,Navegantes,121.500,Emergência
+SBNF,Ministro Victor Konder,Navegantes,SC,Torre,Navegantes,118.200,
+SBNF,Ministro Victor Konder,Navegantes,SC,ATIS,Navegantes,127.625,
+SBNM,Santo Ângelo,Santo Ângelo,RS,Rádio,Santo Ângelo,131.650,
+SBNT,CAMPO AUGUSTO SEVERO,Natal,RN,Torre,Natal,118.700,RWY 16L/34R e 12/30; DCL AUTH DE TFC via datalink HR SER H24
+SBNT,CAMPO AUGUSTO SEVERO,Natal,RN,Torre,Natal,122.800,
+SBNT,CAMPO AUGUSTO SEVERO,Natal,RN,Solo,Natal,121.900,
+SBNT,CAMPO AUGUSTO SEVERO,Natal,RN,ATIS,Natal,132.650,
+SBOI,OIAPOQUE,Oiapoque,AP,Rádio,Oiapoque,125.900,
+SBPA,Salgado Filho,Porto Alegre,RS,Torre,PALEGRE,118.100,
+SBPA,Salgado Filho,Porto Alegre,RS,Torre,PALEGRE,121.500,EMERG
+SBPA,Salgado Filho,Porto Alegre,RS,Solo,PALEGRE,121.900,
+SBPA,Salgado Filho,Porto Alegre,RS,Tráfego,PALEGRE,122.150,
+SBPA,Salgado Filho,Porto Alegre,RS,ATIS,Porto Alegre,132.350,
+SBPB,Prefeito Doutor João Silva Filho,Parnaíba,PI,Rádio,Parnaíba,126.600,
+SBPF,LAURO KURTZ,Passo Fundo,RS,Rádio,Passo Fundo,131.250,
+SBPG,Comandante Antônio Amilton Beraldo,Ponta Grossa,PR,Rádio,Ponta Grossa,128.100,
+SBPJ,Brigadeiro Lysias Rodrigues,Palmas,TO,Torre,Palmas,118.000,
+SBPJ,Brigadeiro Lysias Rodrigues,Palmas,TO,Torre,Palmas,121.500,
+SBPJ,Brigadeiro Lysias Rodrigues,Palmas,TO,AFIS,PALMAS,119.000,
+SBPK,João Simões Lopes Neto,Pelotas,RS,Rádio,Pelotas,125.900,
+SBPL,SENADOR NILO COELHO,Petrolina,PE,Rádio,Petrolina,125.700,
+SBPO,Regional de Pato Branco - Professor Juvenal Loureiro Cardoso,Pato Branco,PR,Rádio,pato branco,130.800,
+SBPP,Ponta Porã,Ponta Porã,MS,Rádio,Porã,125.900,
+SBPS,Porto Seguro,Porto Seguro,BA,Torre,Porto Seguro,118.850,
+SBPS,Porto Seguro,Porto Seguro,BA,ATIS,Porto Seguro,127.650,
+SBPV,Governador Jorge Teixeira de Oliveira,Porto Velho,RO,Torre,Porto Velho,118.550,H24
+SBPV,Governador Jorge Teixeira de Oliveira,Porto Velho,RO,Torre,Porto Velho,118.200,
+SBPV,Governador Jorge Teixeira de Oliveira,Porto Velho,RO,Torre,Porto Velho,121.500,EMERG
+SBPV,Governador Jorge Teixeira de Oliveira,Porto Velho,RO,ATIS,Porto Velho,127.450,
+SBRB,Plácido de Castro,Rio Branco,AC,Torre,Rio Branco,118.700,
+SBRB,Plácido de Castro,Rio Branco,AC,Torre,Rio Branco,121.500,EMERG
+SBRD,Maestro Marinho Franco,Rondonópolis,MT,Rádio,Rondonópolis,130.700,
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,Torre,RECIFE,118.350,FREQ primária
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,Torre,RECIFE,121.500,EMERG
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,Torre,RECIFE,122.800,Somente ACFT MIL
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,Torre,RECIFE,125.250,FREQ secundária
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,Solo,RECIFE,121.850,
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,Operações,RECIFE,122.500,
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,Tráfego,Recife,118.900,
+SBRF,Guararapes - Gilberto Freyre,Recife,PE,ATIS,RECIFE,127.650,
+SBRJ,Santos Dumont,Rio de Janeiro,RJ,Torre,RIO,118.700,(DLY 0850-0200)
+SBRJ,Santos Dumont,Rio de Janeiro,RJ,Torre,RIO,121.500,EMERG
+SBRJ,Santos Dumont,Rio de Janeiro,RJ,Solo,RIO,121.700,
+SBRJ,Santos Dumont,Rio de Janeiro,RJ,Tráfego,RIO,121.050,
+SBRJ,Santos Dumont,Rio de Janeiro,RJ,ATIS,RIO,132.650,
+SBRP,Leite Lopes,Ribeirão Preto,SP,Torre,RIBEIRÃO,118.000,
+SBRP,Leite Lopes,Ribeirão Preto,SP,Solo,RIBEIRÃO,121.600,
+SBRP,Leite Lopes,Ribeirão Preto,SP,ATIS,RIBEIRÃO,127.425,
+SBSC,CAMPO NERO MOURA,Rio de Janeiro,RJ,Torre,SANTA CRUZ,118.800,FREQ. secundária a critério da TWR Santa Cruz
+SBSC,CAMPO NERO MOURA,Rio de Janeiro,RJ,Torre,SANTA CRUZ,122.900,
+SBSC,CAMPO NERO MOURA,Rio de Janeiro,RJ,Solo,SANTA CRUZ,121.800,
+SBSC,CAMPO NERO MOURA,Rio de Janeiro,RJ,Tráfego,SANTA CRUZ,132.200,ALTERNATIVA
+SBSC,CAMPO NERO MOURA,Rio de Janeiro,RJ,Tráfego,SANTA CRUZ,132.500,
+SBSC,CAMPO NERO MOURA,Rio de Janeiro,RJ,Tráfego,SANTA CRUZ,133.700,
+SBSG,São Gonçalo do Amarante - Governador Aluizio Alves,Natal,RN,Torre,São Gonçalo do Amarante,118.200,
+SBSG,São Gonçalo do Amarante - Governador Aluizio Alves,Natal,RN,Torre,São Gonçalo do Amarante,118.850,
+SBSG,São Gonçalo do Amarante - Governador Aluizio Alves,Natal,RN,Solo,São Gonçalo do Amarante,121.700,
+SBSG,São Gonçalo do Amarante - Governador Aluizio Alves,Natal,RN,Tráfego,São Gonçalo do Amarante,121.000,
+SBSG,São Gonçalo do Amarante - Governador Aluizio Alves,Natal,RN,ATIS,São Gonçalo do Amarante,127.600,
+SBSI,PRESIDENTE JOÃO BATISTA FIGUEIREDO,Sinop,MT,Rádio,Sinop,130.175,
+SBSJ,Professor Urbano Ernesto Stumpf,São José dos Campos,SP,Torre,SÃO JOSÉ,118.500,
+SBSJ,Professor Urbano Ernesto Stumpf,São José dos Campos,SP,Torre,SÃO JOSÉ,121.500,
+SBSJ,Professor Urbano Ernesto Stumpf,São José dos Campos,SP,Solo,SÃO JOSÉ,121.950,
+SBSJ,Professor Urbano Ernesto Stumpf,São José dos Campos,SP,Operações,SÃO JOSÉ,122.500,
+SBSJ,Professor Urbano Ernesto Stumpf,São José dos Campos,SP,ATIS,SÃO JOSÉ,127.925,
+SBSL,Marechal Cunha Machado,São Luís,MA,Torre,São Luís,118.900,
+SBSM,Santa Maria,Santa Maria,RS,Torre,Santa Maria,118.300,
+SBSM,Santa Maria,Santa Maria,RS,Torre,Santa Maria,118.850,
+SBSM,Santa Maria,Santa Maria,RS,Torre,Santa Maria,121.500,EMERG
+SBSM,Santa Maria,Santa Maria,RS,ATIS,Santa Maria,127.750,
+SBSN,Maestro Wilson Fonseca,Santarém,PA,Torre,SANTARÉM,118.100,
+SBSN,Maestro Wilson Fonseca,Santarém,PA,Rádio,Santarém,119.300,
+SBSO,REGIONAL DE SORRISO ADOLINO BEDIN,Sorriso,MT,Rádio,Sorriso,130.350,
+SBSP,Congonhas - Deputado Freitas Nobre,São Paulo,SP,Torre,São Paulo,118.050,
+SBSP,Congonhas - Deputado Freitas Nobre,São Paulo,SP,Torre,São Paulo,127.150,FREQ reserva
+SBSP,Congonhas - Deputado Freitas Nobre,São Paulo,SP,Solo,São Paulo,121.900,
+SBSP,Congonhas - Deputado Freitas Nobre,São Paulo,SP,Tráfego,SÃO PAULO,120.600,
+SBSP,Congonhas - Deputado Freitas Nobre,São Paulo,SP,ATIS,SÃO PAULO,127.650,
+SBSR,Professor Eribelto Manoel Reino,São José do Rio Preto,SP,Rádio,RIO PRETO,130.850,
+SBST,Santos,Guarujá,SP,Rádio,Santos,118.650,
+SBST,Santos,Guarujá,SP,Rádio,Santos,132.225,
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,Torre,Salvador,118.950,
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,Torre,Salvador,121.100,
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,Torre,Salvador,121.500,EMERG
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,Torre,Salvador,118.600,
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,Solo,Salvador,121.900,
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,Operações,SALVADOR,122.500,
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,Tráfego,SALVADOR,121.100,
+SBSV,Deputado Luís Eduardo Magalhães,Salvador,BA,ATIS,Salvador,127.775,
+SBTA,Base de Aviação de Taubaté,Taubaté,SP,Torre,Pioneiro,118.850,"TWR PIONEIRO: prestação do SER CTL AD HR SER MON/TUE TIL FRI/SAT 0900-0300. SAT, SUN, HOL 0900-2100."
+SBTA,Base de Aviação de Taubaté,Taubaté,SP,Torre,Pioneiro,119.900,"TWR TAUBATÉ: prestação do SER CTL APCH Convencional HR SER MON/TUE TIL FRI/SAT 0900-0300. SAT, SUN, HOL 0900-2100. O/R TEL: (11) 3278-4231."
+SBTA,Base de Aviação de Taubaté,Taubaté,SP,Torre,Pioneiro,121.500,EMERG.
+SBTA,Base de Aviação de Taubaté,Taubaté,SP,Solo,Taubaté,121.700,
+SBTA,Base de Aviação de Taubaté,Taubaté,SP,ATIS,Taubaté,127.575,HR SER MON TIL FRI 0900-0300 SAT SUN HOL 0900-2100.
+SBTB,Trombetas,Oriximiná,PA,Rádio,TROMBETAS,131.600,
+SBTC,Una/Comandatuba,Una,BA,Rádio,Comandatuba,130.250,
+SBTD,Luiz Dalcanale Filho,Toledo,PR,Rádio,Toledo,131.050,
+SBTE,SENADOR PETRONIO PORTELLA,Teresina,PI,Torre,Teresina,118.800,OPR NAV BRASIL
+SBTE,SENADOR PETRONIO PORTELLA,Teresina,PI,ATIS,Teresina,127.800,OPR NAV BRASIL
+SBTF,Prefeito Orlando Marinho,Tefé,AM,Rádio,Tefé,125.600,
+SBTG,Três Lagoas,Três Lagoas,MS,Rádio,Três Lagoas,130.250,(MON TIL FRI 1100-1600 1730-2200)
+SBTS,TIRIOS,Óbidos,PA,Rádio,Óbidos,128.100,"OPR remotamente a partir das dependências do ACC Amazônico. Área de responsabilidade correspondente ao espaço aéreo ATS Classe GOLF. PROC específicos para contingências de COM: 1 - usar FREQ da RDO como FCA, ajustar código 7600 no transponder; 2 - realizar IAC IFR se obtiver INFO MET do AD via ACC/AFIS. Caso NEG, NO AUTH LDG IFR; 3 - Realizar SID se obtiver INFO MET do AD, caso NEG, NO AUTH DEP IFR; 4 - atentar para as demais regras da ICA 100-12 para falha de COM."
+SBTT,Tabatinga,Tabatinga,AM,Rádio,Tabatinga,125.900,
+SBTV,Terravista,Porto Seguro,BA,Rádio,TERRAVISTA,131.400,MON TIL FRI 1200-1900 O/R pelos TEL: (73) 99198-0533 (73) 99198-0763 (73) 2014-0051. Demais HR O/R com antecedência MNM de 12HR da OPS desejada pelos TEL: (73) 99198-0533 (73) 99198-0763.
+SBTV,Terravista,Porto Seguro,BA,Pátio,TERRAVISTA,131.625,
+SBUA,São Gabriel da Cachoeira,São Gabriel da Cachoeira,AM,Rádio,GABRIEL,125.700,
+SBUF,Paulo Afonso,Paulo Afonso,BA,Rádio,Paulo Afonso,125.850,
+SBUG,RUBEM BERTA,Uruguaiana,RS,Rádio,Uruguaiana,118.100,
+SBUG,RUBEM BERTA,Uruguaiana,RS,Rádio,Uruguaiana,125.900,
+SBUL,TEN CEL AV CÉSAR BOMBONATO,Uberlândia,MG,Torre,Uberlândia,118.800,
+SBUL,TEN CEL AV CÉSAR BOMBONATO,Uberlândia,MG,AFIS,Uberlândia,122.850,
+SBUR,MARIO DE ALMEIDA FRANCO,Uberaba,MG,Rádio,Uberaba,120.800,
+SBVG,MAJOR BRIGADEIRO TROMPOWSKY,Varginha,MG,Rádio,Varginha,130.800,
+SBVH,Vilhena,Vilhena,RO,Rádio,Vilhena,125.900,"AFIS Vilhena FREQ 125.900MHZ OPR remotamente a partir das dependências do ACC Amazônico. Área de responsabilidade correspondente ao Espaço Aéreo ATS Classe GOLF. PROC específicos para contingências de COM: 1 - Usar FREQ da RDO como FCA, ajustar código 7600 no TRANSPONDER; 2 - Realizar IAC IFR se obtiver INFO MET do AD via ACC/AFIS, caso NEG, NO AUTH LDG IFR; 3 - Realizar SID se obtiver INFO MET do AD, caso NEG, NO AUTH DEP IFR; 4 - Atentar para as demais regras da ICA 100-12 para falha de COM"
+SBVT,Eurico de Aguiar Salles,Vitória,ES,Torre,Vitória,118.100,OPR NAV BRASIL
+SBVT,Eurico de Aguiar Salles,Vitória,ES,Torre,Vitória,121.500,
+SBVT,Eurico de Aguiar Salles,Vitória,ES,Solo,Vitória,121.950,OPR NAV BRASIL
+SBVT,Eurico de Aguiar Salles,Vitória,ES,ATIS,Vitória,127.575,OPR NAV BRASIL
+SBYS,CAMPO FONTENELLE,Pirassununga,SP,Torre,ACADEMIA,118.300,
+SBYS,CAMPO FONTENELLE,Pirassununga,SP,Torre,ACADEMIA,121.500,EMERG
+SBYS,CAMPO FONTENELLE,Pirassununga,SP,Torre,ACADEMIA,122.800,
+SBYS,CAMPO FONTENELLE,Pirassununga,SP,Solo,ACADEMIA,121.900,
+SBYS,CAMPO FONTENELLE,Pirassununga,SP,ATIS,ACADEMIA,127.700,
+SBZM,Presidente Itamar Franco,Goianá,MG,Rádio,ZONA DA MATA,130.100,
+SDAI,Americana,Americana,SP,FCA,AMERICANA,135.025,
+SDAM,Campos dos Amarais - Prefeito Francisco Amaral,Campinas,SP,Rádio,AMARAIS,118.125,"(DLY 1115–1445, 1615–2145)"
+SDCO,Sorocaba,Sorocaba,SP,Torre,Sorocaba,118.800,DLY 0900-0200
+SDCO,Sorocaba,Sorocaba,SP,Solo,Sorocaba,121.800,
+SDCO,Sorocaba,Sorocaba,SP,ATIS,Sorocaba,127.775,
+SDPW,Piracicaba,Piracicaba,SP,FCA,Piracicaba,125.125,
+SDTB,ATIBAIA,Atibaia,SP,FCA,Atibaia,126.250,
+SJSH,Fly Ville,Governador Celso Ramos,SC,FCA,Governador Celso Ramos,119.100,
+SNCP,Aeroporto Ricardo Sell Wagner - Regional da Serra Catarinense,Correia Pinto,SC,Rádio,Correia Pinto,131.100,
+SSBN,Belém Novo,Porto Alegre,RS,FCA,Porto Alegre,131.500,
+SSKW,Cacoal,Cacoal,RO,Rádio,Cacoal,131.100,
+SSUM,Orlando de Carvalho,Umuarama,PR,FCA,Umuarama,124.525,
+SWGN,Araguaína,Araguaína,TO,Rádio,Araguaína,125.850,
